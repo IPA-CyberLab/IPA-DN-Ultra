@@ -5,7 +5,7 @@
 
 このライブラリは未完成です。まだ使用することはできません。2021/1/20 登
 
-## [Current Version] beta7preview16
+## [Current Version] beta7preview16 (LGWAN 版のみ)
 
 ## beta7preview16
 1. Wake on LAN パケット送信機能において、ターゲットのサーバー側コンピュータが属しているすべてのサブネットのブロードキャストアドレス宛にも WoL パケットを送付するようにしました。これは、組織の LAN がルータまたはレイヤ 3 スイッチで分割されており、かつ、レイヤ 3 スイッチ等において「IP Directed Broadcast」機能が有効な場合に効果的です。IP Directed Broadcast 機能が有効な場合、異なるレイヤ 3 セグメント上のサーバーを WoL で起動することが可能な場合があります。レイヤ 3 スイッチの側の設定が必要です。例として、Cisco 社のドキュメントは以下のとおりです: https://www.cisco.com/c/ja_jp/support/docs/switches/catalyst-3750-series-switches/91672-catl3-wol-vlans.html 一般的に、他のスイッチ製品にも同様の機能があります。この機能を利用するには、「ターゲット PC」および「トリガ PC」の両方を、少なくとも beta7preview16 以降にアップデートする必要があります。
