@@ -1213,7 +1213,7 @@ UINT WideServerConnect(WIDE *w, WT_CONNECT *c)
 		UINT mac_list_size = 1024;
 		char *mac_list_str = ZeroMalloc(mac_list_size);
 
-		GetMacAddressListLocalComputer(mac_list_str, mac_list_size);
+		GetMacAddressListLocalComputer(mac_list_str, mac_list_size, true);
 
 		PackAddStr(r, "wol_maclist", mac_list_str);
 

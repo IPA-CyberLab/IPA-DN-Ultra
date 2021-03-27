@@ -1301,7 +1301,7 @@ void DsServerMain(DS *ds, SOCKIO *sock)
 				{
 					char local_mac_list[1024] = {0};
 
-					GetMacAddressListLocalComputer(local_mac_list, sizeof(local_mac_list));
+					GetMacAddressListLocalComputer(local_mac_list, sizeof(local_mac_list), false);
 
 					SeekBufToEnd(buf);
 					WriteBufChar(buf, 0);

@@ -403,11 +403,30 @@ void WoLSendPacket(LIST *mac_address_str_list)
 
 	num_mac_address = MIN(num_mac_address, 64);
 
-	Debug("WoLSendPacket to %u addresses.\n", num_mac_address);
-
 	ff[0] = ff[1] = ff[2] = ff[3] = ff[4] = ff[5] = 0xFF;
 
+	// ローカルコンピュータから見たブロードキャストアドレスリスト
 	bcast_list = GetLocalComputerBroadcastAddressList();
+
+	// リモートコンピュータから見たブロードキャストアドレスリスト
+	for (j = 0;j < num_mac_address;j++)
+	{
+		char* ipstr = LIST_DATA(mac_address_str_list, j);
+
+		if (ipstr != NULL && ipstr[0] == '~')
+		{
+			ipstr = ipstr + 1;
+
+			IP bcast_additional_ip = CLEAN;
+
+			StrToIP(&bcast_additional_ip, ipstr);
+
+			if (IsIP4(&bcast_additional_ip))
+			{
+				AddStrToStrListDistinct(bcast_list, ipstr);
+			}
+		}
+	}
 
 	for (k = 0;k < num;k++)
 	{
@@ -541,7 +560,7 @@ bool IsInNetwork(UINT uni_addr, UINT network_addr, UINT mask)
 	return false;
 }
 
-void GetMacAddressListLocalComputer(char *dst, UINT size)
+void GetMacAddressListLocalComputer(char *dst, UINT size, bool add_broadcast_address_list)
 {
 	ClearStr(dst, size);
 	if (dst == NULL || size == 0)
@@ -551,7 +570,7 @@ void GetMacAddressListLocalComputer(char *dst, UINT size)
 
 #ifdef	OS_WIN32
 	{
-		LIST *o = MsGetMacAddressList();
+		LIST *o = MsGetMacAddressList(add_broadcast_address_list);
 		UINT i;
 
 		for (i = 0;i < LIST_NUM(o);i++)

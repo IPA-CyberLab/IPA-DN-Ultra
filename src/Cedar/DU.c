@@ -1387,7 +1387,7 @@ UINT DuInspectionDlgProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam, void
 			}
 
 			DoEvents(hWnd);
-			GetMacAddressListLocalComputer(ins->MacAddressList, sizeof(ins->MacAddressList));
+			GetMacAddressListLocalComputer(ins->MacAddressList, sizeof(ins->MacAddressList), false);
 
 			DoEvents(hWnd);
 

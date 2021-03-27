@@ -1325,7 +1325,7 @@ UINT64 MsGetCurrentFileTime();
 bool MsCheckAntiVirus();
 bool MsCheckWindowsUpdate();
 UINT64 MsGetKernelTimestamp();
-LIST *MsGetMacAddressList();
+LIST *MsGetMacAddressList(bool add_broadcast_address_list);
 
 void *MsGetCurrentInstanceHandle();
 

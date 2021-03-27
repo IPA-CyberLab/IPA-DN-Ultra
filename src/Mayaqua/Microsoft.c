@@ -846,7 +846,7 @@ bool MsApplyGroupPolicy(bool machine)
 	return false;
 }
 
-LIST *MsGetMacAddressList()
+LIST* MsGetMacAddressList(bool add_broadcast_address_list)
 {
 	MS_ADAPTER_LIST *o;
 	UINT i;
@@ -866,6 +866,43 @@ LIST *MsGetMacAddressList()
 				MacToStr(tmp, sizeof(tmp), a->Address);
 
 				AddStrToStrListDistinct(ret, tmp);
+			}
+		}
+
+		if (add_broadcast_address_list)
+		{
+			for (i = 0;i < o->Num;i++)
+			{
+				MS_ADAPTER* a = o->Adapters[i];
+
+				UINT j;
+
+				for (j = 0;j < a->NumIpAddress;j++)
+				{
+					IP* ip = &a->IpAddresses[j];
+					IP* mask = &a->SubnetMasks[j];
+
+					if (IsZeroIP(ip) == false && IsZeroIP(mask) == false &&
+						IsIP4(ip) && IsIP4(mask) && IsSubnetMask4(mask))
+					{
+						IP bcast = CLEAN;
+
+						GetBroadcastAddress4(&bcast, ip, mask);
+
+						if (IsZeroIP(&bcast) == false && IsIP4(&bcast))
+						{
+							char tmp[64] = CLEAN;
+							char tmp2[64] = CLEAN;
+
+							IPToStr(tmp, sizeof(tmp), &bcast);
+
+							StrCpy(tmp2, sizeof(tmp2), "~");
+							StrCat(tmp2, sizeof(tmp2), tmp);
+
+							AddStrToStrListDistinct(ret, tmp2);
+						}
+					}
+				}
 			}
 		}
 
