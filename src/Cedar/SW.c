@@ -2478,6 +2478,16 @@ bool SwUninstallMain(SW* sw, WIZARD_PAGE* wp, SW_COMPONENT* c)
 		}
 	}
 
+	if (sw->DeleteConfig)
+	{
+		// Delete config
+		wchar_t config_path[MAX_SIZE] = CLEAN;
+
+		ConbinePathW(config_path, sizeof(config_path), sw->InstallDir, DS_CONFIG_FILENAME2);
+
+		FileDeleteW(config_path);
+	}
+
 	// Remove the installed build number from the registry
 	if (true)
 	{
@@ -7263,6 +7273,7 @@ void SwParseCommandLine(SW* sw)
 		{"SUINSTMODE", NULL, NULL, NULL, NULL, },
 		{"URDPINSTMODE", NULL, NULL, NULL, NULL, },
 		{"AUTO", NULL, NULL, NULL, NULL, },
+		{"DELETECONFIG", NULL, NULL, NULL, NULL, },
 		{"NOAFTERRUN", NULL, NULL, NULL, NULL, },
 	};
 	// Validate arguments
@@ -7295,6 +7306,7 @@ void SwParseCommandLine(SW* sw)
 			sw->UrdpInstMode = GetParamYes(o, "URDPINSTMODE");
 
 			sw->Auto = GetParamYes(o, "AUTO");
+			sw->DeleteConfig = GetParamYes(o, "DELETECONFIG");
 			sw->NoAfterRun = GetParamYes(o, "NOAFTERRUN");
 
 			StrCpy(sw->SfxMode, sizeof(sw->SfxMode), GetParamStr(o, "SFXMODE"));

@@ -1698,6 +1698,7 @@ void DgAuthDlgOnOk(HWND hWnd, DG *dg)
 			Check(hWnd, C_USE_AUTH, true);
 			SetTextA(hWnd, E_PASSWORD2, "");
 			SetTextA(hWnd, E_PASSWORD1, "");
+			DgAuthDlgUpdate(hWnd);
 			FocusEx(hWnd, E_PASSWORD1);
 			return;
 		}
