@@ -1900,6 +1900,18 @@ void WtgWaitForSock(TSESSION *s)
 	s->Tick = Tick64();
 }
 
+// SNI 名を見て WebSocket 用証明書を利用するかどうか判断するコールバック関数
+bool WtgDetermineWebSocketSslCertUseCallback(char* sni_name, void* param)
+{
+	if (sni_name == NULL)
+	{
+		return false;
+	}
+
+	return StartWith(sni_name, WIDE_WEBSOCKET_SNI_NAME_STARTWITH1) ||
+		StartWith(sni_name, WIDE_WEBSOCKET_SNI_NAME_STARTWITH2);
+}
+
 // Gate による接続受付
 void WtgAccept(WT *wt, SOCK *s)
 {
@@ -1953,14 +1965,25 @@ void WtgAccept(WT *wt, SOCK *s)
 	s->SslAcceptSettings.Tls_Disable1_1 = Vars_ActivePatch_GetBool("WtGateDisableTls1_1"); 
 	s->SslAcceptSettings.Tls_Disable1_2 = Vars_ActivePatch_GetBool("WtGateDisableTls1_2");
 	s->SslAcceptSettings.Tls_Disable1_3 = Vars_ActivePatch_GetBool("WtGateDisableTls1_3");
-	if (StartSSLEx(s, wt->GateCert, wt->GateKey, true, 0, NULL) == false)
+
+	// WebSocket 用証明書の取得
+	CERTS_AND_KEY* web_socket_certs = WideGetWebSocketCertsAndKey(wt->Wide);
+	web_socket_certs->DetermineUseCallback = WtgDetermineWebSocketSslCertUseCallback;
+	CERTS_AND_KEY* web_socket_certs_array[1] = CLEAN;
+	web_socket_certs_array[0] = web_socket_certs;
+
+	if (StartSSLEx2(s, wt->GateCert, wt->GateKey, true, 0, NULL, web_socket_certs_array, 1, NULL) == false)
 	{
 		Debug("StartSSL Failed.\n");
 
 		AddNoSsl(wt->Cedar, &s->RemoteIP);
 
+		FreeCertsAndKey(web_socket_certs);
+
 		return;
 	}
+
+	FreeCertsAndKey(web_socket_certs);
 
 	// シグネチャのダウンロード
 	continue_ok = WtgDownloadSignature(wt, s, &check_ssl_ok, wt->Wide->GateKeyStr, wt->EntranceUrlForProxy, wt->ProxyTargetUrlList);

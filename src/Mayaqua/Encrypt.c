@@ -346,9 +346,9 @@ CERTS_AND_KEY* CloneCertsAndKey(CERTS_AND_KEY* c)
 
 	UINT i;
 
-	for (i = 0;i < LIST_NUM(ret->CertList);i++)
+	for (i = 0;i < LIST_NUM(c->CertList);i++)
 	{
-		X* x = LIST_DATA(ret->CertList, i);
+		X* x = LIST_DATA(c->CertList, i);
 
 		X* x2 = CloneX(x);
 

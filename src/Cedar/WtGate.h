@@ -216,6 +216,7 @@ void WtGateConnectParamToPack(PACK *p, WT_GATE_CONNECT_PARAM *g);
 void WtgStart(WT *wt, X *cert, K *key, UINT port, bool standalone_mode);
 void WtgStop(WT *wt);
 void WtgAccept(WT *wt, SOCK *s);
+bool WtgDetermineWebSocketSslCertUseCallback(char* sni_name, void* param);
 bool WtgSendError(SOCK *s, UINT code);
 bool WtgDownloadSignature(WT* wt,SOCK *s, bool* check_ssl_ok, char *gate_secret_key, char *entrance_url_for_proxy, LIST* entrance_url_list_for_proxy);
 bool WtgUploadHello(WT *wt, SOCK *s, void *session_id);

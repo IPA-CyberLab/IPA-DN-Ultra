@@ -350,6 +350,7 @@ struct CERTS_AND_KEY
 {
 	LIST* CertList;
 	K* Key;
+	bool (*DetermineUseCallback)(char*, void*);
 };
 
 

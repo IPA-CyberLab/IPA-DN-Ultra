@@ -13606,17 +13606,105 @@ bool AddChainSslCert(struct ssl_ctx_st *ctx, X *x)
 	return ret;
 }
 
+typedef struct START_SSL_EX2_CLIENT_HELLO_CB_DATA
+{
+	SOCK* Sock;
+	SSL_CTX* SslCtx;
+	X* DefaultX;
+	K* DefaultK;
+	CERTS_AND_KEY** certs_and_key_lists;
+	UINT num_certs_and_key_lists;
+	void* CertAndKeyCbParam;
+} START_SSL_EX2_CLIENT_HELLO_CB_DATA;
+
+int Sni_Callback_StartSSLEx2(SSL* s, int* al, void* arg)
+{
+	START_SSL_EX2_CLIENT_HELLO_CB_DATA* data = (START_SSL_EX2_CLIENT_HELLO_CB_DATA*)arg;
+
+	if (s == NULL || data == NULL)
+	{
+		return SSL_CLIENT_HELLO_ERROR;
+	}
+
+	WHERE;
+
+	SOCK* sock = data->Sock;
+
+	char *sni_recv_hostname = (char* )SSL_get_servername(sock->ssl, TLSEXT_NAMETYPE_host_name);
+	if (sni_recv_hostname == NULL) sni_recv_hostname = "";
+	//Print("*** SNI: %s\n", sni_recv_hostname);
+
+	CERTS_AND_KEY* use_me = NULL;
+
+	UINT i;
+	for (i = 0;i < data->num_certs_and_key_lists;i++)
+	{
+		CERTS_AND_KEY* c = data->certs_and_key_lists[i];
+
+		if (c != NULL && c->DetermineUseCallback != NULL)
+		{
+			if (c->DetermineUseCallback(sni_recv_hostname, data->CertAndKeyCbParam))
+			{
+				use_me = c;
+				break;
+			}
+		}
+	}
+
+	X* x = data->DefaultX;
+	K* k = data->DefaultK;
+
+	if (use_me != NULL && LIST_NUM(use_me->CertList) >= 1)
+	{
+		UINT i;
+		for (i = 1;i < LIST_NUM(use_me->CertList);i++)
+		{
+			X* additional_x = LIST_DATA(use_me->CertList, i);
+			if (additional_x != NULL)
+			{
+				AddChainSslCert(data->SslCtx, additional_x);
+			}
+		}
+
+		x = LIST_DATA(use_me->CertList, 0);
+		k = use_me->Key;
+	}
+	else
+	{
+		AddChainSslCertOnDirectory(data->SslCtx);
+	}
+
+	if (x != NULL && k != NULL)
+	{
+		Lock(openssl_lock);
+		{
+			SSL_use_certificate(sock->ssl, x->x509);
+			SSL_use_PrivateKey(sock->ssl, k->pkey);
+		}
+		Unlock(openssl_lock);
+	}
+
+	return SSL_CLIENT_HELLO_SUCCESS;
+}
+
 // Start a TCP-SSL communication
 bool StartSSL(SOCK *sock, X *x, K *priv)
 {
 	return StartSSLEx(sock, x, priv, true, 0, NULL);
 }
-bool StartSSLEx(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, char *sni_hostname)
+bool StartSSLEx(SOCK* sock, X* x, K* priv, bool client_tls, UINT ssl_timeout, char* sni_hostname)
+{
+	return StartSSLEx2(sock, x, priv, client_tls, ssl_timeout, sni_hostname, NULL, 0, NULL);
+}
+bool StartSSLEx2(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, char *sni_hostname,
+	CERTS_AND_KEY **certs_and_key_lists, UINT num_certs_and_key_lists, void *certs_and_key_cb_param)
 {
 	X509 *x509;
 	EVP_PKEY *key;
 	UINT prev_timeout = 1024;
 	SSL_CTX *ssl_ctx;
+	bool use_sni_based_cert_selection = false;
+	START_SSL_EX2_CLIENT_HELLO_CB_DATA hello_cb_data = CLEAN;
 
 #ifdef UNIX_SOLARIS
 	SOCKET_TIMEOUT_PARAM *ttparam;
@@ -13656,6 +13744,22 @@ bool StartSSLEx(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, ch
 		return true;
 	}
 
+	if (sock->ServerMode && certs_and_key_lists != NULL && num_certs_and_key_lists >= 1)
+	{
+		use_sni_based_cert_selection = true;
+
+		hello_cb_data.Sock = sock;
+		hello_cb_data.certs_and_key_lists = certs_and_key_lists;
+		hello_cb_data.num_certs_and_key_lists = num_certs_and_key_lists;
+		hello_cb_data.CertAndKeyCbParam = certs_and_key_cb_param;
+
+		if (CheckXandK(x, priv))
+		{
+			hello_cb_data.DefaultX = x;
+			hello_cb_data.DefaultK = priv;
+		}
+	}
+
 	Lock(sock->ssl_lock);
 	if (sock->SecureMode)
 	{
@@ -13666,6 +13770,8 @@ bool StartSSLEx(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, ch
 	}
 
 	ssl_ctx = NewSSLCtx(sock->ServerMode);
+
+	hello_cb_data.SslCtx = ssl_ctx;
 
 	Lock(openssl_lock);
 	{
@@ -13713,7 +13819,10 @@ bool StartSSLEx(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, ch
 			}
 
 			Unlock(openssl_lock);
-			AddChainSslCertOnDirectory(ssl_ctx);
+			if (use_sni_based_cert_selection == false)
+			{
+				AddChainSslCertOnDirectory(ssl_ctx);
+			}
 			Lock(openssl_lock);
 		}
 		else
@@ -13737,6 +13846,13 @@ bool StartSSLEx(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, ch
 				SSL_CTX_set_ssl_version(ssl_ctx, SSLv23_client_method());
 			}
 		}
+
+		if (use_sni_based_cert_selection)
+		{
+			SSL_CTX_set_tlsext_servername_callback(ssl_ctx, Sni_Callback_StartSSLEx2);
+			SSL_CTX_set_tlsext_servername_arg(ssl_ctx, &hello_cb_data);
+		}
+
 		sock->ssl = SSL_new(ssl_ctx);
 		SSL_set_fd(sock->ssl, (int)sock->socket);
 
@@ -13759,16 +13875,19 @@ bool StartSSLEx(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, ch
 		// Check the certificate and the private key
 		if (CheckXandK(x, priv))
 		{
-			// Use the certificate
-			x509 = x->x509;
-			key = priv->pkey;
-
-			Lock(openssl_lock);
+			if (use_sni_based_cert_selection == false)
 			{
-				SSL_use_certificate(sock->ssl, x509);
-				SSL_use_PrivateKey(sock->ssl, key);
+				// Use the certificate
+				x509 = x->x509;
+				key = priv->pkey;
+
+				Lock(openssl_lock);
+				{
+					SSL_use_certificate(sock->ssl, x509);
+					SSL_use_PrivateKey(sock->ssl, key);
+				}
+				Unlock(openssl_lock);
 			}
-			Unlock(openssl_lock);
 		}
 	}
 
@@ -13793,6 +13912,7 @@ bool StartSSLEx(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, ch
 
 	if (sock->ServerMode)
 	{
+
 //		Lock(ssl_connect_lock);
 
 // Run the time-out thread for SOLARIS
@@ -23250,7 +23370,7 @@ HTTP_HEADER *RecvHttpHeader(SOCK *s)
 		UINT pos;
 		HTTP_VALUE *v;
 		char *value_name, *value_data;
-		str = RecvLine(s, HTTP_HEADER_LINE_MAX_SIZE);
+		str = RecvLineEx(s, HTTP_HEADER_LINE_MAX_SIZE, HTTP_HEADER_LINE_MAX_SIZE_HARD);
 		if (str == NULL)
 		{
 			goto LABEL_ERROR;
@@ -23314,16 +23434,23 @@ LABEL_ERROR:
 }
 
 // Receive a line
-char *RecvLine(SOCK *s, UINT max_size)
+char* RecvLine(SOCK* s, UINT max_size)
+{
+	return RecvLineEx(s, max_size, max_size);
+}
+char* RecvLineEx(SOCK* s, UINT max_size, UINT max_hard_size) 
 {
 	BUF *b;
 	char c;
 	char *str;
+	UINT total_size = 0;
 	// Validate arguments
 	if (s == NULL || max_size == 0)
 	{
 		return NULL;
 	}
+	max_size = MAX(max_size, 128);
+	max_hard_size = MAX(max_hard_size, max_size);
 
 	b = NewBuf();
 	while (true)
@@ -23334,9 +23461,14 @@ char *RecvLine(SOCK *s, UINT max_size)
 			FreeBuf(b);
 			return NULL;
 		}
-		WriteBuf(b, &c, sizeof(c));
+		if (c == '\n' || b->Size < max_size)
+		{
+			WriteBuf(b, &c, sizeof(c));
+		}
+		total_size++;
+
 		buf = (UCHAR *)b->Buf;
-		if (b->Size > max_size)
+		if (total_size > max_hard_size)
 		{
 			FreeBuf(b);
 			return NULL;

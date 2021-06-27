@@ -989,6 +989,7 @@ struct HTTP_HEADER
 #define	HTTP_PICTURES		"/picture"
 // Maximum size of a single line in the HTTP header
 #define	HTTP_HEADER_LINE_MAX_SIZE	4096
+#define	HTTP_HEADER_LINE_MAX_SIZE_HARD	65536
 // Maximum number of lines in the HTTP header
 #define	HTTP_HEADER_MAX_LINES		128
 // Maximum size of the random number to be included in the PACK
@@ -1036,6 +1037,7 @@ void CreateDummyValue(PACK *p);
 
 HTTP_VALUE *NewHttpValue(char *name, char *data);
 char *RecvLine(SOCK *s, UINT max_size);
+char* RecvLineEx(SOCK* s, UINT max_size, UINT max_hard_size);
 HTTP_HEADER *RecvHttpHeader(SOCK *s);
 bool SendHttpHeader(SOCK *s, HTTP_HEADER *header);
 char *HttpHeaderToStr(HTTP_HEADER *header);
@@ -1309,6 +1311,8 @@ UINT SecureSend(SOCK *sock, void *data, UINT size);
 UINT SecureRecv(SOCK *sock, void *data, UINT size);
 bool StartSSL(SOCK *sock, X *x, K *priv);
 bool StartSSLEx(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, char *sni_hostname);
+bool StartSSLEx2(SOCK* sock, X* x, K* priv, bool client_tls, UINT ssl_timeout, char* sni_hostname,
+	CERTS_AND_KEY** certs_and_key_lists, UINT num_certs_and_key_lists, void* certs_and_key_cb_param);
 bool AddChainSslCert(struct ssl_ctx_st *ctx, X *x);
 void AddChainSslCertOnDirectory(struct ssl_ctx_st *ctx);
 bool SendAll(SOCK *sock, void *data, UINT size, bool secure);
