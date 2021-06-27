@@ -3230,9 +3230,6 @@ void WideGateReadGateSettingsFromPack(WIDE *wide, PACK *p)
 
 				if (IsFilledStr(domain_name))
 				{
-					CombinePathW(tmp, sizeof(tmp), dir, L"cert.key");
-					DumpBufWIfNecessary(key_buf, tmp);
-
 					UINT i;
 					for (i = 0;i < count;i++)
 					{
@@ -3248,6 +3245,9 @@ void WideGateReadGateSettingsFromPack(WIDE *wide, PACK *p)
 						}
 						FreeBuf(cert_buf);
 					}
+
+					CombinePathW(tmp, sizeof(tmp), dir, L"cert.key");
+					DumpBufWIfNecessary(key_buf, tmp);
 				}
 			}
 			FreeBuf(key_buf);
