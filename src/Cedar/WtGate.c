@@ -1951,6 +1951,8 @@ void WtgAccept(WT *wt, SOCK *s)
 	s->SslAcceptSettings.AcceptOnlyTls = Vars_ActivePatch_GetBool("WtGateDisableSsl3");
 	s->SslAcceptSettings.Tls_Disable1_0 = Vars_ActivePatch_GetBool("WtGateDisableTls1_0");
 	s->SslAcceptSettings.Tls_Disable1_1 = Vars_ActivePatch_GetBool("WtGateDisableTls1_1"); 
+	s->SslAcceptSettings.Tls_Disable1_2 = Vars_ActivePatch_GetBool("WtGateDisableTls1_2");
+	s->SslAcceptSettings.Tls_Disable1_3 = Vars_ActivePatch_GetBool("WtGateDisableTls1_3");
 	if (StartSSLEx(s, wt->GateCert, wt->GateKey, true, 0, NULL) == false)
 	{
 		Debug("StartSSL Failed.\n");

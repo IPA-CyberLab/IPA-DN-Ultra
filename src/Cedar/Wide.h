@@ -82,6 +82,9 @@
 // 統計送信先 URL
 #define WIDE_STAT_POST_URL				"https://dn-stat1.ep.ipantt.net/stat/"
 
+// WebSocket 証明書セット書き出し先ディレクトリ名
+#define WIDE_WEBSOCKET_CERT_SET_DEST_DIR	L"websocket_certs_cache"
+
 // エラーレベル
 #define DESK_ERRORLEVEL_NETWORK			0		// ネットワークエラー
 #define DESK_ERRORLEVEL_SERVER_SIDE		1		// サーバー側エラー

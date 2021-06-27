@@ -3191,6 +3191,7 @@ void WideGateReportSessionDel(WIDE *wide, UCHAR *session_id)
 void WideGateReadGateSettingsFromPack(WIDE *wide, PACK *p)
 {
 	char controller_gate_secret_key[64] = {0};
+	char websocket_domainname[MAX_SIZE] = CLEAN;
 
 	if (wide == NULL || p == NULL)
 	{
@@ -3203,6 +3204,56 @@ void WideGateReadGateSettingsFromPack(WIDE *wide, PACK *p)
 		{
 			WideGateSetControllerGateSecretKey(wide, controller_gate_secret_key);
 		}
+	}
+
+	if (PackGetStr(p, "WebSocketCertData_DomainName", websocket_domainname, sizeof(websocket_domainname)))
+	{
+		wchar_t exe_dir[MAX_PATH] = CLEAN;
+		wchar_t dir[MAX_PATH] = CLEAN;
+		wchar_t tmp[MAX_PATH] = CLEAN;
+		wchar_t tmp2[MAX_PATH] = CLEAN;
+		LIST* filename_list = NewList(NULL);
+
+		GetExeDirW(exe_dir, sizeof(exe_dir));
+		CombinePathW(dir, sizeof(dir), exe_dir, WIDE_WEBSOCKET_CERT_SET_DEST_DIR);
+		MakeDirExW(dir);
+
+		UINT count = PackGetInt(p, "WebSocketCertData_Cert_Count");
+
+		if (count >= 1)
+		{
+			BUF *key_buf = PackGetBuf(p, "WebSocketCertData_Key");
+			if (key_buf != NULL && key_buf->Size >= 1)
+			{
+				char domain_name[MAX_PATH] = CLEAN;
+				PackGetStr(p, "WebSocketCertData_DomainName", domain_name, sizeof(domain_name));
+
+				if (IsFilledStr(domain_name))
+				{
+					CombinePathW(tmp, sizeof(tmp), dir, L"cert.key");
+					DumpBufWIfNecessary(key_buf, tmp);
+
+					UINT i;
+					for (i = 0;i < count;i++)
+					{
+						BUF* cert_buf = PackGetBufEx(p, "WebSocketCertData_Cert", i);
+						if (cert_buf != NULL)
+						{
+							UniFormat(tmp2, sizeof(tmp2), L"cert_%04u.cer", i);
+							CombinePathW(tmp, sizeof(tmp), dir, tmp2);
+
+							DumpBufWIfNecessary(cert_buf, tmp);
+
+							AddUniStrToUniStrList(filename_list, L"cert_%04u.cer");
+						}
+						FreeBuf(cert_buf);
+					}
+				}
+			}
+			FreeBuf(key_buf);
+		}
+
+		FreeStrList(filename_list);
 	}
 
 	bool tunnel_settings_received = false;
