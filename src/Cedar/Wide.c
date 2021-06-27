@@ -3218,6 +3218,7 @@ void WideGateReadGateSettingsFromPack(WIDE *wide, PACK *p)
 		CombinePathW(dir, sizeof(dir), exe_dir, WIDE_WEBSOCKET_CERT_SET_DEST_DIR);
 		MakeDirExW(dir);
 
+		// サーバーから受信した証明書情報の websocket_certs_cache ディレクトリへの書き込み
 		UINT count = PackGetInt(p, "WebSocketCertData_Cert_Count");
 
 		if (count >= 1)
@@ -3241,7 +3242,7 @@ void WideGateReadGateSettingsFromPack(WIDE *wide, PACK *p)
 
 							DumpBufWIfNecessary(cert_buf, tmp);
 
-							AddUniStrToUniStrList(filename_list, L"cert_%04u.cer");
+							AddUniStrToUniStrList(filename_list, tmp2);
 						}
 						FreeBuf(cert_buf);
 					}
@@ -3251,6 +3252,32 @@ void WideGateReadGateSettingsFromPack(WIDE *wide, PACK *p)
 				}
 			}
 			FreeBuf(key_buf);
+		}
+
+		// websocket_certs_cache ディレクトリにある不要ファイルの削除
+		if (LIST_NUM(filename_list) >= 1)
+		{
+			DIRLIST* dirlist = EnumDirW(dir);
+
+			if (dirlist != NULL)
+			{
+				UINT i;
+				for (i = 0;i < dirlist->NumFiles;i++)
+				{
+					DIRENT* f = dirlist->File[i];
+					
+					if (UniStartWith(f->FileNameW, L"cert_") && UniEndWith(f->FileNameW, L".cer"))
+					{
+						if (IsInListUniStr(filename_list, f->FileNameW) == false)
+						{
+							CombinePathW(tmp, sizeof(tmp), dir, f->FileNameW);
+							FileDeleteW(tmp);
+						}
+					}
+				}
+			}
+
+			FreeDir(dirlist);
 		}
 
 		FreeStrList(filename_list);

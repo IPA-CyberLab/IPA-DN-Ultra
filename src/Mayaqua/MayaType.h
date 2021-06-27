@@ -409,6 +409,7 @@ typedef struct AES_KEY_VALUE AES_KEY_VALUE;
 typedef struct CIPHER CIPHER;
 typedef struct MD MD;
 typedef struct SEEDRAND SEEDRAND;
+typedef struct CERTS_AND_KEY CERTS_AND_KEY;
 
 // Secure.h
 typedef struct SECURE_DEVICE SECURE_DEVICE;

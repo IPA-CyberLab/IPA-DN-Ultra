@@ -145,6 +145,89 @@ typedef struct CB_PARAM
 } CB_PARAM;
 
 
+CERTS_AND_KEY* NewCertsAndKeyFromMemory(LIST* cert_buf_list, BUF* key_buf)
+{
+	CERTS_AND_KEY* ret = NULL;
+	if (cert_buf_list == NULL || LIST_NUM(cert_buf_list) == 0 || key_buf == NULL)
+	{
+		return NULL;
+	}
+
+	ret = ZeroMalloc(sizeof(CERTS_AND_KEY));
+
+	ret->CertList = NewListFast(NULL);
+
+	ret->Key = BufToK(key_buf, true, true, NULL);
+	if (ret->Key == NULL) goto L_ERROR;
+
+	UINT i;
+	for (i = 0;i < LIST_NUM(cert_buf_list);i++)
+	{
+		BUF* b = LIST_DATA(cert_buf_list, i);
+
+		X* x = BufToX(b, true);
+		if (x == NULL) goto L_ERROR;
+
+		Add(ret->CertList, x);
+	}
+
+	return ret;
+
+L_ERROR:
+	FreeCertsAndKey(ret);
+	return NULL;
+}
+
+CERTS_AND_KEY* CloneCertsAndKey(CERTS_AND_KEY* c)
+{
+	CERTS_AND_KEY* ret;
+	if (c == NULL)
+	{
+		return NULL;
+	}
+
+	ret = ZeroMalloc(sizeof(CERTS_AND_KEY));
+
+	ret->Key = CloneK(c->Key);
+
+	ret->CertList = NewListFast(NULL);
+
+	UINT i;
+
+	for (i = 0;i < LIST_NUM(ret->CertList);i++)
+	{
+		X* x = LIST_DATA(ret->CertList, i);
+
+		X* x2 = CloneX(x);
+
+		Add(ret->CertList, x2);
+	}
+
+	return ret;
+}
+
+void FreeCertsAndKey(CERTS_AND_KEY* c)
+{
+	UINT i;
+	if (c == NULL)
+	{
+		return;
+	}
+
+	for (i = 0; i < LIST_NUM(c->CertList);i++)
+	{
+		X* x = LIST_DATA(c->CertList, i);
+
+		FreeX(x);
+	}
+
+	FreeK(c->Key);
+
+	ReleaseList(c->CertList);
+
+	Free(c);
+}
+
 // 証明書が特定のディレクトリの CRL によって無効化されているかどうか確認する
 bool IsXRevoked(X *x)
 {

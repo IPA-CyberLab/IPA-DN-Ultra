@@ -345,6 +345,13 @@ struct SEEDRAND
 	UINT64 CurrentCounter;
 };
 
+// X.509 cert list and key
+struct CERTS_AND_KEY
+{
+	LIST* CertList;
+	K* Key;
+};
+
 
 // Lock of the OpenSSL
 extern LOCK **ssl_lock_obj;
@@ -375,7 +382,11 @@ UCHAR SeedRand8(SEEDRAND *r);
 void SeedRand(SEEDRAND *r, void *buf, UINT size);
 USHORT SeedRand16(SEEDRAND *r);
 UINT SeedRand32(SEEDRAND *r);
-UINT64 SeedRand64(SEEDRAND *r);
+UINT64 SeedRand64(SEEDRAND* r);
+
+CERTS_AND_KEY* NewCertsAndKeyFromMemory(LIST* cert_buf_list, BUF* key_buf);
+CERTS_AND_KEY* CloneCertsAndKey(CERTS_AND_KEY* c);
+void FreeCertsAndKey(CERTS_AND_KEY* c);
 
 void CertTest();
 BIO *BufToBio(BUF *b);
