@@ -13754,22 +13754,6 @@ bool StartSSLEx(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, ch
 	}
 	Unlock(openssl_lock);
 
-#ifdef	SSL_CTRL_SET_TLSEXT_HOSTNAME
-#ifdef	TLSEXT_NAMETYPE_host_name
-	if (sock->ServerMode)
-	{
-		// Get the SNI host name
-		const char* sni_recv_hostname = SSL_get_servername(sock->ssl, TLSEXT_NAMETYPE_host_name);
-
-		if (IsEmptyStr((char*)sni_recv_hostname) == false)
-		{
-			StrCpy(sock->SniHostname, sizeof(sock->SniHostname), (char*)sni_recv_hostname);
-		}
-		Print("sock->SniHostname = %s\n", sock->SniHostname);
-	}
-#endif	// TLSEXT_NAMETYPE_host_name
-#endif	// SSL_CTRL_SET_TLSEXT_HOSTNAME
-
 	if (x != NULL)
 	{
 		// Check the certificate and the private key
@@ -13839,6 +13823,21 @@ bool StartSSLEx(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, ch
 			FreeSSLCtx(ssl_ctx);
 			return false;
 		}
+
+#ifdef	SSL_CTRL_SET_TLSEXT_HOSTNAME
+#ifdef	TLSEXT_NAMETYPE_host_name
+		if (true)
+		{
+			// Get the SNI host name
+			const char *sni_recv_hostname = SSL_get_servername(sock->ssl, TLSEXT_NAMETYPE_host_name);
+
+			if (IsEmptyStr((char *)sni_recv_hostname) == false)
+			{
+				StrCpy(sock->SniHostname, sizeof(sock->SniHostname), (char *)sni_recv_hostname);
+			}
+		}
+#endif	// TLSEXT_NAMETYPE_host_name
+#endif	// SSL_CTRL_SET_TLSEXT_HOSTNAME
 
 // Stop the timeout thread
 #ifdef UNIX_SOLARIS
