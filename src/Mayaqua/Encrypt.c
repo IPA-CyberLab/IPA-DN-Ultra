@@ -145,6 +145,158 @@ typedef struct CB_PARAM
 } CB_PARAM;
 
 
+CERTS_AND_KEY* NewCertsAndKeyFromDir(wchar_t* dir_name)
+{
+	CERTS_AND_KEY* ret = NULL;
+	BUF* key_buf = NULL;
+	if (dir_name == NULL)
+	{
+		return NULL;
+	}
+
+	ret = ZeroMalloc(sizeof(CERTS_AND_KEY));
+
+	ret->CertList = NewListFast(NULL);
+
+	wchar_t key_fn[MAX_PATH] = CLEAN;
+	CombinePathW(key_fn, sizeof(key_fn), dir_name, L"cert.key");
+	key_buf = ReadDumpW(key_fn);
+
+	ret->Key = BufToK(key_buf, true, true, NULL);
+	if (ret->Key == NULL)
+	{
+		goto L_ERROR;
+	}
+
+	UINT i;
+	for (i = 0;;i++)
+	{
+		wchar_t cert_fn[MAX_PATH] = CLEAN;
+		wchar_t tmp[MAX_PATH] = CLEAN;
+		UniFormat(tmp, sizeof(tmp), L"cert_%04u.cer", i);
+		CombinePathW(cert_fn, sizeof(cert_fn), dir_name, tmp);
+
+		BUF* cert_buf = ReadDumpW(cert_fn);
+		if (cert_buf == NULL)
+		{
+			break;
+		}
+
+		X* x = BufToX(cert_buf, true);
+
+		if (x != NULL)
+		{
+			Add(ret->CertList, x);
+		}
+
+		FreeBuf(cert_buf);
+	}
+
+	if (LIST_NUM(ret->CertList) == 0)
+	{
+		goto L_ERROR;
+	}
+
+	FreeBuf(key_buf);
+
+	return ret;
+
+L_ERROR:
+	FreeCertsAndKey(ret);
+	FreeBuf(key_buf);
+	return NULL;
+}
+
+bool SaveCertsAndKeyToDir(CERTS_AND_KEY* c, wchar_t* dir)
+{
+	if (c == NULL || dir == NULL)
+	{
+		return false;
+	}
+
+	bool ret = true;
+
+	wchar_t tmp[MAX_PATH] = CLEAN;
+	wchar_t tmp2[MAX_PATH] = CLEAN;
+	LIST* filename_list = NewList(NULL);
+
+	MakeDirExW(dir);
+
+	// サーバーから受信した証明書情報の websocket_certs_cache ディレクトリへの書き込み
+	UINT count = LIST_NUM(c->CertList);
+
+	if (count >= 1)
+	{
+		BUF* key_buf = KToBuf(c->Key, true, NULL);
+		if (key_buf != NULL && key_buf->Size >= 1)
+		{
+			UINT i;
+			for (i = 0;i < count;i++)
+			{
+				X* x = LIST_DATA(c->CertList, i);
+				if (x != NULL)
+				{
+					BUF* cert_buf = XToBuf(x, true);
+					if (cert_buf != NULL)
+					{
+						UniFormat(tmp2, sizeof(tmp2), L"cert_%04u.cer", i);
+						CombinePathW(tmp, sizeof(tmp), dir, tmp2);
+
+						if (DumpBufWIfNecessary(cert_buf, tmp) == false)
+						{
+							ret = false;
+						}
+
+						AddUniStrToUniStrList(filename_list, tmp2);
+					}
+					FreeBuf(cert_buf);
+				}
+			}
+
+			CombinePathW(tmp, sizeof(tmp), dir, L"cert.key");
+			if (DumpBufWIfNecessary(key_buf, tmp) == false)
+			{
+				ret = false;
+			}
+		}
+		FreeBuf(key_buf);
+	}
+	else
+	{
+		ret = false;
+	}
+
+	// websocket_certs_cache ディレクトリにある不要ファイルの削除
+	if (LIST_NUM(filename_list) >= 1)
+	{
+		DIRLIST* dirlist = EnumDirW(dir);
+
+		if (dirlist != NULL)
+		{
+			UINT i;
+			for (i = 0;i < dirlist->NumFiles;i++)
+			{
+				DIRENT* f = dirlist->File[i];
+
+				if (UniStartWith(f->FileNameW, L"cert_") && UniEndWith(f->FileNameW, L".cer"))
+				{
+					if (IsInListUniStr(filename_list, f->FileNameW) == false)
+					{
+						CombinePathW(tmp, sizeof(tmp), dir, f->FileNameW);
+						FileDeleteW(tmp);
+					}
+				}
+			}
+		}
+
+		FreeDir(dirlist);
+	}
+
+	FreeStrList(filename_list);
+
+	return ret;
+}
+
 CERTS_AND_KEY* NewCertsAndKeyFromMemory(LIST* cert_buf_list, BUF* key_buf)
 {
 	CERTS_AND_KEY* ret = NULL;

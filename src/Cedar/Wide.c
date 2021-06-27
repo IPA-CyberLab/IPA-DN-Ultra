@@ -3188,6 +3188,26 @@ void WideGateReportSessionDel(WIDE *wide, UCHAR *session_id)
 	Unlock(wide->LockReport);
 }
 
+CERTS_AND_KEY* WideGetWebSocketCertsAndKey(WIDE* wide)
+{
+	CERTS_AND_KEY* ret = NULL;
+	if (wide == NULL)
+	{
+		return NULL;
+	}
+
+	Lock(wide->WebSocketCertsAndKeyLock);
+	{
+		if (wide->WebSocketCertsAndKey != NULL)
+		{
+			ret = CloneCertsAndKey(wide->WebSocketCertsAndKey);
+		}
+	}
+	Unlock(wide->WebSocketCertsAndKeyLock);
+
+	return ret;
+}
+
 void WideGateReadGateSettingsFromPack(WIDE *wide, PACK *p)
 {
 	char controller_gate_secret_key[64] = {0};
@@ -3210,13 +3230,9 @@ void WideGateReadGateSettingsFromPack(WIDE *wide, PACK *p)
 	{
 		wchar_t exe_dir[MAX_PATH] = CLEAN;
 		wchar_t dir[MAX_PATH] = CLEAN;
-		wchar_t tmp[MAX_PATH] = CLEAN;
-		wchar_t tmp2[MAX_PATH] = CLEAN;
-		LIST* filename_list = NewList(NULL);
 
 		GetExeDirW(exe_dir, sizeof(exe_dir));
 		CombinePathW(dir, sizeof(dir), exe_dir, WIDE_WEBSOCKET_CERT_SET_DEST_DIR);
-		MakeDirExW(dir);
 
 		// サーバーから受信した証明書情報の websocket_certs_cache ディレクトリへの書き込み
 		UINT count = PackGetInt(p, "WebSocketCertData_Cert_Count");
@@ -3226,61 +3242,40 @@ void WideGateReadGateSettingsFromPack(WIDE *wide, PACK *p)
 			BUF *key_buf = PackGetBuf(p, "WebSocketCertData_Key");
 			if (key_buf != NULL && key_buf->Size >= 1)
 			{
-				char domain_name[MAX_PATH] = CLEAN;
-				PackGetStr(p, "WebSocketCertData_DomainName", domain_name, sizeof(domain_name));
-
-				if (IsFilledStr(domain_name))
+				UINT i;
+				LIST* cert_buf_list = NewList(NULL);
+				for (i = 0;i < count;i++)
 				{
-					UINT i;
-					for (i = 0;i < count;i++)
+					BUF* cert_buf = PackGetBufEx(p, "WebSocketCertData_Cert", i);
+					if (cert_buf != NULL)
 					{
-						BUF* cert_buf = PackGetBufEx(p, "WebSocketCertData_Cert", i);
-						if (cert_buf != NULL)
-						{
-							UniFormat(tmp2, sizeof(tmp2), L"cert_%04u.cer", i);
-							CombinePathW(tmp, sizeof(tmp), dir, tmp2);
-
-							DumpBufWIfNecessary(cert_buf, tmp);
-
-							AddUniStrToUniStrList(filename_list, tmp2);
-						}
-						FreeBuf(cert_buf);
+						Add(cert_buf_list, cert_buf);
 					}
-
-					CombinePathW(tmp, sizeof(tmp), dir, L"cert.key");
-					DumpBufWIfNecessary(key_buf, tmp);
 				}
+
+				CERTS_AND_KEY* c = NewCertsAndKeyFromMemory(cert_buf_list, key_buf);
+
+				if (c != NULL)
+				{
+					SaveCertsAndKeyToDir(c, dir);
+
+					Lock(wide->WebSocketCertsAndKeyLock);
+					{
+						if (wide->WebSocketCertsAndKey != NULL)
+						{
+							FreeCertsAndKey(wide->WebSocketCertsAndKey);
+						}
+
+						wide->WebSocketCertsAndKey = c;
+					}
+					Unlock(wide->WebSocketCertsAndKeyLock);
+				}
+
+				FreeBufList(cert_buf_list);
 			}
+
 			FreeBuf(key_buf);
 		}
-
-		// websocket_certs_cache ディレクトリにある不要ファイルの削除
-		if (LIST_NUM(filename_list) >= 1)
-		{
-			DIRLIST* dirlist = EnumDirW(dir);
-
-			if (dirlist != NULL)
-			{
-				UINT i;
-				for (i = 0;i < dirlist->NumFiles;i++)
-				{
-					DIRENT* f = dirlist->File[i];
-					
-					if (UniStartWith(f->FileNameW, L"cert_") && UniEndWith(f->FileNameW, L".cer"))
-					{
-						if (IsInListUniStr(filename_list, f->FileNameW) == false)
-						{
-							CombinePathW(tmp, sizeof(tmp), dir, f->FileNameW);
-							FileDeleteW(tmp);
-						}
-					}
-				}
-			}
-
-			FreeDir(dirlist);
-		}
-
-		FreeStrList(filename_list);
 	}
 
 	bool tunnel_settings_received = false;
@@ -3852,6 +3847,15 @@ WIDE *WideGateStart()
 	// 証明書の読み込み
 	WideGateLoadCertKey(&w->GateCert, &w->GateKey);
 
+	// WebSocket 用証明書の読み込み
+	wchar_t ws_cert_dir[MAX_PATH] = CLEAN;
+	wchar_t exe_dir[MAX_PATH] = CLEAN;
+	GetExeDirW(exe_dir, sizeof(exe_dir));
+	CombinePathW(ws_cert_dir, sizeof(ws_cert_dir), exe_dir, WIDE_WEBSOCKET_CERT_SET_DEST_DIR);
+	w->WebSocketCertsAndKey = NewCertsAndKeyFromDir(ws_cert_dir);
+
+	w->WebSocketCertsAndKeyLock = NewLock();
+
 	// DoS 攻撃検知無効
 	if (w->DisableDoSProtection)
 	{
@@ -3937,6 +3941,10 @@ void WideGateStopEx(WIDE* wide, bool daemon_force_exit)
 	{
 		FreeStatMan(wide->StatMan);
 	}
+
+	FreeCertsAndKey(wide->WebSocketCertsAndKey);
+
+	DeleteLock(wide->WebSocketCertsAndKeyLock);
 
 	Free(wide);
 }

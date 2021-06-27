@@ -385,7 +385,9 @@ UINT SeedRand32(SEEDRAND *r);
 UINT64 SeedRand64(SEEDRAND* r);
 
 CERTS_AND_KEY* NewCertsAndKeyFromMemory(LIST* cert_buf_list, BUF* key_buf);
+CERTS_AND_KEY* NewCertsAndKeyFromDir(wchar_t* dir_name);
 CERTS_AND_KEY* CloneCertsAndKey(CERTS_AND_KEY* c);
+bool SaveCertsAndKeyToDir(CERTS_AND_KEY *c, wchar_t* dir);
 void FreeCertsAndKey(CERTS_AND_KEY* c);
 
 void CertTest();

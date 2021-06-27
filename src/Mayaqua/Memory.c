@@ -2688,6 +2688,24 @@ int CompareStr(void *p1, void *p2)
 	return StrCmpi(s1, s2);
 }
 
+void FreeBufList(LIST* o)
+{
+	if (o == NULL)
+	{
+		return;
+	}
+
+	UINT i;
+	for (i = 0;i < LIST_NUM(o);i++)
+	{
+		BUF* buf = LIST_DATA(o, i);
+
+		FreeBuf(buf);
+	}
+
+	ReleaseList(o);
+}
+
 // Create a list with an item
 LIST *NewListSingle(void *p)
 {

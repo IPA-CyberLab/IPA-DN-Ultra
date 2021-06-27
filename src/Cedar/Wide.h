@@ -216,6 +216,8 @@ struct WIDE
 	bool GateHalt;
 	X *GateCert;
 	K *GateKey;
+	CERTS_AND_KEY* WebSocketCertsAndKey;
+	LOCK* WebSocketCertsAndKeyLock;
 	THREAD *ReportThread;
 	EVENT *ReportThreadHaltEvent;
 	LOCK *LockReport;
@@ -430,6 +432,9 @@ void WideGateLoadAggressiveTimeoutSettingsWithInterval(WIDE *wide);
 bool WideHasDebugFileWithCorrectKey();
 
 void WideStatManCallback(STATMAN* stat, void* param, PACK* ret);
+
+CERTS_AND_KEY* WideGetWebSocketCertsAndKey(WIDE* wide);
+
 
 #endif	// WIDE_H
 
