@@ -163,6 +163,10 @@ struct SESSION_AND_CLIENT
 #define WIDE_LOG_DIRNAME				"@tunnel_log"
 
 
+// WIDEGATE の Caps (64 bit)
+#define WG_CAPS_WEBSOCKET		((UINT64)1)
+#define	WG_CAPS_ALL			    (WG_CAPS_WEBSOCKET)
+
 
 // WIDE オブジェクトの種類
 #define WIDE_TYPE_GATE			0		// WideGate

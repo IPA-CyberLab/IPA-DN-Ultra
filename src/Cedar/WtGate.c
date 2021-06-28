@@ -1333,6 +1333,16 @@ void WtMakeSendDataTTcp(TSESSION *s, TTCP *ttcp, QUEUE *blockqueue)
 
 		ttcp->LastKeepAliveTime = s->Tick;
 	}
+
+	if (ttcp->Gate_ClientSession_SwitchToWebSocketRequested && ttcp->Gate_ClientSession_SwitchToWebSocketAcked == false)
+	{
+		ttcp->Gate_ClientSession_SwitchToWebSocketAcked = true;
+
+		// WebSocket への切替え処理のリクエストが来ていたので、切替え処理 OK である旨の応答を返す
+		i = Endian32(WT_SPECIALOPCODE_S2C_SWITCHTOWEBSOCKET_ACK);
+
+		WriteFifo(fifo, &i, sizeof(UINT));
+	}
 }
 
 // サーバーからのデータを受信
@@ -1606,12 +1616,32 @@ READ_DATA_SIZE:
 
 			if (i > WT_MAX_BLOCK_SIZE)
 			{
-				// 不正なデータサイズを受信。通信エラーか
-				WtSessionLog(s, "WtParseRecvTTcp: Invalid receive data. i > WT_MAX_BLOCK_SIZE. i = %u", i);
-				ttcp->Disconnected = true;
-				ttcp->WantSize = sizeof(UINT);
-				ReadFifo(fifo, NULL, sizeof(UINT));
-				ttcp->Mode = 0;
+				if (i >= WT_SPECIALOPCODE_MIN && i < WT_SPECIALOPCODE_MAX)
+				{
+					// 特殊コード受信
+					ttcp->WantSize = sizeof(UINT);
+					ttcp->Mode = 0;
+					ReadFifo(fifo, NULL, sizeof(UINT));
+					ttcp->Mode = 0;
+
+					switch (i)
+					{
+					case WT_SPECIALOPCODE_C2S_SWITCHTOWEBSOCKET_REQUEST:
+						// WebSocket への切替え要求を受信したので、切替え処理を いたします。
+						Debug("Received: Switch to WebSocket\n");
+						ttcp->Gate_ClientSession_SwitchToWebSocketRequested = true;
+						break;
+					}
+				}
+				else
+				{
+					// 不正なデータサイズを受信。通信エラーか
+					WtSessionLog(s, "WtParseRecvTTcp: Invalid receive data. i > WT_MAX_BLOCK_SIZE. i = %u", i);
+					ttcp->Disconnected = true;
+					ttcp->WantSize = sizeof(UINT);
+					ReadFifo(fifo, NULL, sizeof(UINT));
+					ttcp->Mode = 0;
+				}
 			}
 			else
 			{
@@ -2229,13 +2259,13 @@ void WtgAccept(WT *wt, SOCK *s)
 		}
 
 		// 接続成功。
-		UCHAR rand[32] = CLEAN;
+		UCHAR rand[SHA1_SIZE] = CLEAN;
 		Rand(rand, sizeof(rand));
 		char websocket_token2[128] = CLEAN;
 		BinToStr(websocket_token2, sizeof(websocket_token2), rand, sizeof(rand));
 
 		char websocket_url[MAX_PATH] = CLEAN;
-		Format(websocket_url, sizeof(websocket_url), "/websocket-%s-%s", session->WebSocketToken1, websocket_token2);
+		Format(websocket_url, sizeof(websocket_url), "/websocket/%s-%s", session->WebSocketToken1, websocket_token2);
 
 		p = NewPack();
 		PackAddInt(p, "code", ERR_NO_ERROR);
@@ -2409,7 +2439,7 @@ TSESSION *WtgNewSession(WT *wt, SOCK *sock, char *msid, void *session_id, bool u
 	s->RequestInitialPack = request_initial_pack;
 	s->wt = wt;
 
-	UCHAR rand[32] = CLEAN;
+	UCHAR rand[SHA1_SIZE] = CLEAN;
 	Rand(rand, sizeof(rand));
 	BinToStr(s->WebSocketToken1, sizeof(s->WebSocketToken1), rand, sizeof(rand));
 

@@ -2937,6 +2937,7 @@ void WideGatePackGateInfo(PACK *p, WT *wt)
 	PackAddInt(p, "Performance", WideGateGetIniEntry("Performance"));
 	PackAddInt(p, "Build", CEDAR_BUILD);
 	PackAddInt(p, "Port", wt->Port);
+	PackAddInt64(p, "Caps", WG_CAPS_ALL);
 
 	PackAddStr(p, "UltraCommitId", ULTRA_COMMIT_ID);
 

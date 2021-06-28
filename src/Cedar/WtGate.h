@@ -108,6 +108,9 @@ struct TTCP
 	UINT TunnelTimeout;
 	UINT TunnelKeepAlive;
 	bool TunnelUseAggressiveTimeout;
+
+	bool Gate_ClientSession_SwitchToWebSocketRequested;
+	bool Gate_ClientSession_SwitchToWebSocketAcked;
 };
 
 // データブロック
