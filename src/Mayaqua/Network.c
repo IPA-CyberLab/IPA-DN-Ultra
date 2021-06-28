@@ -13626,8 +13626,6 @@ int Sni_Callback_StartSSLEx2(SSL* s, int* al, void* arg)
 		return SSL_CLIENT_HELLO_ERROR;
 	}
 
-	WHERE;
-
 	SOCK* sock = data->Sock;
 
 	char *sni_recv_hostname = (char* )SSL_get_servername(sock->ssl, TLSEXT_NAMETYPE_host_name);
@@ -13653,6 +13651,8 @@ int Sni_Callback_StartSSLEx2(SSL* s, int* al, void* arg)
 
 	X* x = data->DefaultX;
 	K* k = data->DefaultK;
+
+	SSL_CTX_clear_extra_chain_certs(data->SslCtx);
 
 	if (use_me != NULL && LIST_NUM(use_me->CertList) >= 1)
 	{
@@ -13849,6 +13849,8 @@ bool StartSSLEx2(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, c
 
 		if (use_sni_based_cert_selection)
 		{
+			// TLS 1.3 をサポートするためには Hello 用 CB と set_tlsext_servername CB の両方を指定する必要がある
+			SSL_CTX_set_client_hello_cb(ssl_ctx, Sni_Callback_StartSSLEx2, &hello_cb_data);
 			SSL_CTX_set_tlsext_servername_callback(ssl_ctx, Sni_Callback_StartSSLEx2);
 			SSL_CTX_set_tlsext_servername_arg(ssl_ctx, &hello_cb_data);
 		}
