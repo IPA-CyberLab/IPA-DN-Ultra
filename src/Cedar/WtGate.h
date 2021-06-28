@@ -108,9 +108,6 @@ struct TTCP
 	UINT TunnelTimeout;
 	UINT TunnelKeepAlive;
 	bool TunnelUseAggressiveTimeout;
-
-	bool Gate_ClientSession_SwitchToWebSocketRequested;
-	bool Gate_ClientSession_SwitchToWebSocketAcked;
 };
 
 // データブロック
@@ -132,7 +129,14 @@ struct TUNNEL
 	SOCKIO *SockIo;						// SOCKIO
 	bool SetSockIoEventFlag;			// SOCKIO イベントをセットするかどうかのフラグ
 	UCHAR ClientId[SHA1_SIZE];			// クライアント ID
+
 	char WebSocketToken2[128];			// WebSocket トークン #2
+	TTCP* WebSocketTcp;					// クライアント WebSocket との間の通信に使う TCP コネクション
+
+	// WebSocket への切替え関係
+	bool Gate_ClientSession_SwitchToWebSocketRequested;
+	bool Gate_ClientSession_SwitchToWebSocketAcked;
+	bool Gate_ClientSession_WebSocketSwitchStage1;
 };
 
 // セッション
@@ -244,14 +248,14 @@ void WtRecvTTcp(TSESSION *s, TTCP *ttcp);
 void WtRecvTTcpEx(TSESSION *s, TTCP *ttcp, UINT remain_buf_size);
 UINT WtRecvSock(TTCP *ttcp, void *buf, UINT size);
 UINT WtSendSock(TTCP *ttcp, void *buf, UINT size);
-QUEUE *WtParseRecvTTcp(TSESSION *s, TTCP *ttcp);
+QUEUE* WtParseRecvTTcp(TSESSION* s, TTCP* ttcp, TUNNEL* tunnel);
 DATABLOCK *WtNewDataBlock(UINT tunnel_id, void *data, UINT size, int compress_flag);
 DATABLOCK *WtRebuildDataBlock(DATABLOCK *src_block, int compress_flag);
 void WtFreeDataBlock(DATABLOCK *block, bool no_free_data);
 void WtgSendToServer(TSESSION *s);
 void WtgSendToClient(TSESSION *s);
 void WtSendTTcp(TSESSION *s, TTCP *ttcp);
-void WtMakeSendDataTTcp(TSESSION *s, TTCP *ttcp, QUEUE *blockqueue);
+void WtMakeSendDataTTcp(TSESSION *s, TTCP *ttcp, QUEUE *blockqueue, TUNNEL *tunnel);
 bool WtgCheckDisconnect(TSESSION *s);
 bool WtIsTTcpDisconnected(TSESSION *s, TTCP *ttcp);
 void WtFreeDataBlockQueue(QUEUE *q);
@@ -281,6 +285,11 @@ void WtgConvertStrToSafeForPcid(char* dst, UINT dst_size, char* src);
 WG_MACHINE* WtgSamGetMachineByPCID(WT* wt, char* pcid);
 WG_MACHINE* WtgSamGetMachineByMSID(WT* wt, char* msid);
 void CfgSaveThreadProc(THREAD* thread, void* param);
+
+void WtgWebSocketGetHandler(WT *wt, SOCK* s, HTTP_HEADER* h, char* url_target);
+void WtgWebSocketAccept(WT* wt, SOCK* s, char* url_target, TSESSION *session, TUNNEL *tunnel);
+bool WtgSearchSessionAndTunnelByWebSocketUrl(WT* wt, char* url_target, TSESSION** pp_session, TUNNEL** pp_tunnel);
+
 
 #endif	// WTGATE_H
 

@@ -86,6 +86,170 @@
 #include <Mayaqua/Mayaqua.h>
 #include <Cedar/Cedar.h>
 
+
+// WebSocket Accept
+void WtgWebSocketAccept(WT* wt, SOCK* s, char* url_target, TSESSION* session, TUNNEL* tunnel)
+{
+	WHERE;
+	if (wt == NULL || s == NULL || url_target == NULL || session == NULL || tunnel == NULL)
+	{
+		return;
+	}
+
+	WHERE;
+}
+
+// WebSocket URL を元にセッションとトンネルを検索する
+bool WtgSearchSessionAndTunnelByWebSocketUrl(WT* wt, char* url_target, TSESSION** pp_session, TUNNEL** pp_tunnel)
+{
+	if (wt == NULL || url_target == NULL || pp_session == NULL || pp_tunnel == NULL)
+	{
+		return false;
+	}
+
+	*pp_session = NULL;
+	*pp_tunnel = NULL;
+
+	TSESSION* session = NULL;
+	TUNNEL* tunnel = NULL;
+
+	// URL をパース
+	char* prefix = "/websocket/";
+	if (StartWith(url_target, prefix) == false)
+	{
+		return false;
+	}
+
+	char token1[64] = CLEAN;
+	char token2[64] = CLEAN;
+
+	char* s = url_target + StrLen(prefix);
+	TOKEN_LIST* tokens = ParseToken(s, "-");
+	if (tokens->NumTokens == 2)
+	{
+		StrCpy(token1, sizeof(token1), tokens->Token[0]);
+		StrCpy(token2, sizeof(token2), tokens->Token[1]);
+	}
+	FreeToken(tokens);
+
+	if (IsEmptyStr(token1) || IsEmptyStr(token2))
+	{
+		return false;
+	}
+
+	UINT i;
+	LockList(wt->SessionList);
+	{
+		for (i = 0; i < LIST_NUM(wt->SessionList);i++)
+		{
+			TSESSION* s = LIST_DATA(wt->SessionList, i);
+
+			if (StrCmpi(s->WebSocketToken1, token1) == 0)
+			{
+				session = s;
+				AddRef(session->Ref);
+				break;
+			}
+		}
+	}
+	UnlockList(wt->SessionList);
+
+	if (session != NULL)
+	{
+		Lock(session->Lock);
+		{
+			for (i = 0;i < LIST_NUM(session->TunnelList);i++)
+			{
+				TUNNEL* t = LIST_DATA(session->TunnelList, i);
+
+				if (StrCmpi(t->WebSocketToken2, token2) == 0)
+				{
+					tunnel = t;
+					break;
+				}
+			}
+		}
+		Unlock(session->Lock);
+
+		if (tunnel == NULL)
+		{
+			WtReleaseSession(session);
+			session = NULL;
+		}
+	}
+
+	*pp_session = session;
+	*pp_tunnel = tunnel;
+
+	return (session != NULL && tunnel != NULL);
+}
+
+// WebSocket GET Handler
+void WtgWebSocketGetHandler(WT* wt, SOCK* s, HTTP_HEADER* h, char* url_target)
+{
+	HTTP_VALUE* req_upgrade;
+	HTTP_VALUE* req_version;
+	HTTP_VALUE* req_key;
+	char response_key[64];
+	UINT client_ws_version = 0;
+	char* bad_request_body = "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\"\"http://www.w3.org/TR/html4/strict.dtd\">\r\n<HTML><HEAD><TITLE>Bad Request</TITLE>\r\n<META HTTP-EQUIV=\"Content-Type\" Content=\"text/html; charset=us-ascii\"></HEAD>\r\n<BODY><h2>Bad Request</h2>\r\n<hr><p>HTTP Error 400. The request is badly formed.</p>\r\n</BODY></HTML>";
+	if (wt == NULL || s == NULL || h == NULL || url_target == NULL)
+	{
+		return;
+	}
+
+	req_upgrade = GetHttpValue(h, "Upgrade");
+	if (req_upgrade == NULL || StrCmpi(req_upgrade->Data, "websocket") != 0)
+	{
+		MvpnSendReply(s, 400, "Bad Request", bad_request_body, StrLen(bad_request_body),
+			NULL, NULL, NULL, h);
+		return;
+	}
+
+	req_version = GetHttpValue(h, "Sec-WebSocket-Version");
+	if (req_version != NULL) client_ws_version = ToInt(req_version->Data);
+	if (client_ws_version != 13)
+	{
+		MvpnSendReply(s, 400, "Bad Request", NULL, 0,
+			NULL, "Sec-WebSocket-Version", "13", h);
+		return;
+	}
+
+	Zero(response_key, sizeof(response_key));
+	req_key = GetHttpValue(h, "Sec-WebSocket-Key");
+	if (req_key != NULL)
+	{
+		char tmp[MAX_SIZE];
+		UCHAR hash[SHA1_SIZE];
+		StrCpy(tmp, sizeof(tmp), req_key->Data);
+		StrCat(tmp, sizeof(tmp), "258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
+		HashSha1(hash, tmp, StrLen(tmp));
+		B64_Encode(response_key, hash, SHA1_SIZE);
+	}
+	else
+	{
+		MvpnSendReply(s, 400, "Bad Request", NULL, 0,
+			NULL, "Sec-WebSocket-Version", "13", h);
+		return;
+	}
+
+	TSESSION* session = NULL;
+	TUNNEL* tunnel = NULL;
+
+	// WebSocket URL を元にセッションとトンネルを検索する
+	if (WtgSearchSessionAndTunnelByWebSocketUrl(wt, url_target, &session, &tunnel) == false)
+	{
+		MvpnSendReply(s, 400, "Bad Request - WebSocket Session Not Found", NULL, 0, NULL, NULL, NULL, h);
+	}
+
+	MvpnSendReply(s, 101, "Switching Protocols", NULL, 0, NULL,
+		"Sec-WebSocket-Accept", response_key, h);
+
+	WtgWebSocketAccept(wt, s, url_target, session, tunnel);
+
+	WtReleaseSession(session);
+}
+
 // Standalone Mode 初期化
 void WtgSamInit(WT* wt)
 {
@@ -1259,7 +1423,7 @@ void WtgSendToServer(TSESSION *s)
 	blockqueue = s->BlockQueue;
 
 	// 送信データの生成
-	WtMakeSendDataTTcp(s, ttcp, blockqueue);
+	WtMakeSendDataTTcp(s, ttcp, blockqueue, NULL);
 
 	// 送信
 	WtSendTTcp(s, ttcp);
@@ -1282,15 +1446,31 @@ void WtgSendToClient(TSESSION *s)
 		QUEUE *blockqueue = t->BlockQueue;
 
 		// 送信データの生成
-		WtMakeSendDataTTcp(s, ttcp, blockqueue);
+		WtMakeSendDataTTcp(s, ttcp, blockqueue, t);
 
 		// 送信
 		WtSendTTcp(s, ttcp);
+
+		if (t->Gate_ClientSession_SwitchToWebSocketAcked)
+		{
+			if (t->Gate_ClientSession_WebSocketSwitchStage1 == false)
+			{
+				if (ttcp->SendFifo->size == 0)
+				{
+					t->Gate_ClientSession_WebSocketSwitchStage1 = true;
+
+					// WebSocket への切替えステージ 1 完了 (WT_SPECIALOPCODE_S2C_SWITCHTOWEBSOCKET_ACK 信号
+					//                                    をクライアントに送付済み)
+					// そこで、Gate 内部で実際に切替え準備のための状態遷移を実行する
+				}
+			}
+		}
 	}
 }
 
 // 送信データの生成
-void WtMakeSendDataTTcp(TSESSION *s, TTCP *ttcp, QUEUE *blockqueue)
+// tunnel は、Gate --> Client の場合のみ値が入っている
+void WtMakeSendDataTTcp(TSESSION* s, TTCP* ttcp, QUEUE* blockqueue, TUNNEL* tunnel)
 {
 	DATABLOCK *block;
 	FIFO *fifo;
@@ -1334,14 +1514,17 @@ void WtMakeSendDataTTcp(TSESSION *s, TTCP *ttcp, QUEUE *blockqueue)
 		ttcp->LastKeepAliveTime = s->Tick;
 	}
 
-	if (ttcp->Gate_ClientSession_SwitchToWebSocketRequested && ttcp->Gate_ClientSession_SwitchToWebSocketAcked == false)
+	if (tunnel != NULL)
 	{
-		ttcp->Gate_ClientSession_SwitchToWebSocketAcked = true;
+		if (tunnel->Gate_ClientSession_SwitchToWebSocketRequested && tunnel->Gate_ClientSession_SwitchToWebSocketAcked == false)
+		{
+			tunnel->Gate_ClientSession_SwitchToWebSocketAcked = true;
 
-		// WebSocket への切替え処理のリクエストが来ていたので、切替え処理 OK である旨の応答を返す
-		i = Endian32(WT_SPECIALOPCODE_S2C_SWITCHTOWEBSOCKET_ACK);
+			// WebSocket への切替え処理のリクエストが来ていたので、切替え処理 OK である旨の応答を返す
+			i = Endian32(WT_SPECIALOPCODE_S2C_SWITCHTOWEBSOCKET_ACK);
 
-		WriteFifo(fifo, &i, sizeof(UINT));
+			WriteFifo(fifo, &i, sizeof(UINT));
+		}
 	}
 }
 
@@ -1385,7 +1568,7 @@ void WtgRecvFromServer(TSESSION *s)
 	WtRecvTTcpEx(s, ttcp, remain_buf_size);
 
 	// 受信データを解釈
-	q = WtParseRecvTTcp(s, ttcp);
+	q = WtParseRecvTTcp(s, ttcp, NULL);
 
 	// 受信データをクライアントに対して配布
 	while ((block = GetNext(q)) != NULL)
@@ -1520,7 +1703,7 @@ void WtgRecvFromClient(TSESSION *s)
 		WtRecvTTcp(s, ttcp);
 
 		// 受信データを解釈
-		q = WtParseRecvTTcp(s, ttcp);
+		q = WtParseRecvTTcp(s, ttcp, p);
 
 		// 受信データをサーバーに転送
 		while ((block = GetNext(q)) != NULL)
@@ -1555,7 +1738,8 @@ void WtgRecvFromClient(TSESSION *s)
 }
 
 // 受信データを解釈
-QUEUE *WtParseRecvTTcp(TSESSION *s, TTCP *ttcp)
+// tunnel は、Gate --> Client の場合のみ値が入っている
+QUEUE *WtParseRecvTTcp(TSESSION *s, TTCP *ttcp, TUNNEL *tunnel)
 {
 	QUEUE *q;
 	FIFO *fifo;
@@ -1628,8 +1812,11 @@ READ_DATA_SIZE:
 					{
 					case WT_SPECIALOPCODE_C2S_SWITCHTOWEBSOCKET_REQUEST:
 						// WebSocket への切替え要求を受信したので、切替え処理を いたします。
-						Debug("Received: Switch to WebSocket\n");
-						ttcp->Gate_ClientSession_SwitchToWebSocketRequested = true;
+						if (tunnel != NULL)
+						{
+							Debug("Received: Switch to WebSocket\n");
+							tunnel->Gate_ClientSession_SwitchToWebSocketRequested = true;
+						}
 						break;
 					}
 				}
@@ -2747,6 +2934,15 @@ bool WtgDownloadSignature(WT* wt, SOCK* s, bool* check_ssl_ok, char* gate_secret
 			FreeHttpHeader(h);
 
 			return false;
+		}
+		else if (StartWith(h->Target, "/websocket/"))
+		{
+			// WebSocket Mode
+			WtgWebSocketGetHandler(wt, s, h, h->Target);
+
+			FreeHttpHeader(h);
+
+			continue;
 		}
 		else if (StartWith(h->Target, "/thingate/") && wt->IsStandaloneMode)
 		{

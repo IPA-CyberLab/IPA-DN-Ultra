@@ -335,7 +335,7 @@ void WtsSendToGate(TSESSION *s)
 	blockqueue = s->BlockQueue;
 
 	// 送信データの生成
-	WtMakeSendDataTTcp(s, ttcp, blockqueue);
+	WtMakeSendDataTTcp(s, ttcp, blockqueue, NULL);
 
 	// 送信
 	WtSendTTcp(s, ttcp);
@@ -360,7 +360,7 @@ void WtsRecvFromGate(TSESSION *s)
 	WtRecvTTcp(s, ttcp);
 
 	// 受信データを解釈
-	q = WtParseRecvTTcp(s, ttcp);
+	q = WtParseRecvTTcp(s, ttcp, NULL);
 
 	// 受信データを SOCKIO に対して配信
 	while ((block = GetNext(q)) != NULL)
