@@ -129,6 +129,7 @@ struct TUNNEL
 	SOCKIO *SockIo;						// SOCKIO
 	bool SetSockIoEventFlag;			// SOCKIO イベントをセットするかどうかのフラグ
 	UCHAR ClientId[SHA1_SIZE];			// クライアント ID
+	char WebSocketToken2[128];			// WebSocket トークン #2
 };
 
 // セッション
@@ -152,6 +153,7 @@ struct TSESSION
 	UINT64 ServerMask64;				// Server Mask 64
 	UINT64 Stat_ServerToClientTraffic;
 	UINT64 Stat_ClientToServerTraffic;
+	char WebSocketToken1[128];			// WebSocket トークン #1
 
 	// Server 用
 	WT *wt;
@@ -228,7 +230,7 @@ TTCP *WtNewTTcp(SOCK *s, bool use_compress, UINT tunnel_timeout, UINT tunnel_kee
 void WtFreeTTcp(TTCP *ttcp);
 int WtgCompareTunnel(void *p1, void *p2);
 TUNNEL *WtgSearchTunnelById(LIST *o, UINT id);
-TUNNEL *WtNewTunnel(TTCP *client_tcp, UINT tunnel_id, SOCKIO *sockio);
+TUNNEL *WtNewTunnel(TTCP *client_tcp, UINT tunnel_id, SOCKIO *sockio, char *websocket_token2);
 UINT WtgGenerateNewTunnelId(TSESSION *session);
 void WtgSessionMain(TSESSION *s);
 void WtgDisconnectAllClientSession(TSESSION *s);

@@ -320,7 +320,7 @@ TSESSION *WtcNewSession(WT *wt, SOCK *s)
 	t->BlockQueue = NewQueue();
 
 	sockio = NewSockIo(t->SockEvent, NULL);
-	t->ClientTunnel = WtNewTunnel(NULL, 0, sockio);
+	t->ClientTunnel = WtNewTunnel(NULL, 0, sockio, NULL);
 	ReleaseSockIo(sockio);
 
 	t->Sock = s;

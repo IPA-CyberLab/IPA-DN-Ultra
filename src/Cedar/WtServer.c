@@ -525,7 +525,7 @@ TUNNEL *WtsCreateNewTunnel(TSESSION *s, UINT tunnel_id)
 
 	ReleaseThread(thread);
 
-	t = WtNewTunnel(NULL, tunnel_id, sockio);
+	t = WtNewTunnel(NULL, tunnel_id, sockio, NULL);
 
 	Insert(s->TunnelList, t);
 

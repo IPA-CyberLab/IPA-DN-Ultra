@@ -2229,12 +2229,20 @@ void WtgAccept(WT *wt, SOCK *s)
 		}
 
 		// 接続成功。
+		UCHAR rand[32] = CLEAN;
+		Rand(rand, sizeof(rand));
+		char websocket_token2[128] = CLEAN;
+		BinToStr(websocket_token2, sizeof(websocket_token2), rand, sizeof(rand));
+
+		char websocket_url[MAX_PATH] = CLEAN;
+		Format(websocket_url, sizeof(websocket_url), "/websocket-%s-%s", session->WebSocketToken1, websocket_token2);
 
 		p = NewPack();
 		PackAddInt(p, "code", ERR_NO_ERROR);
 		PackAddInt(p, "tunnel_timeout", tunnel_timeout);
 		PackAddInt(p, "tunnel_keepalive", tunnel_keepalive);
 		PackAddInt(p, "tunnel_use_aggressive_timeout", tunnel_use_aggressive_timeout);
+		PackAddStr(p, "websocket_url", websocket_url);
 		HttpServerSend(s, p);
 		FreePack(p);
 
@@ -2253,7 +2261,7 @@ void WtgAccept(WT *wt, SOCK *s)
 
 			ttcp = WtNewTTcp(s, use_compress, tunnel_timeout, tunnel_keepalive, tunnel_use_aggressive_timeout);
 
-			tunnel = WtNewTunnel(ttcp, tunnel_id, NULL);
+			tunnel = WtNewTunnel(ttcp, tunnel_id, NULL, websocket_token2);
 			Copy(tunnel->ClientId, client_id, sizeof(client_id));
 			Insert(session->TunnelList, tunnel);
 
@@ -2354,7 +2362,7 @@ UINT WtgGenerateNewTunnelId(TSESSION *s)
 }
 
 // 新しいトンネルの作成
-TUNNEL *WtNewTunnel(TTCP *client_tcp, UINT tunnel_id, SOCKIO *sockio)
+TUNNEL* WtNewTunnel(TTCP* client_tcp, UINT tunnel_id, SOCKIO* sockio, char* websocket_token2)
 {
 	TUNNEL *p;
 
@@ -2368,6 +2376,8 @@ TUNNEL *WtNewTunnel(TTCP *client_tcp, UINT tunnel_id, SOCKIO *sockio)
 		p->SockIo = sockio;
 		AddRef(sockio->Ref);
 	}
+
+	StrCpy(p->WebSocketToken2, sizeof(p->WebSocketToken2), websocket_token2);
 
 	return p;
 }
@@ -2398,6 +2408,10 @@ TSESSION *WtgNewSession(WT *wt, SOCK *sock, char *msid, void *session_id, bool u
 	s->UsedTunnelList = WtNewUsedTunnelIdList();
 	s->RequestInitialPack = request_initial_pack;
 	s->wt = wt;
+
+	UCHAR rand[32] = CLEAN;
+	Rand(rand, sizeof(rand));
+	BinToStr(s->WebSocketToken1, sizeof(s->WebSocketToken1), rand, sizeof(rand));
 
 	return s;
 }
