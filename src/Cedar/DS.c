@@ -293,8 +293,6 @@ void* DsStartGuacdOnSpecifiedPort(DS* ds, wchar_t* exe_path, UINT port, UINT* re
 			}
 
 			FreeTcpTableList(tcp_table);
-
-			DsDebugLog(ds, "DsStartGuacdOnRandomPort", "tcp_ok = %u", tcp_ok);
 		}
 		else
 		{
@@ -1607,6 +1605,7 @@ void DsServerMain(DS *ds, SOCKIO *sock)
 	bool is_smartcard_auth = false;
 	bool support_inspect = false;
 	bool support_watermark = false;
+	bool guacd_mode = false;
 	UINT ds_caps = 0;
 	UINT urdp_version = 0;
 	DS_POLICY_BODY pol = {0};
@@ -1733,6 +1732,12 @@ void DsServerMain(DS *ds, SOCKIO *sock)
 	support_server_allowed_mac_list_err = PackGetBool(p, "SupportServerAllowedMacListErr");
 
 	support_watermark = PackGetBool(p, "SupportWatermark");
+	guacd_mode = PackGetBool(p, "GuacdMode");
+	if (guacd_mode)
+	{
+		check_port = true;
+	}
+
 	PackGetUniStr(p, "ComputerName", computer_name, sizeof(computer_name));
 	PackGetUniStr(p, "UserName", user_name, sizeof(user_name));
 	PackGetIp(p, "ClientLocalIP", &client_local_ip);
@@ -1778,11 +1783,23 @@ void DsServerMain(DS *ds, SOCKIO *sock)
 	DsDebugLog(ds, logprefix, "client_ver=%u, client_build=%u, check_port=%u, pingmode=%u,"
 		"wol_mode=%u,first_connection=%u,has_urdp2_client=%u,support_otp=%u,"
 		"support_otp_enforcement=%u,support_inspect=%u,support_server_allowed_mac_list_err=%u,"
-		"support_watermark=%u,client_local_ip=%r",
+		"support_watermark=%u,client_local_ip=%r,guacd_mode=%u",
 		client_ver, client_build, check_port, pingmode,
 		wol_mode, first_connection, has_urdp2_client, support_otp,
 		support_otp_enforcement, support_inspect, support_server_allowed_mac_list_err, support_watermark,
-		&client_local_ip);
+		&client_local_ip, guacd_mode);
+
+	if (guacd_mode)
+	{
+		if (DsIsGuacdSupported(ds) == false)
+		{
+			// Guacd がサポートされていない OS である
+			DsDebugLog(ds, logprefix, "Error: %s:%u", __FILE__, __LINE__);
+			DsSendError(sock, ERR_DESK_GUACD_NOT_SUPPORTED_OS);
+			FreePack(p);
+			return;
+		}
+	}
 
 	if (server_allowed_mac_list_check_ok == false)
 	{
@@ -1983,7 +2000,15 @@ void DsServerMain(DS *ds, SOCKIO *sock)
 		// ダミー
 		PackAddInt(p, "AuthType", 99);
 	}
+
+	UINT service_port = ds->RdpPort;
+	if (ds->ServiceType == DESK_SERVICE_VNC)
+	{
+		service_port = DS_URDP_PORT;
+	}
+
 	PackAddInt(p, "ServiceType", ds->ServiceType);
+	PackAddInt(p, "ServicePort", service_port);
 	PackAddData(p, "Rand", rand, sizeof(rand));
 	PackAddData(p, "MachineKey", machine_key, sizeof(machine_key));
 
@@ -2495,7 +2520,6 @@ void DsServerMain(DS *ds, SOCKIO *sock)
 		}
 
 		Lock(hub->lock);
-
 
 		is_smartcard_auth = PackGetBool(p, "IsSmartCardAuth");
 
@@ -3029,9 +3053,29 @@ void DsServerMain(DS *ds, SOCKIO *sock)
 		Unlock(ds->RDPSessionIncDecLock);
 	}
 
+	DS_GUACD* guacd = NULL;
+
 	// 接続
 	s = NULL;
-	if (check_port)
+	if (guacd_mode)
+	{
+		// Guacd に接続するモードの場合、Guacd プロセスを開始する
+		guacd = DsStartGuacd(ds);
+		if (guacd == NULL)
+		{
+			// 開始失敗
+			DsSendError(sock, ERR_DESK_GUACD_START_ERROR);
+			DsDebugLog(ds, logprefix, "Error: ERR_DESK_GUACD_START_ERROR (%s:%u)", __FILE__, __LINE__);
+
+			goto LABEL_END;
+		}
+
+		// ソケットはすでに接続されております
+		// これの参照カウンタをインクリメントしてローカル変数に渡す
+		s = guacd->Sock;
+		AddRef(s->ref);
+	}
+	else if (check_port)
 	{
 		UINT num_retry = 5;
 		UINT i;
@@ -3273,6 +3317,12 @@ void DsServerMain(DS *ds, SOCKIO *sock)
 	}
 
 LABEL_END:
+
+	if (guacd != NULL)
+	{
+		// Guacd の停止
+		DsStopGuacd(ds, guacd);
+	}
 
 	if (svc_type == DESK_SERVICE_VNC)
 	{

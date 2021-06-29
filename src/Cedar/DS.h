@@ -135,6 +135,7 @@
 #define	DS_CAPS_SUPPORT_URDP2		2			// URDP2 サポート
 #define DS_CAPS_RUDP_VERY_LIMITED	4			// URDP かつ大変制限が厳しい
 #define DS_CAPS_WIN_RDP_ENABLED		8			// Windows RDP も一応有効である
+#define DS_CAPS_GUACD_SUPPORTED		16			// Guacd がサポートされている
 
 // Guacd 関係
 #define DS_GUACD_STARTUP_TIMEOUT	(60 * 1000)		// Guacd プロセスの起動タイムアウト

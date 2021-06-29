@@ -1810,7 +1810,7 @@ READ_DATA_SIZE:
 
 					switch (i)
 					{
-					case WT_SPECIALOPCODE_C2S_SWITCHTOWEBSOCKET_REQUEST:
+					case WT_SPECIALOPCODE_C2S_SWITCHTOWEBSOCKET_REQUEST_GUACD:
 						// WebSocket への切替え要求を受信したので、切替え処理を いたします。
 						if (tunnel != NULL)
 						{
