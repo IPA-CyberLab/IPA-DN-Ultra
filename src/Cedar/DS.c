@@ -92,6 +92,329 @@
 #include "..\PenCore\resource.h"
 #endif // _WIN32
 
+// Guacd の開始
+DS_GUACD* DsStartGuacd(DS* ds)
+{
+#ifndef OS_WIN32
+	return NULL;
+#else	// OS_WIN32
+	if (DsIsGuacdSupported(ds) == false)
+	{
+		DsDebugLog(ds, "DsStartGuacd", "DsIsGuacdSupported = false.");
+		return NULL;
+	}
+
+	wchar_t guacd_dir[MAX_PATH] = CLEAN;
+
+	DsGetGuacdTempDirName(guacd_dir, sizeof(guacd_dir));
+	DsDebugLog(ds, "DsStartGuacd", "DsGetGuacdTempDirName: %S", guacd_dir);
+
+	if (DsExtractGuacdToTempDir(ds) == false)
+	{
+		DsDebugLog(ds, "DsStartGuacd", "DsExtractGuacdToTempDir failed.");
+		return NULL;
+	}
+
+	wchar_t exe_path[MAX_PATH] = CLEAN;
+	CombinePathW(exe_path, sizeof(exe_path), guacd_dir, L"ThinWebGateway.exe");
+
+	UINT port = 0;
+	UINT process_id = 0;
+	void *handle = DsStartGuacdOnRandomPort(ds, exe_path, 10000, 10020, 1, &port, &process_id);
+	if (handle == NULL)
+	{
+		DsDebugLog(ds, "DsStartGuacd", "DsStartGuacdOnRandomPort failed.");
+		return NULL;
+	}
+
+	DsDebugLog(ds, "DsStartGuacd", "DsStartGuacdOnRandomPort OK. Port number = %u", port);
+
+	DS_GUACD* g = ZeroMalloc(sizeof(DS_GUACD));
+
+	g->ProcessHandle = handle;
+	g->ProcessId = process_id;
+
+	return g;
+
+#endif // OS_WIN32
+}
+
+// Guacd のすべてのゾンビ・プロセスを強制終了する
+void DsKillAllZombineGuacdProcesses(DS* ds)
+{
+#ifndef OS_WIN32
+	return;
+#else	// OS_WIN32
+	wchar_t guacd_dir[MAX_PATH] = CLEAN;
+
+	DsGetGuacdTempDirName(guacd_dir, sizeof(guacd_dir));
+
+	wchar_t exe_path[MAX_PATH] = CLEAN;
+	CombinePathW(exe_path, sizeof(exe_path), guacd_dir, L"ThinWebGateway.exe");
+
+	MsKillProcessByExeName(exe_path);
+#endif // OS_WIN32
+}
+
+// Guacd の終了
+void DsStopGuacd(DS* ds, DS_GUACD* g)
+{
+#ifndef OS_WIN32
+	return;
+#else	// OS_WIN32
+	if (g == NULL)
+	{
+		return;
+	}
+
+	MsKillProcessByHandle(g->ProcessHandle);
+
+	MsCloseHandle(g->ProcessHandle);
+
+	Free(g);
+#endif // OS_WIN32
+}
+
+// Guacd をランダムポートで起動
+void* DsStartGuacdOnRandomPort(DS* ds, wchar_t* exe_path, UINT port_min, UINT port_max, UINT num_try, UINT* ret_port, UINT* ret_process_id)
+{
+#ifndef OS_WIN32
+	return NULL;
+#else	// OS_WIN32
+	if (exe_path == NULL || num_try == 0 || ret_port == NULL || ret_process_id == NULL)
+	{
+		return NULL;
+	}
+
+	UINT i;
+	for (i = 0; i < num_try;i++)
+	{
+		// 利用可能な TCP ランダムポートを 1 つ取得する
+		UINT port = GetFreeRandomTcpPort(port_min, port_max, 100000);
+		if (port == 0)
+		{
+			return NULL;
+		}
+
+		// このポートで起動して Listen 状態になるかどうか試す
+		void* handle = DsStartGuacdOnSpecifiedPort(ds, exe_path, port, ret_process_id);
+		if (handle != NULL)
+		{
+			// 起動成功
+			*ret_port = port;
+			return handle;
+		}
+	}
+
+	// 指定回数試行しても起動に失敗した
+	return NULL;
+
+#endif // OS_WIN32
+}
+
+// Guacd を指定したポートで起動
+void* DsStartGuacdOnSpecifiedPort(DS* ds, wchar_t* exe_path, UINT port, UINT* ret_process_id)
+{
+#ifndef OS_WIN32
+	return NULL;
+#else	// OS_WIN32
+	if (exe_path == NULL || port == 0 || ret_process_id == NULL)
+	{
+		return NULL;
+	}
+
+	wchar_t args[MAX_PATH] = CLEAN;
+	UniFormat(args, sizeof(args), L"-f -b 127.0.0.1 -l %u", port);
+
+	// 起動を してみます
+	UINT process_id = 0;
+	void* handle = Win32RunEx3W(exe_path, args, true, &process_id, false);
+	if (handle == NULL)
+	{
+		// 起動に失敗
+		return NULL;
+	}
+
+	UINT64 now = Tick64();
+	UINT64 giveup = now + (UINT64)DS_GUACD_STARTUP_TIMEOUT;
+
+	bool ok = false;
+
+	while (true)
+	{
+		// 定期的に TCP テーブルを確認し、指定したポートが Listen 状態になるまで待ちます
+		LIST* tcp_table = GetTcpTableList();
+		bool tcp_ok = false;
+		if (tcp_table != NULL)
+		{
+			UINT i;
+			for (i = 0;i < LIST_NUM(tcp_table);i++)
+			{
+				TCPTABLE* t = LIST_DATA(tcp_table, i);
+
+				if (t->ProcessId == process_id)
+				{
+					if (t->LocalPort == port)
+					{
+						// 一致
+						tcp_ok = true;
+						break;
+					}
+				}
+			}
+
+			FreeTcpTableList(tcp_table);
+		}
+		else
+		{
+			// GetTcpTableList に失敗した場合 (通常は想定されない) は常に成功とみなす
+			tcp_ok = true;
+		}
+
+		if (tcp_ok)
+		{
+			ok = true;
+			break;
+		}
+
+		now = Tick64();
+		if (now >= giveup)
+		{
+			// タイムアウトが発生してしまいました
+			break;
+		}
+
+		if (MsWaitProcessExitWithTimeoutEx(handle, 100, true))
+		{
+			// プロセスが終了してしまいました
+			break;
+		}
+	}
+
+	if (ok == false)
+	{
+		// 失敗した場合はプロセスを Kill してハンドルを閉じる
+		MsKillProcessByHandle(handle);
+		MsCloseHandle(handle);
+		return NULL;
+	}
+	else
+	{
+		// 成功した場合はハンドルを返す
+		*ret_process_id = process_id;
+		return handle;
+	}
+
+#endif // OS_WIN32
+}
+
+// Guacd 用 Temp ディレクトリ名を取得
+void DsGetGuacdTempDirName(wchar_t* name, UINT size)
+{
+	if (name == NULL) return;
+
+	wchar_t *win_tmp_dir = MsGetTempDirW();
+	wchar_t build_number_str[MAX_PATH] = CLEAN;
+
+	UniFormat(build_number_str, sizeof(build_number_str), L"Build_%u", CEDAR_BUILD);
+
+	CombinePathW(name, size, win_tmp_dir, L"ThinTelework_" APP_ID_PREFIX_UNICODE L"_Guacd");
+	CombinePathW(name, size, name, build_number_str);
+}
+
+// Guacd を Temp ディレクトリに展開する
+bool DsExtractGuacdToTempDir(DS* ds)
+{
+#ifndef OS_WIN32
+	return false;
+#else	// OS_WIN32
+	if (DsIsGuacdSupported(ds) == false)
+	{
+		return false;
+	}
+
+	bool ret = false;
+
+	if (ds != NULL) Lock(ds->GuacdFileLock);
+	{
+		wchar_t dst_dir[MAX_PATH] = CLEAN;
+		DsGetGuacdTempDirName(dst_dir, sizeof(dst_dir));
+		MakeDirExW(dst_dir);
+
+		wchar_t* src_dir = L"|ThinWebGateway\\";
+
+		wchar_t tmp[MAX_PATH] = CLEAN;
+
+		// ThinWebGatewayFileList.txt ファイルを読み込む
+		CombinePathW(tmp, sizeof(tmp), src_dir, L"ThinWebGatewayFileList.txt");
+		BUF* file_list_buf = ReadDumpW(tmp);
+
+		if (file_list_buf != NULL)
+		{
+			SeekBufToEnd(file_list_buf);
+			WriteBufChar(file_list_buf, 0);
+
+			LIST* lines = GetStrListFromLines((char*)file_list_buf->Buf);
+
+			if (lines != NULL)
+			{
+				UINT i;
+
+				ret = true;
+
+				for (i = 0;i < LIST_NUM(lines);i++)
+				{
+					char* filename = LIST_DATA(lines, i);
+
+					if (IsFilledStr(filename))
+					{
+						wchar_t filename_w[MAX_PATH] = CLEAN;
+
+						StrToUni(filename_w, sizeof(filename_w), filename);
+
+						wchar_t src_fn[MAX_PATH] = CLEAN;
+						wchar_t dst_fn[MAX_PATH] = CLEAN;
+
+						CombinePathW(src_fn, sizeof(src_fn), src_dir, filename_w);
+						CombinePathW(dst_fn, sizeof(dst_fn), dst_dir, filename_w);
+
+						// ファイルが存在するか?
+						if (IsFileExistsW(dst_fn) == false)
+						{
+							// 存在しない場合のみコピー
+							if (FileCopyW(src_fn, dst_fn) == false)
+							{
+								Debug("DsExtractGuacdToTempDir: Copy Error: %S\n", dst_fn);
+								ret = false;
+							}
+						}
+					}
+				}
+
+				FreeStrList(lines);
+			}
+
+			FreeBuf(file_list_buf);
+		}
+	}
+	if (ds != NULL) Unlock(ds->GuacdFileLock);
+
+	return ret;
+
+#endif // OS_WIN32
+}
+
+// Guacd がサポートされているかどうか
+bool DsIsGuacdSupported(DS* ds)
+{
+#ifndef OS_WIN32
+	return false;
+#else	// OS_WIN32
+	return MsIsVista();
+
+#endif // OS_WIN32
+}
+
 // Windows RDP Policy GET
 void DsWin32GetRdpPolicy(DS_WIN32_RDP_POLICY* pol)
 {
@@ -952,7 +1275,7 @@ void DsDebugLog(DS* ds, char* prefix, char* format, ...)
 	{
 		return;
 	}
-	if (ds->EnableDebugLog == false)
+	if (ds == NULL || ds->EnableDebugLog == false)
 	{
 		return;
 	}
@@ -5000,6 +5323,8 @@ DS *NewDs(bool is_user_mode, bool force_share_disable)
 
 	ds = ZeroMalloc(sizeof(DS));
 
+	ds->GuacdFileLock = NewLock();
+
 	ds->Lockout = NewLockout();
 
 	ds->ConfigLock = NewLock();
@@ -5082,6 +5407,9 @@ DS *NewDs(bool is_user_mode, bool force_share_disable)
 
 	// 設定初期化
 	DsInitConfig(ds);
+
+	// 生き残っている Guacd のゾンビ・プロセスを強制終了する
+	DsKillAllZombineGuacdProcesses(ds);
 
 	ds->Wide->SendMacList = ds->EnableWoLTarget;
 
@@ -5257,6 +5585,9 @@ void FreeDs(DS *ds)
 
 	DsLog(ds, "DSL_END1");
 
+	// 生き残っている Guacd のゾンビ・プロセスを強制終了する
+	DsKillAllZombineGuacdProcesses(ds);
+
 	// RPC の停止
 	StopAllListener(ds->Cedar);
 	StopListener(ds->RpcListener);
@@ -5321,6 +5652,8 @@ void FreeDs(DS *ds)
 	DeleteLock(ds->ConfigLock);
 
 	FreeLockout(ds->Lockout);
+
+	DeleteLock(ds->GuacdFileLock);
 
 	Free(ds);
 

@@ -89,6 +89,7 @@ typedef struct DS_POLICY_CLIENT DS_POLICY_CLIENT;
 typedef struct DS_POLICY_THREAD_CTX DS_POLICY_THREAD_CTX;
 typedef struct DS_POLICY_BODY DS_POLICY_BODY;
 typedef struct DS_WIN32_RDP_POLICY DS_WIN32_RDP_POLICY;
+typedef struct DS_GUACD DS_GUACD;
 
 // DC.h
 typedef struct DC_INSPECT DC_INSPECT;

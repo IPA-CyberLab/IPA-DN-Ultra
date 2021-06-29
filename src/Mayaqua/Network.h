@@ -1130,6 +1130,9 @@ SOCK *NewUDP4ForSpecificIp(IP *target_ip, UINT port);
 bool LinuxGetWanMacAddress(UCHAR *mac);
 bool LinuxGetOsInfo(char *str, UINT size);
 
+UINT GetFreeRandomTcpPort(UINT port_min, UINT port_max, UINT num_try);
+
+
 #ifdef	OS_WIN32
 
 // Function prototype for Win32

@@ -6085,6 +6085,22 @@ bool MsKillProcess(UINT id)
 	return true;
 }
 
+bool MsKillProcessByHandle(void* handle)
+{
+	HANDLE h = (HANDLE)handle;
+	if (h == NULL)
+	{
+		return false;
+	}
+
+	if (TerminateProcess(h, 0) == FALSE)
+	{
+		return false;
+	}
+
+	return true;
+}
+
 // Get the current EXE file name
 void MsGetCurrentProcessExeName(char *name, UINT size)
 {

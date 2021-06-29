@@ -8514,8 +8514,73 @@ TCPTABLE *GetTcpTableFromEndPoint(LIST *o, IP *local_ip, UINT local_port, IP *re
 	return NULL;
 }
 
+UINT GetFreeRandomTcpPort(UINT port_min, UINT port_max, UINT num_try)
+{
+	UINT ret = 0;
+
+	num_try = MAX(num_try, 1);
+
+	port_min = MAX(port_min, 1);
+	port_max = MAX(port_max, 1);
+
+	port_min = MIN(port_min, 65535);
+	port_max = MIN(port_max, 65535);
+
+	if (port_min > port_max)
+	{
+		return 0;
+	}
+
+	LIST* tcp_table = GetTcpTableList();
+
+	UINT count = 0;
+
+	while (true)
+	{
+		if (count >= num_try)
+		{
+			break;
+		}
+
+		count++;
+
+		UINT new_random_port = port_min + Rand32() % (port_max + 1 - port_min);
+
+		bool exists = false;
+
+		if (tcp_table != NULL)
+		{
+			UINT i;
+			for (i = 0;i < LIST_NUM(tcp_table);i++)
+			{
+				TCPTABLE* t = LIST_DATA(tcp_table, i);
+
+				if (t->LocalPort == new_random_port)
+				{
+					exists = true;
+					break;
+				}
+			}
+		}
+
+		if (exists == false)
+		{
+			ret = new_random_port;
+			break;
+		}
+	}
+
+	if (tcp_table != NULL)
+	{
+		FreeTcpTableList(tcp_table);
+	}
+
+	return ret;
+}
+
 // Get the TCP table list (Win32)
 #ifdef	OS_WIN32
+
 LIST *Win32GetTcpTableList()
 {
 	LIST *o;

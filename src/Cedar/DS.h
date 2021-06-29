@@ -136,6 +136,8 @@
 #define DS_CAPS_RUDP_VERY_LIMITED	4			// URDP かつ大変制限が厳しい
 #define DS_CAPS_WIN_RDP_ENABLED		8			// Windows RDP も一応有効である
 
+// Guacd 関係
+#define DS_GUACD_STARTUP_TIMEOUT	(60 * 1000)		// Guacd プロセスの起動タイムアウト
 
 // Radius キャッシュ
 struct DS_RADIUS_CACHE
@@ -252,6 +254,7 @@ struct DS
 	LOCKOUT* Lockout;
 
 	LOCK* ConfigLock;
+	LOCK* GuacdFileLock;
 };
 
 struct DS_INFO
@@ -336,6 +339,12 @@ struct DS_POLICY_CLIENT
 	UINT NumTryCompleted;
 };
 
+struct DS_GUACD
+{
+	void* ProcessHandle;
+	UINT ProcessId;
+};
+
 DS *NewDs(bool is_user_mode, bool force_share_disable);
 UINT64 DsCalcMask(DS *ds);
 void FreeDs(DS *ds);
@@ -415,6 +424,16 @@ void DsPreparePolicyMessage(wchar_t *str, UINT str_size, DS_POLICY_BODY *pol);
 
 void DsWin32GetRdpPolicy(DS_WIN32_RDP_POLICY* pol);
 bool DsWin32SetRdpPolicy(DS_WIN32_RDP_POLICY* pol);
+
+bool DsExtractGuacdToTempDir(DS *ds);
+DS_GUACD* DsStartGuacd(DS *ds);
+void DsKillAllZombineGuacdProcesses(DS* ds);
+void DsStopGuacd(DS* ds, DS_GUACD* g);
+void DsGetGuacdTempDirName(wchar_t* name, UINT size);
+void *DsStartGuacdOnSpecifiedPort(DS* ds, wchar_t* exe_path, UINT port, UINT *ret_process_id);
+void* DsStartGuacdOnRandomPort(DS* ds, wchar_t* exe_path, UINT port_min, UINT port_max, UINT num_try, UINT* ret_port, UINT *ret_process_id);
+bool DsIsGuacdSupported(DS *ds);
+
 
 // RPC Procedures (Server Side)
 UINT DtGetInternetSetting(DS *ds, INTERNET_SETTING *t);

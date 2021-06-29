@@ -1056,6 +1056,7 @@ MS_PROCESS *MsSearchProcessById(LIST *o, UINT id);
 void MsGetCurrentProcessExeName(char *name, UINT size);
 void MsGetCurrentProcessExeNameW(wchar_t *name, UINT size);
 bool MsKillProcess(UINT id);
+bool MsKillProcessByHandle(void *handle);
 UINT MsKillProcessByExeName(wchar_t *name);
 UINT MsKillProcessByExeFileNameList(LIST* name_list);
 void MsKillOtherInstance();
