@@ -138,6 +138,11 @@
 
 // Guacd 関係
 #define DS_GUACD_STARTUP_TIMEOUT	(60 * 1000)		// Guacd プロセスの起動タイムアウト
+#define DS_GUACD_RAND_PORT_MIN		10000
+#define DS_GUACD_RAND_PORT_MAX		65500
+#define DS_GUACD_RAND_PORT_NUM_TRY	100
+#define DS_GUACD_RAND_PORT_NUM_TRY2	10000
+
 
 // Radius キャッシュ
 struct DS_RADIUS_CACHE
@@ -343,6 +348,8 @@ struct DS_GUACD
 {
 	void* ProcessHandle;
 	UINT ProcessId;
+	UINT SelectedPort;
+	SOCK* Sock;
 };
 
 DS *NewDs(bool is_user_mode, bool force_share_disable);

@@ -1614,7 +1614,11 @@ void *Win32RunEx2W(wchar_t *filename, wchar_t *arg, bool hide, UINT *process_id)
 {
 	return Win32RunEx3W(filename, arg, hide, process_id, false);
 }
-void *Win32RunEx3W(wchar_t *filename, wchar_t *arg, bool hide, UINT *process_id, bool disableWow)
+void* Win32RunEx3W(wchar_t* filename, wchar_t* arg, bool hide, UINT* process_id, bool disableWow)
+{
+	return Win32RunEx4W(filename, arg, hide, process_id, disableWow, NULL);
+}
+void* Win32RunEx4W(wchar_t* filename, wchar_t* arg, bool hide, UINT* process_id, bool disableWow, wchar_t* cd)
 {
 	STARTUPINFOW info;
 	PROCESS_INFORMATION ret;
@@ -1631,10 +1635,12 @@ void *Win32RunEx3W(wchar_t *filename, wchar_t *arg, bool hide, UINT *process_id,
 	{
 		char *filename_a = CopyUniToStr(filename);
 		char *arg_a = CopyUniToStr(arg);
-		void *ret = Win32RunEx3(filename_a, arg_a, hide, process_id, disableWow);
+		char* cd_a = CopyUniToStr(cd);
+		void *ret = Win32RunEx4(filename_a, arg_a, hide, process_id, disableWow, cd_a);
 
 		Free(filename_a);
 		Free(arg_a);
+		Free(cd_a);
 
 		return ret;
 	}
@@ -1680,7 +1686,7 @@ void *Win32RunEx3W(wchar_t *filename, wchar_t *arg, bool hide, UINT *process_id,
 
 	if (CreateProcessW(NULL, cmdline, NULL, NULL, FALSE,
 		(hide == false ? CREATE_NEW_CONSOLE : CREATE_NO_WINDOW | CREATE_NEW_CONSOLE) | NORMAL_PRIORITY_CLASS,
-		NULL, NULL, &info, &ret) == FALSE)
+		NULL, cd, &info, &ret) == FALSE)
 	{
 		if (disableWow)
 		{
@@ -1710,7 +1716,11 @@ void *Win32RunEx2(char *filename, char *arg, bool hide, UINT *process_id)
 {
 	return Win32RunEx3(filename, arg, hide, process_id, false);
 }
-void *Win32RunEx3(char *filename, char *arg, bool hide, UINT *process_id, bool disableWow)
+void* Win32RunEx3(char* filename, char* arg, bool hide, UINT* process_id, bool disableWow)
+{
+	return Win32RunEx4(filename, arg, hide, process_id, disableWow, NULL);
+}
+void* Win32RunEx4(char* filename, char* arg, bool hide, UINT* process_id, bool disableWow, char* cd)
 {
 	STARTUPINFO info;
 	PROCESS_INFORMATION ret;
@@ -1764,7 +1774,7 @@ void *Win32RunEx3(char *filename, char *arg, bool hide, UINT *process_id, bool d
 
 	if (CreateProcess(NULL, cmdline, NULL, NULL, FALSE,
 		(hide == false ? CREATE_NEW_CONSOLE : CREATE_NO_WINDOW | CREATE_NEW_CONSOLE) | NORMAL_PRIORITY_CLASS,
-		NULL, NULL, &info, &ret) == FALSE)
+		NULL, cd, &info, &ret) == FALSE)
 	{
 		if (disableWow)
 		{

@@ -120,7 +120,7 @@ DS_GUACD* DsStartGuacd(DS* ds)
 
 	UINT port = 0;
 	UINT process_id = 0;
-	void *handle = DsStartGuacdOnRandomPort(ds, exe_path, 10000, 10020, 1, &port, &process_id);
+	void *handle = DsStartGuacdOnRandomPort(ds, exe_path, DS_GUACD_RAND_PORT_MIN, DS_GUACD_RAND_PORT_MAX, DS_GUACD_RAND_PORT_NUM_TRY, &port, &process_id);
 	if (handle == NULL)
 	{
 		DsDebugLog(ds, "DsStartGuacd", "DsStartGuacdOnRandomPort failed.");
@@ -129,10 +129,22 @@ DS_GUACD* DsStartGuacd(DS* ds)
 
 	DsDebugLog(ds, "DsStartGuacd", "DsStartGuacdOnRandomPort OK. Port number = %u", port);
 
+	SOCK* s = Connect("127.0.0.1", port);
+	if (s == NULL)
+	{
+		DsDebugLog(ds, "DsStartGuacd", "Connect to the 127.0.0.1 port %u error", port);
+
+		MsKillProcessByHandle(handle);
+		MsCloseHandle(handle);
+		return NULL;
+	}
+
 	DS_GUACD* g = ZeroMalloc(sizeof(DS_GUACD));
 
 	g->ProcessHandle = handle;
 	g->ProcessId = process_id;
+	g->SelectedPort = port;
+	g->Sock = s;
 
 	return g;
 
@@ -171,6 +183,9 @@ void DsStopGuacd(DS* ds, DS_GUACD* g)
 
 	MsCloseHandle(g->ProcessHandle);
 
+	Disconnect(g->Sock);
+	ReleaseSock(g->Sock);
+
 	Free(g);
 #endif // OS_WIN32
 }
@@ -186,13 +201,17 @@ void* DsStartGuacdOnRandomPort(DS* ds, wchar_t* exe_path, UINT port_min, UINT po
 		return NULL;
 	}
 
+	DsDebugLog(ds, "DsStartGuacdOnRandomPort", "Trying port_min = %u, port_max = %u, num_try = %u",
+		port_min, port_max, num_try);
+
 	UINT i;
 	for (i = 0; i < num_try;i++)
 	{
 		// 利用可能な TCP ランダムポートを 1 つ取得する
-		UINT port = GetFreeRandomTcpPort(port_min, port_max, 100000);
+		UINT port = GetFreeRandomTcpPort(port_min, port_max, DS_GUACD_RAND_PORT_NUM_TRY2, true);
 		if (port == 0)
 		{
+			DsDebugLog(ds, "DsStartGuacdOnRandomPort", "GetFreeRandomTcpPort error.");
 			return NULL;
 		}
 
@@ -202,8 +221,11 @@ void* DsStartGuacdOnRandomPort(DS* ds, wchar_t* exe_path, UINT port_min, UINT po
 		{
 			// 起動成功
 			*ret_port = port;
+			DsDebugLog(ds, "DsStartGuacdOnRandomPort", "DsStartGuacdOnSpecifiedPort (port = %u) OK. Process ID = %u", port, *ret_process_id);
 			return handle;
 		}
+
+		DsDebugLog(ds, "DsStartGuacdOnRandomPort", "DsStartGuacdOnSpecifiedPort (port = %u) error.", port);
 	}
 
 	// 指定回数試行しても起動に失敗した
@@ -223,17 +245,24 @@ void* DsStartGuacdOnSpecifiedPort(DS* ds, wchar_t* exe_path, UINT port, UINT* re
 		return NULL;
 	}
 
+	wchar_t dir[MAX_PATH] = CLEAN;
+	GetDirNameFromFilePathW(dir, sizeof(dir), exe_path);
+
 	wchar_t args[MAX_PATH] = CLEAN;
 	UniFormat(args, sizeof(args), L"-f -b 127.0.0.1 -l %u", port);
 
 	// 起動を してみます
 	UINT process_id = 0;
-	void* handle = Win32RunEx3W(exe_path, args, true, &process_id, false);
+	void* handle = Win32RunEx4W(exe_path, args, true, &process_id, false, dir);
 	if (handle == NULL)
 	{
 		// 起動に失敗
+		DsDebugLog(ds, "DsStartGuacdOnRandomPort", "Win32RunEx4W error. exe = %S, args = %S",
+			exe_path, args);
 		return NULL;
 	}
+	DsDebugLog(ds, "DsStartGuacdOnRandomPort", "Win32RunEx4W OK. exe = %S, args = %S, proc_id = %u",
+		exe_path, args, process_id);
 
 	UINT64 now = Tick64();
 	UINT64 giveup = now + (UINT64)DS_GUACD_STARTUP_TIMEOUT;
@@ -264,10 +293,13 @@ void* DsStartGuacdOnSpecifiedPort(DS* ds, wchar_t* exe_path, UINT port, UINT* re
 			}
 
 			FreeTcpTableList(tcp_table);
+
+			DsDebugLog(ds, "DsStartGuacdOnRandomPort", "tcp_ok = %u", tcp_ok);
 		}
 		else
 		{
 			// GetTcpTableList に失敗した場合 (通常は想定されない) は常に成功とみなす
+			DsDebugLog(ds, "DsStartGuacdOnRandomPort", "GetTcpTableList error. Ignored.");
 			tcp_ok = true;
 		}
 
@@ -281,11 +313,13 @@ void* DsStartGuacdOnSpecifiedPort(DS* ds, wchar_t* exe_path, UINT port, UINT* re
 		if (now >= giveup)
 		{
 			// タイムアウトが発生してしまいました
+			DsDebugLog(ds, "DsStartGuacdOnRandomPort", "Timed out.");
 			break;
 		}
 
 		if (MsWaitProcessExitWithTimeoutEx(handle, 100, true))
 		{
+			DsDebugLog(ds, "DsStartGuacdOnRandomPort", "Child process exited abnormally.");
 			// プロセスが終了してしまいました
 			break;
 		}

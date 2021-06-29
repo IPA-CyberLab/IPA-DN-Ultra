@@ -8514,7 +8514,7 @@ TCPTABLE *GetTcpTableFromEndPoint(LIST *o, IP *local_ip, UINT local_port, IP *re
 	return NULL;
 }
 
-UINT GetFreeRandomTcpPort(UINT port_min, UINT port_max, UINT num_try)
+UINT GetFreeRandomTcpPort(UINT port_min, UINT port_max, UINT num_try, bool listen_check)
 {
 	UINT ret = 0;
 
@@ -8565,6 +8565,17 @@ UINT GetFreeRandomTcpPort(UINT port_min, UINT port_max, UINT num_try)
 
 		if (exists == false)
 		{
+			if (listen_check)
+			{
+				if (TryListen4(new_random_port) == false)
+				{
+					exists = true;
+				}
+			}
+		}
+
+		if (exists == false)
+		{
 			ret = new_random_port;
 			break;
 		}
@@ -8576,6 +8587,22 @@ UINT GetFreeRandomTcpPort(UINT port_min, UINT port_max, UINT num_try)
 	}
 
 	return ret;
+}
+
+// IPv4 で試しに Listen してみる
+bool TryListen4(UINT port)
+{
+	SOCK* s = Listen(port);
+
+	if (s == NULL)
+	{
+		return false;
+	}
+
+	Disconnect(s);
+	ReleaseSock(s);
+
+	return true;
 }
 
 // Get the TCP table list (Win32)
