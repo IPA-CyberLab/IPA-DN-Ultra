@@ -4043,6 +4043,9 @@ void DsInitDefaultConfig(DS *ds)
 		return;
 	}
 
+	// デフォルトで Debug Log を有効にする
+	ds->EnableDebugLog = true;
+
 	// ユーザー認証無し
 	ds->AuthType = DESK_AUTH_NONE;
 
@@ -4317,7 +4320,7 @@ bool DsLoadConfigMain(DS *ds, FOLDER *root)
 	ds->RdpEnableOptimizer = CfgGetBoolEx(root, "RdpEnableOptimizer", true);
 	CfgGetStr(root, "RdpStopServicesList", ds->RdpStopServicesList, sizeof(ds->RdpStopServicesList));
 
-	ds->EnableDebugLog = CfgGetBoolEx(root, "EnableDebugLog", false);
+	ds->EnableDebugLog = CfgGetBoolEx(root, "EnableDebugLog", true);
 
 	ds->ShowWatermark = CfgGetBool(root, "ShowWatermark");
 	CfgGetUniStr(root, "WatermarkStr", ds->WatermarkStr, sizeof(ds->WatermarkStr));
