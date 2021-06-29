@@ -1499,6 +1499,31 @@ void WtMakeSendDataTTcp(TSESSION* s, TTCP* ttcp, QUEUE* blockqueue, TUNNEL* tunn
 		{
 			ttcp->DisconnectSignalReceived = true;
 		}
+		else
+		{
+			if (false)
+			{
+				if (ttcp->CurrentBlockSize != 0)
+				{
+					if (tunnel != NULL)
+					{
+						BUF* b = NewBuf();
+						WriteBuf(b, block->Data, block->PhysicalSize);
+						WriteBufChar(b, 0);
+						Print("<Send G2C> \"%s\"\n", b->Buf);
+						FreeBuf(b);
+					}
+					else
+					{
+						BUF* b = NewBuf();
+						WriteBuf(b, block->Data, block->PhysicalSize);
+						WriteBufChar(b, 0);
+						Print("<Send G2S> \"%s\"\n", b->Buf);
+						FreeBuf(b);
+					}
+				}
+			}
+		}
 
 		WtFreeDataBlock(block, false);
 
@@ -1521,6 +1546,8 @@ void WtMakeSendDataTTcp(TSESSION* s, TTCP* ttcp, QUEUE* blockqueue, TUNNEL* tunn
 			tunnel->Gate_ClientSession_SwitchToWebSocketAcked = true;
 
 			// WebSocket への切替え処理のリクエストが来ていたので、切替え処理 OK である旨の応答を返す
+			// そして、これ以降は、server -> gate -> client 方向について、最初の ";" という文字までは送付
+			// するが、それ以降の送付は保留するようにするのである。
 			i = Endian32(WT_SPECIALOPCODE_S2C_SWITCHTOWEBSOCKET_ACK);
 
 			WriteFifo(fifo, &i, sizeof(UINT));
@@ -1806,7 +1833,6 @@ READ_DATA_SIZE:
 					ttcp->WantSize = sizeof(UINT);
 					ttcp->Mode = 0;
 					ReadFifo(fifo, NULL, sizeof(UINT));
-					ttcp->Mode = 0;
 
 					switch (i)
 					{
@@ -1844,6 +1870,29 @@ READ_DATA_SIZE:
 			data = Malloc(ttcp->CurrentBlockSize);
 			Copy(data, buf, ttcp->CurrentBlockSize);
 			ReadFifo(fifo, NULL, ttcp->CurrentBlockSize);
+
+			if (false)
+			{
+				if (ttcp->CurrentBlockSize != 0)
+				{
+					if (tunnel != NULL)
+					{
+						BUF* b = NewBuf();
+						WriteBuf(b, data, ttcp->CurrentBlockSize);
+						WriteBufChar(b, 0);
+						Print("<Recv C2G> \"%s\"\n", b->Buf);
+						FreeBuf(b);
+					}
+					else
+					{
+						BUF* b = NewBuf();
+						WriteBuf(b, data, ttcp->CurrentBlockSize);
+						WriteBufChar(b, 0);
+						Print("<Recv S2G> \"%s\"\n", b->Buf);
+						FreeBuf(b);
+					}
+				}
+			}
 
 			block = WtNewDataBlock(ttcp->CurrentBlockConnectionId, data, ttcp->CurrentBlockSize,
 				ttcp->UseCompress ? -1 : 0);
