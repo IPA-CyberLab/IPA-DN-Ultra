@@ -1434,6 +1434,11 @@ bool WtgCheckDisconnect(TSESSION *s)
 			}
 		}
 
+		if (t->GuaProto_HasError_AndIgnore)
+		{
+			disconnect_this_tunnel = true;
+		}
+
 		if (t->WebSocket != NULL)
 		{
 			// WebSocket 切替え後のトンネルにおいては、その WebSocket 接続が切断されていたら
@@ -1812,29 +1817,126 @@ void WtgRecvFromServer(TSESSION *s)
 				{
 					UCHAR* data = block->Data;
 					UINT size = block->DataSize;
-					UINT start = 0;
-					while (true)
+
+					if (t->GuaProto_HasError_AndIgnore == false)
 					{
-						UINT index = SearchBinChar(data, start, size, ';');
-						if (index == INFINITE)
+						// Guacamole のメッセージは、
+						// 4.xxxx,5.yyyyy,6.zzzzzz;
+						// のような具合にやってくる。数字は最大 5 桁のみ受付けることとする。
+						// 状態遷移マシンをここで動作させて、届いたデータからこのメッセージを 1 つずつ区切って
+						// 取り出すのである。
+
+						UINT i;
+						for (i = 0;i < size;i++)
 						{
-							WriteBuf(t->CurrentWebSocketFrame, data + start, size - start);
-							break;
-						}
-						else
-						{
-							// ';' で区切られた部分までの 1 つのフレームの受信が完了した
-							WriteBuf(t->CurrentWebSocketFrame, data + start, index + 1 - start);
+							UCHAR c = data[i];
 
-							DATABLOCK* new_block = WtNewDataBlock(tunnel_id,
-								Clone(t->CurrentWebSocketFrame->Buf, t->CurrentWebSocketFrame->Size),
-								t->CurrentWebSocketFrame->Size, 0);
+							switch (t->GuaProto_Mode)
+							{
+							case 0: // 0 桁 ～ 5 桁の数字 + '.' を待つモードである。
+								if (c == '.')
+								{
+									// 数字が全部受信された。数字を解釈する。
+									t->GuaProto_CurrentSizeStrData[t->GuaProto_CurrentSizeStrLen] = 0;
+									t->GuaProto_CurrentDataSize = ToInt(t->GuaProto_CurrentSizeStrData);
+									t->GuaProto_CurrentSizeStrLen = 0;
 
-							InsertQueue(t->BlockQueue, new_block);
+									if (t->GuaProto_CurrentDataSize == 0)
+									{
+										// データサイズとして 0 が指定されていたら、プロトコルエラーとする。
+										Debug("WebSocket Gua protocol error! t->GuaProto_CurrentDataSize == 0n");
+										t->GuaProto_HasError_AndIgnore = true;
+										break;
+									}
 
-							ClearBufEx(t->CurrentWebSocketFrame, true);
+									t->GuaProto_CurrentDataPos = 0;
 
-							start = index + 1;
+									// モードを 1 にする。
+									t->GuaProto_Mode = 1;
+								}
+								else if (c >= '0' && c <= '9')
+								{
+									// 1 桁数字が届いた。追記する。
+									t->GuaProto_CurrentSizeStrData[t->GuaProto_CurrentSizeStrLen] = c;
+									t->GuaProto_CurrentSizeStrLen++;
+									if (t->GuaProto_CurrentSizeStrLen >= 6)
+									{
+										// 数字が 6 桁以上届いた。これはプロトコル・エラーとみなす。
+										Debug("WebSocket Gua protocol error! t->GuaProto_CurrentSizeStrLen >= 6\n");
+										t->GuaProto_HasError_AndIgnore = true;
+										break;
+									}
+								}
+								else
+								{
+									// おかしな文字が届いた。これはプロトコル・エラーとみなす。
+									Debug("WebSocket Gua protocol error! t->GuaProto_CurrentSizeStrLen >= 6\n");
+									t->GuaProto_HasError_AndIgnore = true;
+									break;
+								}
+
+								// この受信した文字をバッファに追記する
+								WriteBufChar(t->CurrentWebSocketFrame, c);
+
+								break;
+
+							case 1: // 指定されたサイズ分のデータを何も考えずに受信するモードである。
+								WriteBufChar(t->CurrentWebSocketFrame, c);
+								t->GuaProto_CurrentDataPos++;
+
+								if (t->GuaProto_CurrentDataPos >= t->GuaProto_CurrentDataSize)
+								{
+									// すべて受信終わった。モードを 2 にする。
+									t->GuaProto_Mode = 2;
+								}
+								break;
+
+							case 2: // ',' で継続、';' で終了するモードである。
+								if (c == ',')
+								{
+									// 継続である。モードを 0 に戻す。
+									t->GuaProto_Mode = 0;
+									t->GuaProto_CurrentDataSize = 0;
+									t->GuaProto_CurrentDataPos = 0;
+								}
+								else if (c == ';')
+								{
+									// 終了である。モードを 0 に戻す。
+									t->GuaProto_Mode = 0;
+									t->GuaProto_CurrentDataSize = 0;
+									t->GuaProto_CurrentDataPos = 0;
+								}
+								else
+								{
+									// おかしな文字を受信した。プロトコル・エラーである。
+									Debug("WebSocket Gua protocol error! c = 0x%X\n");
+									t->GuaProto_HasError_AndIgnore = true;
+									break;
+								}
+
+								WriteBufChar(t->CurrentWebSocketFrame, c);
+
+								if (c == ';')
+								{
+									// パケットの終了。ここまでたまっているフレームにおいて受信完了とみなす。
+									DATABLOCK* new_block = WtNewDataBlock(tunnel_id,
+										Clone(t->CurrentWebSocketFrame->Buf, t->CurrentWebSocketFrame->Size),
+										t->CurrentWebSocketFrame->Size, 0);
+
+									s->Stat_ServerToClientTraffic += new_block->DataSize;
+
+									InsertQueue(t->BlockQueue, new_block);
+
+									ClearBufEx(t->CurrentWebSocketFrame, true);
+								}
+								break;
+							}
+
+							if (t->GuaProto_HasError_AndIgnore)
+							{
+								// プロトコルエラーが発生しておるので無視 (危険なので)
+								break;
+							}
 						}
 					}
 				}
@@ -2050,6 +2152,8 @@ void WtgRecvFromClient(TSESSION *s)
 						Print("<Recv W2G> \"%s\"\n", b->Buf);
 						FreeBuf(b);
 					}
+
+					s->Stat_ClientToServerTraffic += send_block->DataSize;
 
 					InsertQueue(dest_queue, send_block);
 				}

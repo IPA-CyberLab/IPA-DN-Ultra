@@ -134,6 +134,14 @@ struct TUNNEL
 	WS* WebSocket;						// クライアント WebSocket との間の通信に使う WebSocket オブジェクト
 	BUF* CurrentWebSocketFrame;			// WebSocket で Server -> Gate で受信され Guacamole のために ';' で区切られるためのフレームバッファ
 
+	bool GuaProto_HasError_AndIgnore;	// Gua プロトコルレベルのエラーがあり、それ以降はすべて無視するフラグ
+	UINT GuaProto_Mode;
+	UINT GuaProto_CurrentSizeStrLen;
+	char GuaProto_CurrentSizeStrData[8];
+
+	UINT GuaProto_CurrentDataSize;
+	UINT GuaProto_CurrentDataPos;
+
 	// WebSocket への切替え関係
 	bool Gate_ClientSession_SwitchToWebSocketRequested;
 	bool Gate_ClientSession_SwitchToWebSocketAcked;
