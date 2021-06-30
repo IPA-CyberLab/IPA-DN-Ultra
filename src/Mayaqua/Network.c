@@ -23302,7 +23302,11 @@ UINT GetContentLength(HTTP_HEADER *header)
 }
 
 // Send the data in the HTTP
-bool PostHttp(SOCK *s, HTTP_HEADER *header, void *post_data, UINT post_size)
+bool PostHttp(SOCK* s, HTTP_HEADER* header, void* post_data, UINT post_size)
+{
+	return PostHttpEx(s, header, post_data, post_size, false);
+}
+bool PostHttpEx(SOCK* s, HTTP_HEADER* header, void* post_data, UINT post_size, bool no_contents_length) 
 {
 	char *header_str;
 	BUF *b;

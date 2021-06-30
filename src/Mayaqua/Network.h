@@ -1042,6 +1042,7 @@ HTTP_HEADER *RecvHttpHeader(SOCK *s);
 bool SendHttpHeader(SOCK *s, HTTP_HEADER *header);
 char *HttpHeaderToStr(HTTP_HEADER *header);
 bool PostHttp(SOCK *s, HTTP_HEADER *header, void *post_data, UINT post_size);
+bool PostHttpEx(SOCK* s, HTTP_HEADER* header, void* post_data, UINT post_size, bool no_contents_length);
 UINT GetContentLength(HTTP_HEADER *header);
 void GetHttpDateStr(char *str, UINT size, UINT64 t);
 bool HttpSendForbidden(SOCK *s, char *target, char *server_id);

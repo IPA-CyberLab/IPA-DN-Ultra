@@ -359,7 +359,9 @@ char *GetMimeTypeFromFileName(char *filename);
 
 void MvpnProcGet(CONNECTION *c, SOCK *s, HTTP_HEADER *h, char *url_target);
 bool MvpnSendReply(SOCK *s, UINT status_code, char *status_string, UCHAR *data, UINT data_size, char *content_type,
-						char *add_header_name, char *add_header_value, HTTP_HEADER *request_headers);
+						char *add_header_name_01, char *add_header_value_01,
+						char* add_header_name_02, char* add_header_value_02, 
+						HTTP_HEADER *request_headers, bool is_final);
 void MvpnAccept(CONNECTION *c, SOCK *s);
 UINT MvpnDoAccept(CONNECTION *c, WS *w);
 

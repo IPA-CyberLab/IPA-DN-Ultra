@@ -86,6 +86,7 @@
 #include <Mayaqua/Mayaqua.h>
 #include <Cedar/Cedar.h>
 
+#define g_show_debug_protocol	false
 
 // WebSocket Accept
 bool WtgWebSocketAccept(WT* wt, SOCK* s, char* url_target, TSESSION* session, TUNNEL* tunnel)
@@ -276,7 +277,7 @@ bool WtgWebSocketGetHandler(WT* wt, SOCK* s, HTTP_HEADER* h, char* url_target)
 	if (req_upgrade == NULL || StrCmpi(req_upgrade->Data, "websocket") != 0)
 	{
 		MvpnSendReply(s, 400, "Bad Request", bad_request_body, StrLen(bad_request_body),
-			NULL, NULL, NULL, h);
+			NULL, NULL, NULL, NULL, NULL, h, false);
 		return false;
 	}
 
@@ -285,7 +286,7 @@ bool WtgWebSocketGetHandler(WT* wt, SOCK* s, HTTP_HEADER* h, char* url_target)
 	if (client_ws_version != 13)
 	{
 		MvpnSendReply(s, 400, "Bad Request", NULL, 0,
-			NULL, "Sec-WebSocket-Version", "13", h);
+			NULL, "Sec-WebSocket-Version", "13", NULL, NULL, h, false);
 		return false;
 	}
 
@@ -303,8 +304,15 @@ bool WtgWebSocketGetHandler(WT* wt, SOCK* s, HTTP_HEADER* h, char* url_target)
 	else
 	{
 		MvpnSendReply(s, 400, "Bad Request", NULL, 0,
-			NULL, "Sec-WebSocket-Version", "13", h);
+			NULL, "Sec-WebSocket-Version", "13", NULL, NULL, h, false);
 		return false;
+	}
+
+	char protocol[128] = CLEAN;
+	HTTP_VALUE* protocol_value = GetHttpValue(h, "Sec-WebSocket-Protocol");
+	if (protocol_value != NULL)
+	{
+		StrCpy(protocol, sizeof(protocol), protocol_value->Data);
 	}
 
 	TSESSION* session = NULL;
@@ -313,15 +321,17 @@ bool WtgWebSocketGetHandler(WT* wt, SOCK* s, HTTP_HEADER* h, char* url_target)
 	// WebSocket URL を元にセッションとトンネルを検索する
 	if (WtgSearchSessionAndTunnelByWebSocketUrl(wt, url_target, &session, &tunnel) == false)
 	{
-		MvpnSendReply(s, 400, "Bad Request - WebSocket Session Not Found", NULL, 0, NULL, NULL, NULL, h);
-		//Debug("WebSocket: Session not found for URL %s\n", url_target);
+		MvpnSendReply(s, 400, "Bad Request - WebSocket Session Not Found", NULL, 0, NULL, NULL, NULL, NULL, NULL, h, false);
+		Debug("WebSocket: Session not found for URL %s\n", url_target);
 		return false;
 	}
 
 	MvpnSendReply(s, 101, "Switching Protocols", NULL, 0, NULL,
-		"Sec-WebSocket-Accept", response_key, h);
+		"Sec-WebSocket-Accept", response_key,
+		"Sec-WebSocket-Protocol", IsFilledStr(protocol) ? protocol : NULL,
+		h, true);
 
-	//Debug("WebSocket: Session reconnect OK for URL %s\n", url_target);
+	Debug("WebSocket: Session reconnect OK for URL %s\n", url_target);
 
 	WtgWebSocketAccept(wt, s, url_target, session, tunnel);
 
@@ -1451,6 +1461,13 @@ bool WtgCheckDisconnect(TSESSION *s)
 			{
 				disconnect_this_tunnel = true;
 			}
+
+			// WebSocket 切替え後において、切替え前のクライアントとの間で一時的に維持されていた物理的
+			// TCP トンネルを強制的に切断する
+			if (t->ClientTcp->Sock->Disconnecting == false)
+			{
+				t->ClientTcp->Disconnected = true;
+			}
 		}
 
 		if (disconnect_this_tunnel)
@@ -1596,7 +1613,7 @@ void WtgSendToClient(TSESSION *s)
 			DATABLOCK* block;
 			while ((block = GetNext(blockqueue)) != NULL)
 			{
-				if (true)
+				if (g_show_debug_protocol)
 				{
 					BUF* b = NewBuf();
 					WriteBuf(b, block->Data, block->DataSize);
@@ -1652,7 +1669,7 @@ void WtMakeSendDataTTcp(TSESSION* s, TTCP* ttcp, QUEUE* blockqueue, TUNNEL* tunn
 			}
 			else
 			{
-				if (true) // debugdebug
+				if (g_show_debug_protocol) // debugdebug
 				{
 					if (ttcp->CurrentBlockSize != 0)
 					{
@@ -2144,7 +2161,7 @@ void WtgRecvFromClient(TSESSION *s)
 					s->Stat_ClientToServerTraffic += r;
 					send_block->TunnelId = p->TunnelId;
 
-					if (true)
+					if (g_show_debug_protocol)
 					{
 						BUF* b = NewBuf();
 						WriteBuf(b, send_block->Data, send_block->DataSize);
@@ -2269,7 +2286,7 @@ READ_DATA_SIZE:
 			Copy(data, buf, ttcp->CurrentBlockSize);
 			ReadFifo(fifo, NULL, ttcp->CurrentBlockSize);
 
-			if (true) // debugdebug
+			if (g_show_debug_protocol) // debugdebug
 			{
 				if (ttcp->CurrentBlockSize != 0)
 				{

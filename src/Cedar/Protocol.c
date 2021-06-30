@@ -8852,7 +8852,7 @@ void MvpnProcGet(CONNECTION *c, SOCK *s, HTTP_HEADER *h, char *url_target)
 	if (req_upgrade == NULL || StrCmpi(req_upgrade->Data, "websocket") != 0)
 	{
 		MvpnSendReply(s, 400, "Bad Request", bad_request_body, StrLen(bad_request_body),
-			NULL, NULL, NULL, h);
+			NULL, NULL, NULL, NULL, NULL, h, false);
 		return;
 	}
 
@@ -8861,7 +8861,7 @@ void MvpnProcGet(CONNECTION *c, SOCK *s, HTTP_HEADER *h, char *url_target)
 	if (client_ws_version != 13)
 	{
 		MvpnSendReply(s, 400, "Bad Request", NULL, 0,
-			NULL, "Sec-WebSocket-Version", "13", h);
+			NULL, "Sec-WebSocket-Version", "13", NULL, NULL, h, false);
 		return;
 	}
 
@@ -8879,19 +8879,21 @@ void MvpnProcGet(CONNECTION *c, SOCK *s, HTTP_HEADER *h, char *url_target)
 	else
 	{
 		MvpnSendReply(s, 400, "Bad Request", NULL, 0,
-			NULL, "Sec-WebSocket-Version", "13", h);
+			NULL, "Sec-WebSocket-Version", "13", NULL, NULL, h, false);
 		return;
 	}
 
 	MvpnSendReply(s, 101, "Switching Protocols", NULL, 0, NULL,
-		"Sec-WebSocket-Accept", response_key, h);
+		"Sec-WebSocket-Accept", response_key, NULL, NULL, h, false);
 
 	MvpnAccept(c, s);
 }
 
 // MVPN Send Reply
-bool MvpnSendReply(SOCK *s, UINT status_code, char *status_string, UCHAR *data, UINT data_size, char *content_type,
-				   char *add_header_name, char *add_header_value, HTTP_HEADER *request_headers)
+bool MvpnSendReply(SOCK* s, UINT status_code, char* status_string, UCHAR* data, UINT data_size, char* content_type,
+	char* add_header_name_01, char* add_header_value_01,
+	char* add_header_name_02, char* add_header_value_02,
+	HTTP_HEADER* request_headers, bool is_final)
 {
 	HTTP_HEADER *h;
 	char date_str[MAX_SIZE];
@@ -8916,7 +8918,11 @@ bool MvpnSendReply(SOCK *s, UINT status_code, char *status_string, UCHAR *data, 
 
 	h = NewHttpHeader("HTTP/1.1", error_code_str, status_string);
 
-	AddHttpValue(h, NewHttpValue("Cache-Control", "no-cache"));
+	if (is_final == false)
+	{
+		AddHttpValue(h, NewHttpValue("Cache-Control", "no-cache"));
+	}
+
 	if (data_size != 0)
 	{
 		AddHttpValue(h, NewHttpValue("Content-Type", content_type));
@@ -8930,17 +8936,21 @@ bool MvpnSendReply(SOCK *s, UINT status_code, char *status_string, UCHAR *data, 
 	{
 		AddHttpValue(h, NewHttpValue("Connection", "Keep-Alive"));
 	}
-	AddHttpValue(h, NewHttpValue("Access-Control-Allow-Headers", "content-type"));
-	AddHttpValue(h, NewHttpValue("Access-Control-Allow-Headers", "authorization"));
-	AddHttpValue(h, NewHttpValue("Access-Control-Allow-Headers", "x-websocket-extensions"));
-	AddHttpValue(h, NewHttpValue("Access-Control-Allow-Headers", "x-websocket-version"));
-	AddHttpValue(h, NewHttpValue("Access-Control-Allow-Headers", "x-websocket-protocol"));
-	AddHttpValue(h, NewHttpValue("Access-Control-Allow-Credentials", "true"));
 
-	origin = GetHttpValue(request_headers, "Origin");
-	if (origin != NULL)
+	if (is_final == false)
 	{
-		AddHttpValue(h, NewHttpValue("Access-Control-Allow-Origin", origin->Data));
+		AddHttpValue(h, NewHttpValue("Access-Control-Allow-Headers", "content-type"));
+		AddHttpValue(h, NewHttpValue("Access-Control-Allow-Headers", "authorization"));
+		AddHttpValue(h, NewHttpValue("Access-Control-Allow-Headers", "x-websocket-extensions"));
+		AddHttpValue(h, NewHttpValue("Access-Control-Allow-Headers", "x-websocket-version"));
+		AddHttpValue(h, NewHttpValue("Access-Control-Allow-Headers", "x-websocket-protocol"));
+		AddHttpValue(h, NewHttpValue("Access-Control-Allow-Credentials", "true"));
+
+		origin = GetHttpValue(request_headers, "Origin");
+		if (origin != NULL)
+		{
+			AddHttpValue(h, NewHttpValue("Access-Control-Allow-Origin", origin->Data));
+		}
 	}
 
 	upgrade = GetHttpValue(request_headers, "Upgrade");
@@ -8949,12 +8959,17 @@ bool MvpnSendReply(SOCK *s, UINT status_code, char *status_string, UCHAR *data, 
 		AddHttpValue(h, NewHttpValue("Upgrade", upgrade->Data));
 	}
 
-	if (add_header_name != NULL && add_header_value != NULL)
+	if (add_header_name_01 != NULL && add_header_value_01 != NULL)
 	{
-		AddHttpValue(h, NewHttpValue(add_header_name, add_header_value));
+		AddHttpValue(h, NewHttpValue(add_header_name_01, add_header_value_01));
 	}
 
-	ret = PostHttp(s, h, data, data_size);
+	if (add_header_name_02 != NULL && add_header_value_02 != NULL)
+	{
+		AddHttpValue(h, NewHttpValue(add_header_name_02, add_header_value_02));
+	}
+
+	ret = PostHttpEx(s, h, data, data_size, data_size == 0 ? true : false);
 
 	FreeHttpHeader(h);
 
