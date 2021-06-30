@@ -9192,7 +9192,7 @@ bool WsTrySendAsync(WS *w)
 		ret = false;
 	}
 
-	if (ret == 0)
+	if (ret == false)
 	{
 		w->Disconnected = true;
 		Disconnect(w->Sock);

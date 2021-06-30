@@ -335,7 +335,7 @@ void WtsSendToGate(TSESSION *s)
 	blockqueue = s->BlockQueue;
 
 	// 送信データの生成
-	WtMakeSendDataTTcp(s, ttcp, blockqueue, NULL);
+	WtMakeSendDataTTcp(s, ttcp, blockqueue, NULL, false);
 
 	// 送信
 	WtSendTTcp(s, ttcp);

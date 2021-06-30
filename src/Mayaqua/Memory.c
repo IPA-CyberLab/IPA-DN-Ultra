@@ -932,7 +932,7 @@ UINT SearchBinChar(void* data, UINT data_start, UINT data_size, UCHAR key_char)
 	{
 		UCHAR* p = ((UCHAR*)data) + i;
 
-		if (p == key_char)
+		if (*p == key_char)
 		{
 			return i;
 		}
@@ -3501,7 +3501,7 @@ BUF *NewBuf()
 // Clearing the buffer
 void ClearBuf(BUF* b)
 {
-	return ClearBufEx(b, false);
+	ClearBufEx(b, false);
 }
 void ClearBufEx(BUF* b, bool init_buffer) 
 {
