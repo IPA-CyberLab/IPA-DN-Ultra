@@ -542,7 +542,7 @@ bool WtsCheckDisconnect(TSESSION *s)
 		return false;
 	}
 
-	if (WtIsTTcpDisconnected(s, s->GateTcp))
+	if (WtIsTTcpDisconnected(s, NULL, s->GateTcp))
 	{
 		// サーバーとの接続が切断された
 		ret = true;

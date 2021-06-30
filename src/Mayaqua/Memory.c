@@ -918,6 +918,28 @@ UINT SearchBin(void *data, UINT data_start, UINT data_size, void *key, UINT key_
 
 	return INFINITE;
 }
+UINT SearchBinChar(void* data, UINT data_start, UINT data_size, UCHAR key_char)
+{
+	UINT i;
+	// Validate arguments
+	if (data == NULL || data_size == 0 ||
+		(data_start >= data_size) || (data_start + 1 > data_size))
+	{
+		return INFINITE;
+	}
+
+	for (i = data_start;i < data_size;i++)
+	{
+		UCHAR* p = ((UCHAR*)data) + i;
+
+		if (p == key_char)
+		{
+			return i;
+		}
+	}
+
+	return INFINITE;
+}
 
 // Crash immediately
 void CrashNow()
@@ -3477,7 +3499,11 @@ BUF *NewBuf()
 }
 
 // Clearing the buffer
-void ClearBuf(BUF *b)
+void ClearBuf(BUF* b)
+{
+	return ClearBufEx(b, false);
+}
+void ClearBufEx(BUF* b, bool init_buffer) 
 {
 	// Validate arguments
 	if (b == NULL)
@@ -3487,6 +3513,13 @@ void ClearBuf(BUF *b)
 
 	b->Size = 0;
 	b->Current = 0;
+
+	if (init_buffer && b->SizeReserved != INIT_BUF_SIZE)
+	{
+		Free(b->Buf);
+		b->Buf = Malloc(INIT_BUF_SIZE);
+		b->SizeReserved = INIT_BUF_SIZE;
+	}
 }
 
 // Write to the buffer
@@ -3932,6 +3965,27 @@ void SeekBuf(BUF *b, UINT offset, int mode)
 	b->Current = MAKESURE(new_pos, 0, b->Size);
 
 	KS_INC(KS_SEEK_BUF_COUNT);
+}
+
+// Free the buffer without data buffer
+void FreeBufWithoutData(BUF* b)
+{
+	// Validate arguments
+	if (b == NULL)
+	{
+		return;
+	}
+
+	// Memory release
+	Free(b);
+
+	// KS
+	KS_INC(KS_FREEBUF_COUNT);
+	KS_DEC(KS_CURRENT_BUF_COUNT);
+
+#ifndef	DONT_USE_KERNEL_STATUS
+	//	TrackDeleteObj(POINTER_TO_UINT64(b));
+#endif	// DONT_USE_KERNEL_STATUS
 }
 
 // Free the buffer

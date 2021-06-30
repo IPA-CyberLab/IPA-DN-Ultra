@@ -180,6 +180,7 @@ struct WS
 	bool Disconnected;
 	UINT MaxBufferSize;
 	UCHAR TmpBuf[65536];
+	UINT64 LastCommTime;
 };
 
 // WebSocket Protocol
@@ -191,6 +192,7 @@ struct WSP
 	FIFO *AppSendFifo;			// APP -> WSP
 	FIFO *AppRecvFifo;			// APP <- WSP
 	bool HasError;
+	UINT MaxRecvPayloadSizeOverride;	// WS_MAX_PAYLOAD_LEN_PER_FRAME の値を上書きする場合に設定
 };
 
 // WebSocket constants
@@ -368,7 +370,7 @@ void CleanupWs(WS *w);
 UINT WsRecvSync(WS *w, void *data, UINT size);
 bool WsRecvSyncAll(WS *w, void *data, UINT size);
 bool WsSendSync(WS *w, void *data, UINT size);
-UINT WsRecvAsync(WS *w, void *data, UINT size);
+UINT WsRecvAsync(WS *w, void *data, UINT size, UINT64 now);
 UINT WsSendAsync(WS *w, void *data, UINT size);
 bool WsTrySendAsync(WS *w);
 PACK *WsRecvPack(WS *w);

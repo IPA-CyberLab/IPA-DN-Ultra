@@ -131,12 +131,13 @@ struct TUNNEL
 	UCHAR ClientId[SHA1_SIZE];			// クライアント ID
 
 	char WebSocketToken2[128];			// WebSocket トークン #2
-	TTCP* WebSocketTcp;					// クライアント WebSocket との間の通信に使う TCP コネクション
+	WS* WebSocket;						// クライアント WebSocket との間の通信に使う WebSocket オブジェクト
+	BUF* CurrentWebSocketFrame;			// WebSocket で Server -> Gate で受信され Guacamole のために ';' で区切られるためのフレームバッファ
 
 	// WebSocket への切替え関係
 	bool Gate_ClientSession_SwitchToWebSocketRequested;
 	bool Gate_ClientSession_SwitchToWebSocketAcked;
-	bool Gate_ClientSession_WebSocketSwitchStage1;
+	UINT64 Gate_ClientSession_SwitchToWebSocket_Expires;
 };
 
 // セッション
@@ -255,9 +256,9 @@ void WtFreeDataBlock(DATABLOCK *block, bool no_free_data);
 void WtgSendToServer(TSESSION *s);
 void WtgSendToClient(TSESSION *s);
 void WtSendTTcp(TSESSION *s, TTCP *ttcp);
-void WtMakeSendDataTTcp(TSESSION *s, TTCP *ttcp, QUEUE *blockqueue, TUNNEL *tunnel);
+void WtMakeSendDataTTcp(TSESSION *s, TTCP *ttcp, QUEUE *blockqueue, TUNNEL *tunnel, bool only_keepalive);
 bool WtgCheckDisconnect(TSESSION *s);
-bool WtIsTTcpDisconnected(TSESSION *s, TTCP *ttcp);
+bool WtIsTTcpDisconnected(TSESSION *s, TUNNEL *tunnel, TTCP *ttcp);
 void WtFreeDataBlockQueue(QUEUE *q);
 void WtDisconnectTTcp(TTCP *ttcp);
 void WtFreeTunnel(TUNNEL *t);
@@ -286,8 +287,8 @@ WG_MACHINE* WtgSamGetMachineByPCID(WT* wt, char* pcid);
 WG_MACHINE* WtgSamGetMachineByMSID(WT* wt, char* msid);
 void CfgSaveThreadProc(THREAD* thread, void* param);
 
-void WtgWebSocketGetHandler(WT *wt, SOCK* s, HTTP_HEADER* h, char* url_target);
-void WtgWebSocketAccept(WT* wt, SOCK* s, char* url_target, TSESSION *session, TUNNEL *tunnel);
+bool WtgWebSocketGetHandler(WT *wt, SOCK* s, HTTP_HEADER* h, char* url_target);
+bool WtgWebSocketAccept(WT* wt, SOCK* s, char* url_target, TSESSION *session, TUNNEL *tunnel);
 bool WtgSearchSessionAndTunnelByWebSocketUrl(WT* wt, char* url_target, TSESSION** pp_session, TUNNEL** pp_tunnel);
 
 

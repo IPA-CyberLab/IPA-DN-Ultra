@@ -9015,6 +9015,8 @@ WS *NewWs(SOCK *s)
 
 	w->Wsp = NewWsp();
 
+	w->LastCommTime = Tick64();
+
 	return w;
 }
 
@@ -9150,31 +9152,38 @@ bool WsTrySendAsync(WS *w)
 
 	if (w->Wsp->HasError == false)
 	{
-		while (true)
+		if (w->Sock->AsyncMode == false)
 		{
-			UINT send_size = FifoSize(w->Wsp->PhysicalSendFifo);
-			UINT r;
-			if (send_size == 0)
+			ret = true;
+		}
+		else
+		{
+			while (true)
 			{
-				ret = true;
-				break;
-			}
+				UINT send_size = FifoSize(w->Wsp->PhysicalSendFifo);
+				UINT r;
+				if (send_size == 0)
+				{
+					ret = true;
+					break;
+				}
 
-			r = Send(w->Sock, FifoPtr(w->Wsp->PhysicalSendFifo), send_size, w->Sock->SecureMode);
+				r = Send(w->Sock, FifoPtr(w->Wsp->PhysicalSendFifo), send_size, w->Sock->SecureMode);
 
-			if (r == INFINITE)
-			{
-				ret = true;
-				break;
-			}
-			else if (r == 0)
-			{
-				ret = false;
-				break;
-			}
-			else
-			{
-				ReadFifo(w->Wsp->PhysicalSendFifo, NULL, r);
+				if (r == INFINITE)
+				{
+					ret = true;
+					break;
+				}
+				else if (r == 0)
+				{
+					ret = false;
+					break;
+				}
+				else
+				{
+					ReadFifo(w->Wsp->PhysicalSendFifo, NULL, r);
+				}
 			}
 		}
 	}
@@ -9193,7 +9202,7 @@ bool WsTrySendAsync(WS *w)
 }
 
 // WebSocket: Receive a frame in async mode
-UINT WsRecvAsync(WS *w, void *data, UINT size)
+UINT WsRecvAsync(WS *w, void *data, UINT size, UINT64 now)
 {
 	bool disconnected = false;
 	UINT ret = 0;
@@ -9206,6 +9215,12 @@ UINT WsRecvAsync(WS *w, void *data, UINT size)
 		Disconnect(w->Sock);
 		return 0;
 	}
+	if (w->Sock->AsyncMode == false)
+	{
+		return INFINITE;
+	}
+
+	bool received_any_data = false;
 
 	// Receive all arrived data from the socket
 	while (FifoSize(w->Wsp->PhysicalRecvFifo) < w->MaxBufferSize)
@@ -9228,7 +9243,14 @@ UINT WsRecvAsync(WS *w, void *data, UINT size)
 		{
 			// Received some data
 			WriteFifo(w->Wsp->PhysicalRecvFifo, w->TmpBuf, r);
+
+			received_any_data = true;
 		}
+	}
+
+	if (received_any_data)
+	{
+		w->LastCommTime = now;
 	}
 
 	if (disconnected == false)
@@ -9385,6 +9407,12 @@ void WspTry(WSP *p)
 	// Physical -> App
 	while (p->HasError == false)
 	{
+		if (FifoSize(p->AppRecvFifo) > p->MaxBufferSize)
+		{
+			// 受信したデータを貯めておくバッファが不足
+			break;
+		}
+
 		UINT read_buffer_size;
 		BLOCK *b = WspTryRecvNextFrame(p, &read_buffer_size);
 		if (b == NULL)
@@ -9555,7 +9583,7 @@ BLOCK *WspTryRecvNextFrame(WSP *p, UINT *read_buffer_size)
 		payload_len = (UINT)u64;
 	}
 
-	if (payload_len > WS_MAX_PAYLOAD_LEN_PER_FRAME)
+	if (payload_len > (p->MaxRecvPayloadSizeOverride == 0 ? WS_MAX_PAYLOAD_LEN_PER_FRAME : p->MaxRecvPayloadSizeOverride))
 	{
 		p->HasError = true;
 		return NULL;
@@ -10283,7 +10311,7 @@ L_V4_RETRY:
 				// MVPN Client --> recv_fifo
 				while (FifoSize(recv_fifo) <= MAX_BUFFERING_PACKET_SIZE)
 				{
-					r = WsRecvAsync(w, tmp_buf, tmp_buf_size);
+					r = WsRecvAsync(w, tmp_buf, tmp_buf_size, now);
 					if (r == 0)
 					{
 						has_error = true;

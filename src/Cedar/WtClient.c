@@ -169,7 +169,7 @@ bool WtcCheckDisconnect(TSESSION *s)
 		return false;
 	}
 
-	if (WtIsTTcpDisconnected(s, s->GateTcp))
+	if (WtIsTTcpDisconnected(s, NULL, s->GateTcp))
 	{
 		// Gate との接続が切断された
 		ret = true;

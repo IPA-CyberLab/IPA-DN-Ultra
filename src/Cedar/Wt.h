@@ -151,10 +151,15 @@
 #define WT_SOCKET_WINDOW_SIZE	32767					// ソケットのウインドウサイズ (未使用)
 #define WT_PCID_SIZE			32						// PCID
 
+#define WT_WEBSOCK_WINDOW_SIZE	(256 * 1024)			// WebSocket サイズは 256KB とする
+
+
 #define WT_SPECIALOPCODE_MIN									16777000
 #define WT_SPECIALOPCODE_MAX									16777215
 #define WT_SPECIALOPCODE_C2S_SWITCHTOWEBSOCKET_REQUEST_GUACD	16777001
 #define	WT_SPECIALOPCODE_S2C_SWITCHTOWEBSOCKET_ACK				16777002
+
+#define WT_WEBSOCK_SWITCH_EXPIRES	(15 * 1000)			// WebSocket への切替え有効期限
 
 // HTTP 関係
 #define	HTTP_WIDE_TARGET			"/widetunnel/start.cgi"

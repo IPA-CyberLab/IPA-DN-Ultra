@@ -88,15 +88,52 @@
 
 
 // WebSocket Accept
-void WtgWebSocketAccept(WT* wt, SOCK* s, char* url_target, TSESSION* session, TUNNEL* tunnel)
+bool WtgWebSocketAccept(WT* wt, SOCK* s, char* url_target, TSESSION* session, TUNNEL* tunnel)
 {
-	WHERE;
+	bool ret = false;
 	if (wt == NULL || s == NULL || url_target == NULL || session == NULL || tunnel == NULL)
 	{
-		return;
+		return false;
 	}
 
-	WHERE;
+	WS* w = NewWs(s);
+	if (w != NULL)
+	{
+		// バッファサイズ変更
+		w->MaxBufferSize = WT_WEBSOCK_WINDOW_SIZE;
+		w->Wsp->MaxRecvPayloadSizeOverride = WT_WEBSOCK_WINDOW_SIZE;
+
+		// この session にまだこの tunnel が属しているかどうか確認する
+		Lock(session->Lock);
+		{
+			if (IsInList(session->TunnelList, tunnel))
+			{
+				// 属している。状態を検査する。
+				if (tunnel->WebSocket == NULL)
+				{
+					// WebSocket への切替えが未完了である。したがって、切替えることが可能である。
+					// そこで、切替えを実施する。
+					tunnel->WebSocket = w;
+
+					// これ以降 WebSocket は別スレッドで処理されるため、AddRef する。
+					// このスレッドの最後にソケットは解放される。
+					AddRef(w->Ref);
+
+					ret = true;
+				}
+			}
+		}
+		Unlock(session->Lock);
+
+		ReleaseWs(w);
+	}
+
+	if (ret)
+	{
+		SetSockEvent(session->SockEvent);
+	}
+
+	return ret;
 }
 
 // WebSocket URL を元にセッションとトンネルを検索する
@@ -164,8 +201,11 @@ bool WtgSearchSessionAndTunnelByWebSocketUrl(WT* wt, char* url_target, TSESSION*
 
 				if (StrCmpi(t->WebSocketToken2, token2) == 0)
 				{
-					tunnel = t;
-					break;
+					if (t->Gate_ClientSession_SwitchToWebSocketAcked)
+					{
+						tunnel = t;
+						break;
+					}
 				}
 			}
 		}
@@ -185,7 +225,7 @@ bool WtgSearchSessionAndTunnelByWebSocketUrl(WT* wt, char* url_target, TSESSION*
 }
 
 // WebSocket GET Handler
-void WtgWebSocketGetHandler(WT* wt, SOCK* s, HTTP_HEADER* h, char* url_target)
+bool WtgWebSocketGetHandler(WT* wt, SOCK* s, HTTP_HEADER* h, char* url_target)
 {
 	HTTP_VALUE* req_upgrade;
 	HTTP_VALUE* req_version;
@@ -195,7 +235,7 @@ void WtgWebSocketGetHandler(WT* wt, SOCK* s, HTTP_HEADER* h, char* url_target)
 	char* bad_request_body = "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\"\"http://www.w3.org/TR/html4/strict.dtd\">\r\n<HTML><HEAD><TITLE>Bad Request</TITLE>\r\n<META HTTP-EQUIV=\"Content-Type\" Content=\"text/html; charset=us-ascii\"></HEAD>\r\n<BODY><h2>Bad Request</h2>\r\n<hr><p>HTTP Error 400. The request is badly formed.</p>\r\n</BODY></HTML>";
 	if (wt == NULL || s == NULL || h == NULL || url_target == NULL)
 	{
-		return;
+		return false;
 	}
 
 	req_upgrade = GetHttpValue(h, "Upgrade");
@@ -203,7 +243,7 @@ void WtgWebSocketGetHandler(WT* wt, SOCK* s, HTTP_HEADER* h, char* url_target)
 	{
 		MvpnSendReply(s, 400, "Bad Request", bad_request_body, StrLen(bad_request_body),
 			NULL, NULL, NULL, h);
-		return;
+		return false;
 	}
 
 	req_version = GetHttpValue(h, "Sec-WebSocket-Version");
@@ -212,7 +252,7 @@ void WtgWebSocketGetHandler(WT* wt, SOCK* s, HTTP_HEADER* h, char* url_target)
 	{
 		MvpnSendReply(s, 400, "Bad Request", NULL, 0,
 			NULL, "Sec-WebSocket-Version", "13", h);
-		return;
+		return false;
 	}
 
 	Zero(response_key, sizeof(response_key));
@@ -230,7 +270,7 @@ void WtgWebSocketGetHandler(WT* wt, SOCK* s, HTTP_HEADER* h, char* url_target)
 	{
 		MvpnSendReply(s, 400, "Bad Request", NULL, 0,
 			NULL, "Sec-WebSocket-Version", "13", h);
-		return;
+		return false;
 	}
 
 	TSESSION* session = NULL;
@@ -248,6 +288,8 @@ void WtgWebSocketGetHandler(WT* wt, SOCK* s, HTTP_HEADER* h, char* url_target)
 	WtgWebSocketAccept(wt, s, url_target, session, tunnel);
 
 	WtReleaseSession(session);
+
+	return true;
 }
 
 // Standalone Mode 初期化
@@ -1312,6 +1354,7 @@ bool WtgCheckDisconnect(TSESSION *s)
 	UINT i;
 	bool ret = false;
 	LIST *o = NULL;
+	UINT64 now = s->Tick;
 	// 引数チェック
 	if (s == NULL)
 	{
@@ -1329,9 +1372,29 @@ bool WtgCheckDisconnect(TSESSION *s)
 			t->ClientTcp->Disconnected = true;
 		}
 
-		if (WtIsTTcpDisconnected(s, t->ClientTcp))
+		bool disconnect_this_tunnel = false;
+
+		if (WtIsTTcpDisconnected(s, t, t->ClientTcp))
 		{
-			// クライアントとの接続が切断された
+			if (t->Gate_ClientSession_SwitchToWebSocketAcked && now < t->Gate_ClientSession_SwitchToWebSocket_Expires &&
+				t->ClientTcp->DisconnectSignalReceived == false)
+			{
+				// WebSocket 切替え中のセッションにおいては、WebSocket 切替えが完了していないトンネル
+				// であっても、有効期限が切れるまでは、トンネルが切断されたとみなさない。
+				// ただし、サーバー側から切断信号を受け取っている場合は、必ず、切断されたとみなす。
+			}
+			else
+			{
+				// クライアントとの接続が切断された
+				// (WebSocket 切替え中のセッションにおいて、WebSocket 切替え期限までに
+				//  WebSocket 接続がなされない場合もここが実行される)
+				disconnect_this_tunnel = true;
+			}
+		}
+
+		if (disconnect_this_tunnel)
+		{
+			// トンネル切断リストへの投入
 			if (o == NULL)
 			{
 				o = NewListFast(NULL);
@@ -1369,7 +1432,7 @@ bool WtgCheckDisconnect(TSESSION *s)
 		ReleaseList(o);
 	}
 
-	if (WtIsTTcpDisconnected(s, s->ServerTcp))
+	if (WtIsTTcpDisconnected(s, NULL, s->ServerTcp))
 	{
 		// サーバーとの接続が切断された
 		ret = true;
@@ -1379,7 +1442,8 @@ bool WtgCheckDisconnect(TSESSION *s)
 }
 
 // 指定された TCP コネクションが切断されているかどうかチェックする
-bool WtIsTTcpDisconnected(TSESSION *s, TTCP *ttcp)
+// tunnel の値は、ThinGate で、かつ Client との接続の場合のみ値が入っている
+bool WtIsTTcpDisconnected(TSESSION* s, TUNNEL* tunnel, TTCP* ttcp)
 {
 	// 引数チェック
 	if (ttcp == NULL || s == NULL)
@@ -1445,32 +1509,33 @@ void WtgSendToClient(TSESSION *s)
 		TTCP *ttcp = t->ClientTcp;
 		QUEUE *blockqueue = t->BlockQueue;
 
-		// 送信データの生成
-		WtMakeSendDataTTcp(s, ttcp, blockqueue, t);
+		bool only_keepalive = false;
+
+		if (t->WebSocket != NULL)
+		{
+			// WebSocket 切替え後のトンネルについては、WebSocket の側にデータを送信するため、
+			// WtMakeSendDataTTcp ではキューからデータを取り出さず KeepAlive 処理のみとする
+			only_keepalive = true;
+		}
+
+		// --- 通常ソケット ---
+
+		// 送信データの作成
+		WtMakeSendDataTTcp(s, ttcp, blockqueue, t, only_keepalive);
 
 		// 送信
 		WtSendTTcp(s, ttcp);
 
-		if (t->Gate_ClientSession_SwitchToWebSocketAcked)
+		if (t->WebSocket != NULL)
 		{
-			if (t->Gate_ClientSession_WebSocketSwitchStage1 == false)
-			{
-				if (ttcp->SendFifo->size == 0)
-				{
-					t->Gate_ClientSession_WebSocketSwitchStage1 = true;
-
-					// WebSocket への切替えステージ 1 完了 (WT_SPECIALOPCODE_S2C_SWITCHTOWEBSOCKET_ACK 信号
-					//                                    をクライアントに送付済み)
-					// そこで、Gate 内部で実際に切替え準備のための状態遷移を実行する
-				}
-			}
+			// --- Web Socket ---
 		}
 	}
 }
 
 // 送信データの生成
 // tunnel は、Gate --> Client の場合のみ値が入っている
-void WtMakeSendDataTTcp(TSESSION* s, TTCP* ttcp, QUEUE* blockqueue, TUNNEL* tunnel)
+void WtMakeSendDataTTcp(TSESSION* s, TTCP* ttcp, QUEUE* blockqueue, TUNNEL* tunnel, bool only_keepalive)
 {
 	DATABLOCK *block;
 	FIFO *fifo;
@@ -1501,7 +1566,7 @@ void WtMakeSendDataTTcp(TSESSION* s, TTCP* ttcp, QUEUE* blockqueue, TUNNEL* tunn
 		}
 		else
 		{
-			if (false)
+			if (true) // debugdebug
 			{
 				if (ttcp->CurrentBlockSize != 0)
 				{
@@ -1545,9 +1610,10 @@ void WtMakeSendDataTTcp(TSESSION* s, TTCP* ttcp, QUEUE* blockqueue, TUNNEL* tunn
 		{
 			tunnel->Gate_ClientSession_SwitchToWebSocketAcked = true;
 
+			// 切替え有効期限を開始
+			tunnel->Gate_ClientSession_SwitchToWebSocket_Expires = Tick64() + (UINT64)WT_WEBSOCK_SWITCH_EXPIRES;
+
 			// WebSocket への切替え処理のリクエストが来ていたので、切替え処理 OK である旨の応答を返す
-			// そして、これ以降は、server -> gate -> client 方向について、最初の ";" という文字までは送付
-			// するが、それ以降の送付は保留するようにするのである。
 			i = Endian32(WT_SPECIALOPCODE_S2C_SWITCHTOWEBSOCKET_ACK);
 
 			WriteFifo(fifo, &i, sizeof(UINT));
@@ -1573,26 +1639,44 @@ void WtgRecvFromServer(TSESSION *s)
 
 	ttcp = s->ServerTcp;
 
+	UINT min_remain_buf_size = 0x7FFFFFFF;
+
 	for (i = 0;i < LIST_NUM(s->TunnelList);i++)
 	{
 		TUNNEL *t = LIST_DATA(s->TunnelList, i);
 
-		max_fifo_size = MAX(max_fifo_size, FifoSize(t->ClientTcp->SendFifo));
+		UINT fifo_size_of_this_tunnel = FifoSize(t->ClientTcp->SendFifo);
+		UINT max_fifo_size_of_this_tunnel = WT_WINDOW_SIZE;
+
+		if (t->WebSocket != NULL)
+		{
+			fifo_size_of_this_tunnel = FifoSize(t->WebSocket->Wsp->PhysicalSendFifo);
+			max_fifo_size_of_this_tunnel = t->WebSocket->MaxBufferSize;
+		}
+
+		UINT remain_buf_size_of_this_tunnel = 0;
+		
+		if (max_fifo_size_of_this_tunnel > fifo_size_of_this_tunnel)
+		{
+			remain_buf_size_of_this_tunnel = max_fifo_size_of_this_tunnel - fifo_size_of_this_tunnel;
+		}
+		else
+		{
+			remain_buf_size_of_this_tunnel = 0;
+		}
+
+		min_remain_buf_size = MIN(min_remain_buf_size, remain_buf_size_of_this_tunnel);
 	}
 
-	if (WT_WINDOW_SIZE > max_fifo_size)
+	if (min_remain_buf_size > WT_WINDOW_SIZE)
 	{
-		remain_buf_size = WT_WINDOW_SIZE - max_fifo_size;
-	}
-	else
-	{
-		remain_buf_size = 0;
+		min_remain_buf_size = WT_WINDOW_SIZE;
 	}
 
 	// Debug("remain_buf_size: %u\n", remain_buf_size);
 
 	// TTCP からデータを受信
-	WtRecvTTcpEx(s, ttcp, remain_buf_size);
+	WtRecvTTcpEx(s, ttcp, min_remain_buf_size);
 
 	// 受信データを解釈
 	q = WtParseRecvTTcp(s, ttcp, NULL);
@@ -1603,15 +1687,81 @@ void WtgRecvFromServer(TSESSION *s)
 		UINT tunnel_id = block->TunnelId;
 		TUNNEL *t = WtgSearchTunnelById(s->TunnelList, tunnel_id);
 		QUEUE *dest_queue = NULL;
-		DATABLOCK *send_block;
+		DATABLOCK* send_block = NULL;
 		bool use_compress = false;
 
 		if (t != NULL)
 		{
-			// クライアントに対してデータを転送する
-			dest_queue = t->BlockQueue;
-			send_block = block;
-			use_compress = t->ClientTcp->UseCompress;
+			if (t->WebSocket == NULL)
+			{
+				// 通常ソケットを利用しているトンネル
+				// クライアントに対してデータを転送する
+				dest_queue = t->BlockQueue;
+				send_block = block;
+				use_compress = t->ClientTcp->UseCompress;
+			}
+			else
+			{
+				if (t->CurrentWebSocketFrame == NULL)
+				{
+					// CurrentWebSocketFrame のメモリは、ここで初めて確保する。
+					// (不要なトンネルの場合は確保せず、メモリを節約するため。)
+					// WtFreeTunnel でこのメモリは解放される。
+					t->CurrentWebSocketFrame = NewBuf();
+				}
+
+				// WebSocket 切替え後のトンネル。サーバーから受信したデータは Guacamole プロトコル
+				// に基づきカンマ ';' 区切りとなっている。そして、クライアント HTML5 Web ブラウザは
+				// カンマ ';' 区切りのデータ 1 つずつを WebSocket の 1 つずつのメッセージとしてしか受付けず
+				// このルールに反したデータが届くとプロトコルエラーを発生させてしまう。
+				// そこで、本コードは、サーバーから届いたブロックをストリームとして結合し、
+				// そのストリームをカンマ区切りに直して、WebSocket の 1 つずつのメッセージとして
+				// 再構成を行なうのである。
+				if (block->DataSize == 0)
+				{
+					// サーバーからこのクライアントに対する切断信号が届いた。WebSocket の場合は
+					// ここで処理をする。
+					t->ClientTcp->DisconnectSignalReceived = true; // 切断指令フラグさん
+				}
+				else
+				{
+					UCHAR* data = block->Data;
+					UINT size = block->DataSize;
+					UINT start = 0;
+					while (true)
+					{
+						UINT index = SearchBinChar(data, size, start, ';');
+						if (index == INFINITE)
+						{
+							WriteBuf(t->CurrentWebSocketFrame, data + start, size - start);
+							break;
+						}
+						else
+						{
+							// ';' で区切られた部分までの 1 つのフレームの受信が完了した
+							WriteBuf(t->CurrentWebSocketFrame, data + start, index - start);
+
+							// このデータをクライアントへのキューに入れる。
+							// データそのものは Buf のデータ領域を再利用しデータコピーの CPU 時間を減らす。
+							// メモリリークがないように十分注意して実装しているつもりである。
+
+							DATABLOCK* new_block = WtNewDataBlock(tunnel_id,
+								t->CurrentWebSocketFrame->Buf,
+								t->CurrentWebSocketFrame->Size,
+								0);
+
+							InsertQueue(t->BlockQueue, new_block);
+
+							FreeBufWithoutData(t->CurrentWebSocketFrame);
+							t->CurrentWebSocketFrame = NewBuf();
+
+							start = index + 1;
+						}
+					}
+				}
+
+				WtFreeDataBlock(block, false);
+			}
 		}
 		else
 		{
@@ -1710,11 +1860,9 @@ void WtgRecvFromClient(TSESSION *s)
 
 	for (i = 0;i < LIST_NUM(s->TunnelList);i++)
 	{
-		TTCP *ttcp;
 		TUNNEL *p = LIST_DATA(s->TunnelList, i);
-		QUEUE *q;
-
-		ttcp = p->ClientTcp;
+		TTCP* ttcp = p->ClientTcp;
+		WS* ws = p->WebSocket;
 
 		if (FifoSize(s->ServerTcp->SendFifo) > WT_WINDOW_SIZE)
 		{
@@ -1722,45 +1870,103 @@ void WtgRecvFromClient(TSESSION *s)
 			// クライアントからのデータを受信しない
 
 			// タイムアウト防止
-			ttcp->LastCommTime = s->Tick;
+			if (ttcp != NULL)
+			{
+				ttcp->LastCommTime = s->Tick;
+			}
+
+			if (ws != NULL)
+			{
+				ws->LastCommTime = s->Tick;
+			}
+
 			continue;
 		}
 
-		// TTCP からデータを受信
-		WtRecvTTcp(s, ttcp);
-
-		// 受信データを解釈
-		q = WtParseRecvTTcp(s, ttcp, p);
-
-		// 受信データをサーバーに転送
-		while ((block = GetNext(q)) != NULL)
+		if (ttcp != NULL)
 		{
-			if (block->DataSize != 0)
+			// 通常ソケット
+			QUEUE* q;
+
+			// TTCP からデータを受信
+			WtRecvTTcp(s, ttcp);
+
+			// 受信データを解釈
+			q = WtParseRecvTTcp(s, ttcp, p);
+
+			// 受信データをサーバーに転送
+			while ((block = GetNext(q)) != NULL)
 			{
-				UINT tunnel_id = p->TunnelId;
-				QUEUE *dest_queue;
-				DATABLOCK *send_block;
-				bool use_compress;
-
-				dest_queue = s->BlockQueue;
-				use_compress = s->ServerTcp->UseCompress;
-				send_block = WtRebuildDataBlock(block, use_compress ? 1 : 0);
-				block->TunnelId = p->TunnelId;
-
-				if (send_block != NULL)
+				if (block->DataSize != 0)
 				{
-					s->Stat_ClientToServerTraffic += send_block->DataSize;
-				}
+					if (p->Gate_ClientSession_SwitchToWebSocketAcked == false)
+					{
+						// 通常ケース: WebSocket への切替え前は普通に受信処理を実施
+						UINT tunnel_id = p->TunnelId;
+						QUEUE* dest_queue;
+						DATABLOCK* send_block;
+						bool use_compress;
 
-				InsertQueue(dest_queue, send_block);
+						dest_queue = s->BlockQueue;
+						use_compress = s->ServerTcp->UseCompress;
+						send_block = WtRebuildDataBlock(block, use_compress ? 1 : 0);
+
+						if (send_block != NULL)
+						{
+							s->Stat_ClientToServerTraffic += send_block->DataSize;
+							send_block->TunnelId = p->TunnelId;
+
+							InsertQueue(dest_queue, send_block);
+						}
+					}
+					else
+					{
+						// WebSocket への切替え申請後は受信処理をせず、すべての受信データは直ちに破棄する
+						// (本来、WebSocket への切り替え申請を行なったクライアントは、それ以降
+						//  データを送信してこないはずであるが、誤って送付してきた場合はここで破棄される)
+						WtFreeDataBlock(block, false);
+					}
+				}
+				else
+				{
+					// Keep Alive
+					WtFreeDataBlock(block, false);
+				}
 			}
-			else
-			{
-				WtFreeDataBlock(block, false);
-			}
+
+			ReleaseQueue(q);
 		}
 
-		ReleaseQueue(q);
+		if (ws != NULL)
+		{
+			// Web Socket からクライアントからのデータを受信 (WT プロトコルにおける最大フレームサイズごとに区切って受信する)
+			while (true)
+			{
+				UINT r = WsRecvAsync(ws, s->RecvBuf, MIN(RECV_BUF_SIZE, WT_MAX_BLOCK_SIZE), s->Tick);
+				if (r == 0)
+				{
+					// 切断された
+					break;
+				}
+				else if (r == INFINITE)
+				{
+					// これ以上受信データがない
+					break;
+				}
+				else
+				{
+					// 受信したデータをサーバーに転送
+					UINT tunnel_id = p->TunnelId;
+					QUEUE* dest_queue = s->BlockQueue;
+					DATABLOCK* send_block = WtNewDataBlock(tunnel_id, s->RecvBuf, r, 0);
+
+					s->Stat_ClientToServerTraffic += r;
+					send_block->TunnelId = p->TunnelId;
+
+					InsertQueue(dest_queue, send_block);
+				}
+			}
+		}
 	}
 }
 
@@ -1871,7 +2077,7 @@ READ_DATA_SIZE:
 			Copy(data, buf, ttcp->CurrentBlockSize);
 			ReadFifo(fifo, NULL, ttcp->CurrentBlockSize);
 
-			if (false)
+			if (true) // debugdebug
 			{
 				if (ttcp->CurrentBlockSize != 0)
 				{
@@ -2147,16 +2353,26 @@ void WtgWaitForSock(TSESSION *s)
 	Lock(s->Lock);
 	{
 		UINT i;
-		SOCK *sock = s->ServerTcp->Sock;
 
+		// サーバーとのソケット
+		SOCK *sock = s->ServerTcp->Sock;
 		JoinSockToSockEvent(sock, s->SockEvent);
 
+		// クライアントとの複数トンネルの各ソケット
 		for (i = 0;i < LIST_NUM(s->TunnelList);i++)
 		{
 			TUNNEL *p = LIST_DATA(s->TunnelList, i);
-			SOCK *sock = p->ClientTcp->Sock;
 
+			// 通常のソケット
+			SOCK *sock = p->ClientTcp->Sock;
 			JoinSockToSockEvent(sock, s->SockEvent);
+
+			// WebSocket
+			WS* websock = p->WebSocket;
+			if (websock != NULL)
+			{
+				JoinSockToSockEvent(websock->Sock, s->SockEvent);
+			}
 		}
 	}
 	Unlock(s->Lock);
@@ -2315,6 +2531,8 @@ void WtgAccept(WT *wt, SOCK *s)
 
 		// パラメータの取得
 		use_compress = PackGetBool(p, "use_compress");
+		use_compress = false; // 圧縮は強制無効化
+
 		request_initial_pack = PackGetBool(p, "request_initial_pack");
 		server_mask_64 = PackGetInt64(p, "server_mask_64");
 
@@ -2431,6 +2649,7 @@ void WtgAccept(WT *wt, SOCK *s)
 
 		// パラメータの取得
 		use_compress = PackGetBool(p, "use_compress");
+		use_compress = false; // 圧縮は強制無効化
 
 		Zero(session_id, sizeof(session_id));
 		PackGetData2(p, "session_id", session_id, sizeof(session_id));
@@ -2773,6 +2992,7 @@ void WtFreeTunnel(TUNNEL *t)
 	WtFreeTTcp(t->ClientTcp);
 	SockIoDisconnect(t->SockIo);
 	ReleaseSockIo(t->SockIo);
+	FreeBuf(t->CurrentWebSocketFrame);
 
 	Free(t);
 }
@@ -2987,9 +3207,14 @@ bool WtgDownloadSignature(WT* wt, SOCK* s, bool* check_ssl_ok, char* gate_secret
 		else if (StartWith(h->Target, "/websocket/"))
 		{
 			// WebSocket Mode
-			WtgWebSocketGetHandler(wt, s, h, h->Target);
+			bool ws_ok = WtgWebSocketGetHandler(wt, s, h, h->Target);
 
 			FreeHttpHeader(h);
+
+			if (ws_ok)
+			{
+				return false;
+			}
 
 			continue;
 		}

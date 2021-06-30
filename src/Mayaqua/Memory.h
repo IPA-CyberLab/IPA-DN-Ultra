@@ -309,6 +309,7 @@ void EndianUnicode(wchar_t *str);
 BUF *NewBuf();
 BUF *NewBufFromMemory(void *buf, UINT size);
 void ClearBuf(BUF *b);
+void ClearBufEx(BUF* b, bool init_buffer);
 void WriteBuf(BUF *b, void *buf, UINT size);
 void WriteBufBuf(BUF *b, BUF *bb);
 void WriteBufBufWithOffset(BUF *b, BUF *bb);
@@ -320,6 +321,7 @@ void SeekBuf(BUF *b, UINT offset, int mode);
 void SeekBufToEnd(BUF *b);
 void SeekBufToBegin(BUF *b);
 void FreeBuf(BUF *b);
+void FreeBufWithoutData(BUF* b);
 bool BufToFile(IO *o, BUF *b);
 BUF *FileToBuf(IO *o);
 UINT ReadBufInt(BUF *b);
@@ -466,6 +468,8 @@ LIST *NewStrMap();
 void *StrMapSearch(LIST *map, char *key);
 
 UINT SearchBin(void *data, UINT data_start, UINT data_size, void *key, UINT key_size);
+UINT SearchBinChar(void* data, UINT data_start, UINT data_size, UCHAR key_char);
+
 void CrashNow();
 UINT Power(UINT a, UINT b);
 
