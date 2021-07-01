@@ -2658,12 +2658,17 @@ void WtgAccept(WT *wt, SOCK *s)
 	s->SslAcceptSettings.Tls_Disable1_3 = Vars_ActivePatch_GetBool("WtGateDisableTls1_3");
 
 	// WebSocket 用証明書の取得
+	UINT num_certs_array_items = 0;
 	CERTS_AND_KEY* web_socket_certs = WideGetWebSocketCertsAndKey(wt->Wide);
-	web_socket_certs->DetermineUseCallback = WtgDetermineWebSocketSslCertUseCallback;
+	if (web_socket_certs != NULL)
+	{
+		web_socket_certs->DetermineUseCallback = WtgDetermineWebSocketSslCertUseCallback;
+		num_certs_array_items = 1;
+	}
 	CERTS_AND_KEY* web_socket_certs_array[1] = CLEAN;
 	web_socket_certs_array[0] = web_socket_certs;
 
-	if (StartSSLEx2(s, wt->GateCert, wt->GateKey, true, 0, NULL, web_socket_certs_array, 1, NULL) == false)
+	if (StartSSLEx2(s, wt->GateCert, wt->GateKey, true, 0, NULL, web_socket_certs_array, num_certs_array_items, NULL) == false)
 	{
 		Debug("StartSSL Failed.\n");
 
