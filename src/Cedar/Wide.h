@@ -146,6 +146,7 @@ struct SESSION_AND_CLIENT
 {
 	UCHAR SessionId[WT_SESSION_ID_SIZE];
 	UCHAR ClientId[SHA1_SIZE];
+	bool IsWebSocket;
 };
 
 // 前回セッション追加報告を送信してから何ミリ秒以内であれば次の報告を送信せずに

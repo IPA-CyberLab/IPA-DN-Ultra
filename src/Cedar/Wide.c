@@ -2849,6 +2849,7 @@ void WideGatePackSession(PACK *p, TSESSION *s, UINT i, UINT num, LIST *sc_list)
 
 				Copy(sc->SessionId, s->SessionId, sizeof(sc->SessionId));
 				Copy(sc->ClientId, t->ClientId, sizeof(sc->ClientId));
+				sc->IsWebSocket = (t->WebSocket != NULL);
 
 				Add(sc_list, sc);
 			}
@@ -3482,6 +3483,8 @@ void WideGateReportSessionList(WIDE *wide)
 
 			PackAddDataEx(p, "SC_SessionId", sc->SessionId, sizeof(sc->SessionId), i, num);
 			PackAddDataEx(p, "SC_ClientID", sc->ClientId, sizeof(sc->ClientId), i, num);
+
+			PackAddBoolEx(p, "SC_IsWebSocket", sc->IsWebSocket, i, num);
 
 			Free(sc);
 		}
