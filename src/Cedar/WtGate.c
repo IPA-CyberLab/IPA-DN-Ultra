@@ -1629,7 +1629,13 @@ void WtgSendToClient(TSESSION *s)
 			}
 
 			// 蓄積されたフレーム一覧を物理的に送信する。
-			WsTrySendAsync(t->WebSocket);
+			UINT total_sent_size = 0;
+			WsTrySendAsync(t->WebSocket, &total_sent_size);
+
+			if (total_sent_size >= 1)
+			{
+				s->StateChangedFlag = true;
+			}
 		}
 	}
 }

@@ -9131,7 +9131,7 @@ UINT WsSendAsync(WS *w, void *data, UINT size)
 
 	WriteFifo(w->Wsp->AppSendFifo, data, size);
 
-	if (WsTrySendAsync(w) == false)
+	if (WsTrySendAsync(w, NULL) == false)
 	{
 		ret = 0;
 	}
@@ -9150,9 +9150,15 @@ UINT WsSendAsync(WS *w, void *data, UINT size)
 }
 
 // WebSocket: Send buffered streams in async mode
-bool WsTrySendAsync(WS *w)
+bool WsTrySendAsync(WS* w, UINT* total_sent_size)
 {
+	static UINT _dummy = 0;
 	bool ret = false;
+	if (total_sent_size == NULL)
+	{
+		total_sent_size = &_dummy;
+	}
+	*total_sent_size = 0;
 	if (w == NULL)
 	{
 		return false;
@@ -9197,6 +9203,7 @@ bool WsTrySendAsync(WS *w)
 				}
 				else
 				{
+					(*total_sent_size) += r;
 					ReadFifo(w->Wsp->PhysicalSendFifo, NULL, r);
 				}
 			}
@@ -10318,7 +10325,7 @@ L_V4_RETRY:
 					}
 				}
 
-				if (WsTrySendAsync(w) == false)
+				if (WsTrySendAsync(w, NULL) == false)
 				{
 					has_error = true;
 				}

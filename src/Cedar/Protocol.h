@@ -374,7 +374,7 @@ bool WsRecvSyncAll(WS *w, void *data, UINT size);
 bool WsSendSync(WS *w, void *data, UINT size);
 UINT WsRecvAsync(WS *w, void *data, UINT size, UINT64 now);
 UINT WsSendAsync(WS *w, void *data, UINT size);
-bool WsTrySendAsync(WS *w);
+bool WsTrySendAsync(WS *w, UINT* total_sent_size);
 PACK *WsRecvPack(WS *w);
 bool WsSendPack(WS *w, PACK *p);
 PACK *WsNewErrorPack(UINT err);
