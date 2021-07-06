@@ -144,6 +144,8 @@
 #define ERR_DESK_AUTH_LOCKOUT			330		// 認証ロックアウト
 #define ERR_DESK_GUACD_START_ERROR		331		// Guacd 起動失敗
 #define ERR_DESK_GUACD_NOT_SUPPORTED_OS	332		// Guacd がサポートされていない OS
+#define	ERR_DESK_GUACD_PROHIBITED		333		// Guacd が禁止されている
+#define	ERR_DESK_GUACD_NOT_SUPPORTED_VER	334	// Guacd のバージョンが古い
 
 
 
