@@ -1266,6 +1266,7 @@
 #define C_CHECK_CERT3                   2550
 #define C_LIMITED_FW                    2550
 #define C_PUBLIC2                       2551
+#define C_NO_FQDN                       2551
 #define C_VER2                          2552
 #define B_DENY                          2553
 #define E_PCID                          2554

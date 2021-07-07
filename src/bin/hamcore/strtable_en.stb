@@ -4760,6 +4760,7 @@ B_BROWSE				&Browse...
 C_ADDPARAM				Specify &additional Command-Line Parameters
 S_PARAMS				&Parameters (&G):
 C_PUBLIC				With Versio&n 6.0 of mstsc.exe, Use /public Additional Command-Line Parameter to prevent caching password data
+C_NO_FQDN				Directly specify 127.0.0.1 instead of specifying a special FQDN name that internally indicates 127.0.0.1 when starting the remote screen (try turning it on when a name resolution error occurs)
 IDOK					&OK
 IDCANCEL				Cancel
 S_UX					User experience features aimed at improving telework

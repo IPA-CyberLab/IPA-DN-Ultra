@@ -239,6 +239,7 @@ struct DC
 	bool MstscUseShareComPort;			// COM ポートの共有機能を使用する
 	bool MstscUseShareAudioRec;			// マイク共用を使用する
 	bool MstscUseShareCamera;			// カメラ共有を使用する
+	bool MstscNoFqdn;					// mstsc で接続先にけったいな FQDN 名を使用せず 127.0.0.1 に直接接続する
 	bool DontShowFullScreenMessage;		// フルスクリーンメッセージを表示しない
 	LIST *Candidate;					// 候補
 	LIST *CandidateWoL;					// 候補 2 (WoL トリガー)

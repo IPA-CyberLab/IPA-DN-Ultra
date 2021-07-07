@@ -2544,6 +2544,8 @@ void DuOptionDlgInit(HWND hWnd, DU_OPTION *t)
 
 	Check(hWnd, C_PUBLIC, dc->MstscUsePublicSwitchForVer6);
 
+	Check(hWnd, C_NO_FQDN, dc->MstscNoFqdn);
+
 	Check(hWnd, C_CHECK_CERT, WideGetDontCheckCert(dc->Wide) ? false : true);
 
 	Check(hWnd, C_VER2, dc->EnableVersion2);
@@ -2709,6 +2711,8 @@ void DuOptionDlgOnOk(HWND hWnd, DU_OPTION *t)
 	}
 
 	dc->MstscUsePublicSwitchForVer6 = IsChecked(hWnd, C_PUBLIC);
+
+	dc->MstscNoFqdn = IsChecked(hWnd, C_NO_FQDN);
 
 	dc->DisableMultiDisplay = !IsChecked(hWnd, C_MULTIDISPLAY);
 

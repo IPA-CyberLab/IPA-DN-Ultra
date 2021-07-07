@@ -1749,6 +1749,7 @@ void DcLoadConfig(DC *dc, FOLDER *root)
 	dc->DontShowFullScreenMessage = CfgGetBool(root, "DontShow_FullScreenMessage");
 	dc->DisableMultiDisplay = CfgGetBool(root, "DisableMultiDisplay");
 	dc->DisableLimitedFw = CfgGetBool(root, "DisableLimitedFw");
+	dc->MstscNoFqdn = CfgGetBool(root, "MstscNoFqdn");
 
 	if (Vars_ActivePatch_GetBool("ThinTelework_EnforceStrongSecurity") == false)
 	{
@@ -1912,6 +1913,7 @@ void DcSaveConfig(DC *dc)
 	CfgAddBool(root, "EnableVersion2", dc->EnableVersion2);
 	CfgAddBool(root, "DisableMultiDisplay", dc->DisableMultiDisplay);
 	CfgAddBool(root, "DisableLimitedFw", dc->DisableLimitedFw);
+	CfgAddBool(root, "MstscNoFqdn", dc->MstscNoFqdn);
 
 	if (Vars_ActivePatch_GetBool("ThinTelework_EnforceStrongSecurity") == false)
 	{
@@ -2781,6 +2783,10 @@ UINT NewDcSession(DC *dc, char *pcid, DC_PASSWORD_CALLBACK *password_callback, D
 	s->EventCallback = event_callback;
 	s->InspectionCallback = inspect_callback;
 	DcGetBestHostnameForPcid(s->Hostname, sizeof(s->Hostname), pcid);
+	if (dc->MstscNoFqdn)
+	{
+		StrCpy(s->Hostname, sizeof(s->Hostname), "127.0.0.1");
+	}
 	StrCpy(s->Pcid, sizeof(s->Pcid), pcid);
 	Trim(s->Pcid);
 	s->Dc = dc;
