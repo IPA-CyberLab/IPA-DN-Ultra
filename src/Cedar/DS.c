@@ -2019,6 +2019,10 @@ void DsServerMain(DS *ds, SOCKIO *sock)
 	}
 
 	ds_caps = DsGetCaps(ds);
+
+	// Guacd Supported ver
+	ds_caps |= DS_CAPS_GUACD_SUPPORTED;
+
 	if (has_urdp2_client)
 	{
 		ds_caps |= DS_CAPS_SUPPORT_URDP2;
