@@ -1688,6 +1688,7 @@ void DsServerMain(DS *ds, SOCKIO *sock)
 	// 接続元クライアントの情報を取得する
 	Zero(client_host, sizeof(client_host));
 	Zero(client_id, sizeof(client_id));
+	bool is_trusted = PackGetBool(sock->InitialPack, "is_trusted");
 	PackGetIp(sock->InitialPack, "ClientIP", &client_ip);
 	client_port = PackGetInt(sock->InitialPack, "ClientPort");
 	PackGetStr(sock->InitialPack, "ClientHost", client_host, sizeof(client_host));
@@ -1696,7 +1697,16 @@ void DsServerMain(DS *ds, SOCKIO *sock)
 	BinToStr(client_id_str, sizeof(client_id_str), client_id, sizeof(client_id));
 	IPToStr(client_ip_str, sizeof(client_ip_str), &client_ip);
 
-	Format(logprefix, sizeof(logprefix), "%r:%u (%s) [%u/%s]", &client_ip, client_port, client_host, tunnel_id, client_id_str);
+	IP trusted_ip = CLEAN;
+	PackGetIp(sock->InitialPack, "TrustedIP", &trusted_ip);
+
+	char trusted_str[128] = CLEAN;
+	if (is_trusted)
+	{
+		Format(trusted_str, sizeof(trusted_str), " <via %r>", &trusted_ip);
+	}
+
+	Format(logprefix, sizeof(logprefix), "%r:%u (%s) [%u/%s]%s", &client_ip, client_port, client_host, tunnel_id, client_id_str, trusted_str);
 
 	DsDebugLog(ds, logprefix, "DsServerMain Start");
 

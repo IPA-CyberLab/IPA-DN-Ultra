@@ -2735,6 +2735,15 @@ void WtgAccept(WT *wt, SOCK *s)
 		tunnel_use_aggressive_timeout = wt->Wide->GateTunnelUseAggressiveTimeout;
 	}
 
+	bool is_trusted = PackGetBool(p, "is_trusted");
+	char trusted_real_client_ip[128] = CLEAN;
+	char trusted_real_client_fqdn[MAX_PATH] = CLEAN;
+	UINT trusted_real_client_port = PackGetInt(p, "trusted_real_client_port");
+	PackGetStr(p, "trusted_real_client_ip", trusted_real_client_ip, sizeof(trusted_real_client_ip));
+	PackGetStr(p, "trusted_real_client_fqdn", trusted_real_client_fqdn, sizeof(trusted_real_client_fqdn));
+
+	// TODO: trusted 判定セキュリティ
+
 	Debug("method: %s\n", method);
 	if (StrCmpi(method, "new_session") == 0)
 	{
@@ -2977,9 +2986,26 @@ void WtgAccept(WT *wt, SOCK *s)
 				BUF *b;
 				UCHAR *buffer;
 
-				PackAddIp(p, "ClientIP", &s->RemoteIP);
-				PackAddInt(p, "ClientPort", s->RemotePort);
-				PackAddStr(p, "ClientHost", s->RemoteHostname);
+				if (is_trusted == false)
+				{
+					PackAddIp(p, "ClientIP", &s->RemoteIP);
+					PackAddInt(p, "ClientPort", s->RemotePort);
+					PackAddStr(p, "ClientHost", s->RemoteHostname);
+				}
+				else
+				{
+					IP ip_tmp = CLEAN;
+					StrToIP(&ip_tmp, trusted_real_client_ip);
+					PackAddIp(p, "ClientIP", &ip_tmp);
+					PackAddInt(p, "ClientPort", trusted_real_client_port);
+					PackAddStr(p, "ClientHost", trusted_real_client_fqdn);
+					PackAddBool(p, "is_trusted", true);
+
+					PackAddIp(p, "TrustedIP", &s->RemoteIP);
+					PackAddInt(p, "TrustedPort", s->RemotePort);
+					PackAddStr(p, "TruestedHost", s->RemoteHostname);
+				}
+
 				PackAddIp(p, "GateIP", &s->LocalIP);
 				PackAddInt(p, "GatePort", s->LocalPort);
 				PackAddInt64(p, "ClientConnectedTime", SystemTime64());
