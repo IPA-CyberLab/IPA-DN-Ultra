@@ -324,6 +324,9 @@ struct DS_POLICY_BODY
 
 	bool IsLimitedFirewallMandated;
 
+	bool DenyClientsApp;
+	bool DenyClientsHtml5;
+
 	UINT AuthLockoutCount;
 	UINT AuthLockoutTimeout;
 	UINT IdleTimeout;

@@ -653,6 +653,15 @@ bool DsParsePolicyFile(DS_POLICY_BODY *b, BUF *buf)
 	b->IdleTimeout = IniIntValue(o, "IDLE_TIMEOUT");
 	b->EnableOcsp = IniIntValue(o, "ENABLE_OCSP");
 
+	b->DenyClientsApp = IniIntValue(o, "DENY_CLIENTS_APP");
+	b->DenyClientsHtml5 = IniIntValue(o, "DENY_CLIENTS_HTML5");
+
+	if (b->DenyClientsApp && b->DenyClientsHtml5)
+	{
+		b->DenyClientsApp = false;
+		b->DenyClientsHtml5 = false;
+	}
+
 	if (Vars_ActivePatch_GetBool("IsPublicVersion") == false)
 	{
 		// パブリック版以外では ENFORCE_LIMITED_FIREWALL を設定可能
@@ -1806,6 +1815,31 @@ void DsServerMain(DS *ds, SOCKIO *sock)
 			// Guacd がサポートされていない OS である
 			DsDebugLog(ds, logprefix, "Error: %s:%u", __FILE__, __LINE__);
 			DsSendError(sock, ERR_DESK_GUACD_NOT_SUPPORTED_OS);
+			FreePack(p);
+			return;
+		}
+
+		if (pol.DenyClientsHtml5)
+		{
+			// HTML5 クライアントによる接続を禁止している
+			DsDebugLog(ds, logprefix, "Error: %s:%u", __FILE__, __LINE__);
+			DsSendError(sock, ERR_DESK_GUACD_PROHIBITED);
+			FreePack(p);
+			return;
+		}
+	}
+	else
+	{
+		if (pol.DenyClientsApp)
+		{
+			// 通常版クライアントによる接続を禁止している
+			DsDebugLog(ds, logprefix, "Error: %s:%u", __FILE__, __LINE__);
+			UINT err_code = ERR_ACCESS_DENIED;
+			if (client_build >= 9885)
+			{
+				err_code = ERR_DESK_GUACD_CLIENT_REQUIRED;
+			}
+			DsSendError(sock, err_code);
 			FreePack(p);
 			return;
 		}

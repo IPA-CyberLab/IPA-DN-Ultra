@@ -146,6 +146,7 @@
 #define ERR_DESK_GUACD_NOT_SUPPORTED_OS	332		// Guacd がサポートされていない OS
 #define	ERR_DESK_GUACD_PROHIBITED		333		// Guacd が禁止されている
 #define	ERR_DESK_GUACD_NOT_SUPPORTED_VER	334	// Guacd のバージョンが古い
+#define ERR_DESK_GUACD_CLIENT_REQUIRED	335		// Guacd クライアントが必要である
 
 
 
