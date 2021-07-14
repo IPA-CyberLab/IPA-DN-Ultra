@@ -125,6 +125,8 @@
 // SERVER_ALLOWED_MAC_LIST_URL のファイルサイズ最大
 #define DS_POLICY_SERVER_ALLOWED_MAC_LIST_URL_MAX_SIZE	(1024 * 1024)
 
+// IDLE_TIMEOUT の最小値
+#define DS_POLICY_IDLE_TIMEOUT_MIN_SECS					300
 
 // ポリシーサーバー関係定数
 #define DS_POLICY_INDOMAIN_SERVER_NAME	"thin-telework-policy-server"

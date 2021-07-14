@@ -147,6 +147,7 @@
 #define	ERR_DESK_GUACD_PROHIBITED		333		// Guacd が禁止されている
 #define	ERR_DESK_GUACD_NOT_SUPPORTED_VER	334	// Guacd のバージョンが古い
 #define ERR_DESK_GUACD_CLIENT_REQUIRED	335		// Guacd クライアントが必要である
+#define ERR_DESK_GOVFW_HTML5_NO_SUPPORT	336		// 完全閉域化 FW が強制されているが HTML5 版でサポートされていない
 
 
 

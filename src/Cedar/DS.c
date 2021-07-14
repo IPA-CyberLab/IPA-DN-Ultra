@@ -653,6 +653,12 @@ bool DsParsePolicyFile(DS_POLICY_BODY *b, BUF *buf)
 	b->IdleTimeout = IniIntValue(o, "IDLE_TIMEOUT");
 	b->EnableOcsp = IniIntValue(o, "ENABLE_OCSP");
 
+	if (b->IdleTimeout != 0)
+	{
+		// IDLE_TIMEOUT の最小値を設定する
+		b->IdleTimeout = MAX(b->IdleTimeout, DS_POLICY_IDLE_TIMEOUT_MIN_SECS);
+	}
+
 	b->DenyClientsApp = IniIntValue(o, "DENY_CLIENTS_APP");
 	b->DenyClientsHtml5 = IniIntValue(o, "DENY_CLIENTS_HTML5");
 
