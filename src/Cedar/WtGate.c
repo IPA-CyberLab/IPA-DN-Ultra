@@ -2606,7 +2606,9 @@ bool WtgDetermineWebSocketSslCertUseCallback(char* sni_name, void* param)
 	}
 
 	return StartWith(sni_name, WIDE_WEBSOCKET_SNI_NAME_STARTWITH1) ||
-		StartWith(sni_name, WIDE_WEBSOCKET_SNI_NAME_STARTWITH2);
+		StartWith(sni_name, WIDE_WEBSOCKET_SNI_NAME_STARTWITH2) ||
+		InStr(sni_name, WIDE_WEBSOCKET_SNI_NAME_INSTR1) ||
+		InStr(sni_name, WIDE_WEBSOCKET_SNI_NAME_INSTR2);
 }
 
 // Gate による接続受付
@@ -3526,17 +3528,26 @@ bool WtgDownloadSignature(WT* wt, SOCK* s, bool* check_ssl_ok, char* gate_secret
 		{
 			// POST なのでデータを受信する
 			data_size = GetContentLength(h);
-			if ((data_size > MAX_WATERMARK_SIZE || data_size < SizeOfWaterMark()) && (data_size != StrLen(HTTP_WIDE_TARGET_POSTDATA)))
+			if (data_size > MAX_WATERMARK_SIZE || data_size < SizeOfWaterMark())
 			{
 				// データが大きすぎる
 				HttpSendForbidden(s, h->Target, NULL);
 				FreeHttpHeader(h);
 				return false;
 			}
-			data = Malloc(data_size);
+			// Watermark を受信する
+			data = ZeroMalloc(data_size);
 			if (RecvAll(s, data, data_size, s->SecureMode) == false)
 			{
 				// データ受信失敗
+				Free(data);
+				FreeHttpHeader(h);
+				return false;
+			}
+			// Watermark を確認する
+			if (Cmp(data, GetWaterMark(), SizeOfWaterMark()) != 0)
+			{
+				// Watermark 不正
 				Free(data);
 				FreeHttpHeader(h);
 				return false;
