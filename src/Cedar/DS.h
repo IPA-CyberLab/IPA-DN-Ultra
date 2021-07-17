@@ -439,12 +439,12 @@ void DsWin32GetRdpPolicy(DS_WIN32_RDP_POLICY* pol);
 bool DsWin32SetRdpPolicy(DS_WIN32_RDP_POLICY* pol);
 
 bool DsExtractGuacdToTempDir(DS *ds);
-DS_GUACD* DsStartGuacd(DS *ds);
+DS_GUACD* DsStartGuacd(DS *ds, UINT dn_flags);
 void DsKillAllZombineGuacdProcesses(DS* ds);
 void DsStopGuacd(DS* ds, DS_GUACD* g);
 void DsGetGuacdTempDirName(wchar_t* name, UINT size);
-void *DsStartGuacdOnSpecifiedPort(DS* ds, wchar_t* exe_path, UINT port, UINT *ret_process_id);
-void* DsStartGuacdOnRandomPort(DS* ds, wchar_t* exe_path, UINT port_min, UINT port_max, UINT num_try, UINT* ret_port, UINT *ret_process_id);
+void *DsStartGuacdOnSpecifiedPort(DS* ds, wchar_t* exe_path, UINT port, UINT *ret_process_id, UINT dn_flags);
+void* DsStartGuacdOnRandomPort(DS* ds, wchar_t* exe_path, UINT port_min, UINT port_max, UINT num_try, UINT* ret_port, UINT *ret_process_id, UINT dn_flags);
 bool DsIsGuacdSupported(DS *ds);
 
 

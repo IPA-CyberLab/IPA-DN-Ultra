@@ -93,7 +93,7 @@
 #endif // _WIN32
 
 // Guacd の開始
-DS_GUACD* DsStartGuacd(DS* ds)
+DS_GUACD* DsStartGuacd(DS* ds, UINT dn_flags)
 {
 #ifndef OS_WIN32
 	return NULL;
@@ -120,7 +120,7 @@ DS_GUACD* DsStartGuacd(DS* ds)
 
 	UINT port = 0;
 	UINT process_id = 0;
-	void *handle = DsStartGuacdOnRandomPort(ds, exe_path, DS_GUACD_RAND_PORT_MIN, DS_GUACD_RAND_PORT_MAX, DS_GUACD_RAND_PORT_NUM_TRY, &port, &process_id);
+	void *handle = DsStartGuacdOnRandomPort(ds, exe_path, DS_GUACD_RAND_PORT_MIN, DS_GUACD_RAND_PORT_MAX, DS_GUACD_RAND_PORT_NUM_TRY, &port, &process_id, dn_flags);
 	if (handle == NULL)
 	{
 		DsDebugLog(ds, "DsStartGuacd", "DsStartGuacdOnRandomPort failed.");
@@ -191,7 +191,7 @@ void DsStopGuacd(DS* ds, DS_GUACD* g)
 }
 
 // Guacd をランダムポートで起動
-void* DsStartGuacdOnRandomPort(DS* ds, wchar_t* exe_path, UINT port_min, UINT port_max, UINT num_try, UINT* ret_port, UINT* ret_process_id)
+void* DsStartGuacdOnRandomPort(DS* ds, wchar_t* exe_path, UINT port_min, UINT port_max, UINT num_try, UINT* ret_port, UINT* ret_process_id, UINT dn_flags)
 {
 #ifndef OS_WIN32
 	return NULL;
@@ -216,7 +216,7 @@ void* DsStartGuacdOnRandomPort(DS* ds, wchar_t* exe_path, UINT port_min, UINT po
 		}
 
 		// このポートで起動して Listen 状態になるかどうか試す
-		void* handle = DsStartGuacdOnSpecifiedPort(ds, exe_path, port, ret_process_id);
+		void* handle = DsStartGuacdOnSpecifiedPort(ds, exe_path, port, ret_process_id, dn_flags);
 		if (handle != NULL)
 		{
 			// 起動成功
@@ -235,7 +235,7 @@ void* DsStartGuacdOnRandomPort(DS* ds, wchar_t* exe_path, UINT port_min, UINT po
 }
 
 // Guacd を指定したポートで起動
-void* DsStartGuacdOnSpecifiedPort(DS* ds, wchar_t* exe_path, UINT port, UINT* ret_process_id)
+void* DsStartGuacdOnSpecifiedPort(DS* ds, wchar_t* exe_path, UINT port, UINT* ret_process_id, UINT dn_flags)
 {
 #ifndef OS_WIN32
 	return NULL;
@@ -249,7 +249,7 @@ void* DsStartGuacdOnSpecifiedPort(DS* ds, wchar_t* exe_path, UINT port, UINT* re
 	GetDirNameFromFilePathW(dir, sizeof(dir), exe_path);
 
 	wchar_t args[MAX_PATH] = CLEAN;
-	UniFormat(args, sizeof(args), L"-f -b 127.0.0.1 -l %u", port);
+	UniFormat(args, sizeof(args), L"-f -b 127.0.0.1 -l %u -d %u", port, dn_flags);
 
 	// 起動を してみます
 	UINT process_id = 0;
@@ -1621,6 +1621,7 @@ void DsServerMain(DS *ds, SOCKIO *sock)
 	bool support_inspect = false;
 	bool support_watermark = false;
 	bool guacd_mode = false;
+	int guacd_flags = 0;
 	UINT ds_caps = 0;
 	UINT urdp_version = 0;
 	DS_POLICY_BODY pol = {0};
@@ -1758,6 +1759,7 @@ void DsServerMain(DS *ds, SOCKIO *sock)
 
 	support_watermark = PackGetBool(p, "SupportWatermark");
 	guacd_mode = PackGetBool(p, "GuacdMode");
+	guacd_flags = PackGetInt(p, "GuacdFlags");
 	if (guacd_mode)
 	{
 		check_port = true;
@@ -3114,7 +3116,7 @@ void DsServerMain(DS *ds, SOCKIO *sock)
 	if (guacd_mode)
 	{
 		// Guacd に接続するモードの場合、Guacd プロセスを開始する
-		guacd = DsStartGuacd(ds);
+		guacd = DsStartGuacd(ds, guacd_flags);
 		if (guacd == NULL)
 		{
 			// 開始失敗
