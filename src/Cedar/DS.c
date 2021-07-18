@@ -343,6 +343,7 @@ void* DsStartGuacdOnSpecifiedPort(DS* ds, wchar_t* exe_path, UINT port, UINT* re
 // Guacd 用 Temp ディレクトリ名を取得
 void DsGetGuacdTempDirName(wchar_t* name, UINT size)
 {
+#ifdef OS_WIN32
 	if (name == NULL) return;
 
 	wchar_t *win_tmp_dir = MsGetTempDirW();
@@ -352,6 +353,9 @@ void DsGetGuacdTempDirName(wchar_t* name, UINT size)
 
 	CombinePathW(name, size, win_tmp_dir, L"ThinTelework_" APP_ID_PREFIX_UNICODE L"_Guacd");
 	CombinePathW(name, size, name, build_number_str);
+#else	// OS_WIN32
+	UniStrCpy(name, size, L"");
+#endif // OS_WIN32
 }
 
 // Guacd を Temp ディレクトリに展開する
