@@ -170,6 +170,9 @@ struct TSESSION
 	UINT64 Stat_ServerToClientTraffic;
 	UINT64 Stat_ClientToServerTraffic;
 	char WebSocketToken1[128];			// WebSocket トークン #1
+	IP LocalIp;
+	wchar_t LocalHostname[128];
+	char LocalVersion[128];
 
 	// Server 用
 	WT *wt;
@@ -239,7 +242,8 @@ bool WtgSendError(SOCK *s, UINT code);
 bool WtgDownloadSignature(WT* wt,SOCK *s, bool* check_ssl_ok, char *gate_secret_key, char *entrance_url_for_proxy, LIST* entrance_url_list_for_proxy);
 bool WtgUploadHello(WT *wt, SOCK *s, void *session_id);
 int WtgCompareSession(void *p1, void *p2);
-TSESSION *WtgNewSession(WT *wt, SOCK *sock, char *msid, void *session_id, bool use_compress, bool request_initial_pack, UINT tunnel_timeout, UINT tunnel_keepalive, bool tunnel_use_aggressive_timeout);
+TSESSION *WtgNewSession(WT *wt, SOCK *sock, char *msid, void *session_id, bool use_compress, bool request_initial_pack, UINT tunnel_timeout, UINT tunnel_keepalive, bool tunnel_use_aggressive_timeout,
+	IP *local_ip, wchar_t *local_hostname, char *local_version);
 void WtReleaseSession(TSESSION *s);
 void WtCleanupSession(TSESSION *s);
 TTCP *WtNewTTcp(SOCK *s, bool use_compress, UINT tunnel_timeout, UINT tunnel_keepalive, bool tunnel_use_aggressive_timeout);

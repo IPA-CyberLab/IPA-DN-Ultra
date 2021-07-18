@@ -481,6 +481,14 @@ L_PROXY_RETRY_WITH_ALTERNATIVE_FQDN:
 	PackAddInt(p, "build", build);
 	PackAddStr(p, "name_suite", DESK_PRODUCT_NAME_SUITE);
 	PackAddBool(p, "support_timeout_param", true);
+	char ver_str[128] = CLEAN;
+	Format(ver_str, sizeof(ver_str), "Ver=%u,Build=%u,Release=%s,CommitId=%s,Suite=%s", CEDAR_VER, CEDAR_BUILD, ULTRA_VER_LABEL, ULTRA_COMMIT_ID, DESK_PRODUCT_NAME_SUITE);
+	PackAddStr(p, "local_version", ver_str);
+	PackAddIp(p, "local_ip", &s->LocalIP);
+	wchar_t computer_name[128] = CLEAN;
+#ifdef OS_WIN32
+	MsGetComputerNameFullEx(computer_name, sizeof(computer_name), true);
+#endif // OS_WIN32
 	if (wt->Wide != NULL)
 	{
 		PackAddInt(p, "se_lang", wt->Wide->SeLang);

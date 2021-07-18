@@ -375,7 +375,7 @@ void WtsRecvFromGate(TSESSION *s)
 			if (WtIsTunnelIdExistsInUsedTunnelIdList(s->UsedTunnelList, tunnel_id))
 			{
 				WtSessionLog(s, "WtIsTunnelIdExistsInUsedTunnelIdList hit. tunnel_id = %u", tunnel_id);
-				// TODO: 最近切断されてから一定時間が経過していないトンネル ID 宛
+				// 最近切断されてから一定時間が経過していないトンネル ID 宛
 				// の通信が来たので切断指令を返信する
 				if (last_tid1 != tunnel_id)
 				{
@@ -666,6 +666,15 @@ void WtsConnectInner(TSESSION *session, SOCK *s, char *sni, bool *should_retry_p
 	PackAddInt(p, "build", CEDAR_BUILD);
 	PackAddInt(p, "ver", CEDAR_VER);
 	PackAddStr(p, "name_suite", DESK_PRODUCT_NAME_SUITE);
+	char ver_str[128] = CLEAN;
+	Format(ver_str, sizeof(ver_str), "Ver=%u,Build=%u,Release=%s,CommitId=%s,AppId=%s", CEDAR_VER, CEDAR_BUILD, ULTRA_VER_LABEL, ULTRA_COMMIT_ID, APP_ID_PREFIX);
+	PackAddStr(p, "local_version", ver_str);
+	PackAddIp(p, "local_ip", &s->LocalIP);
+	wchar_t computer_name[128] = CLEAN;
+#ifdef OS_WIN32
+	MsGetComputerNameFullEx(computer_name, sizeof(computer_name), true);
+#endif // OS_WIN32
+	PackAddUniStr(p, "local_hostname", computer_name);
 	if (wt->Wide != NULL)
 	{
 		PackAddInt(p, "se_lang", wt->Wide->SeLang);

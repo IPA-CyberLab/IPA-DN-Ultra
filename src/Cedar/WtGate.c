@@ -2744,7 +2744,41 @@ void WtgAccept(WT *wt, SOCK *s)
 	PackGetStr(p, "trusted_real_client_ip", trusted_real_client_ip, sizeof(trusted_real_client_ip));
 	PackGetStr(p, "trusted_real_client_fqdn", trusted_real_client_fqdn, sizeof(trusted_real_client_fqdn));
 
-	// TODO: trusted 判定セキュリティ
+	// trusted 情報の認証
+	if (is_trusted)
+	{
+		bool ok = false;
+		char tmp[512] = CLEAN;
+		char sha1[SHA1_SIZE] = CLEAN;
+		char sha1_received[SHA1_SIZE] = CLEAN;
+		Format(tmp, sizeof(tmp), "%s/%s/%u/%s", trusted_real_client_ip, trusted_real_client_fqdn, trusted_real_client_port, wt->Wide->ControllerGateSecretKey);
+		HashSha1(sha1, tmp, StrLen(tmp));
+
+		if (PackGetData2(p, "trusted_auth_sha1", sha1_received, SHA1_SIZE))
+		{
+			if (Cmp(sha1_received, sha1, SHA1_SIZE) == 0)
+			{
+				ok = true;
+			}
+		}
+
+		if (ok == false)
+		{
+			// 認証失敗
+			FreePack(p);
+			WtgSendError(s, ERR_DESK_SECRET_KEY_INVALID);
+			return;
+		}
+	}
+
+	IP local_ip = CLEAN;
+	PackGetIp(p, "local_ip", &local_ip);
+
+	wchar_t local_hostname[128] = CLEAN;
+	PackGetUniStr(p, "local_hostname", local_hostname, sizeof(local_hostname));
+
+	char local_version[128] = CLEAN;
+	PackGetStr(p, "local_version", local_version, sizeof(local_version));
 
 	Debug("method: %s\n", method);
 	if (StrCmpi(method, "new_session") == 0)
@@ -2820,7 +2854,8 @@ void WtgAccept(WT *wt, SOCK *s)
 			if (exists == false)
 			{
 				// セッションの作成
-				TSESSION *sess = WtgNewSession(wt, s, param.Msid, session_id, use_compress, request_initial_pack, tunnel_timeout, tunnel_keepalive, tunnel_use_aggressive_timeout);
+				TSESSION *sess = WtgNewSession(wt, s, param.Msid, session_id, use_compress, request_initial_pack, tunnel_timeout, tunnel_keepalive, tunnel_use_aggressive_timeout,
+					&local_ip, local_hostname, local_version);
 
 				sess->ServerMask64 = server_mask_64;
 
@@ -3116,7 +3151,8 @@ TUNNEL* WtNewTunnel(TTCP* client_tcp, UINT tunnel_id, SOCKIO* sockio, char* webs
 }
 
 // Gate 上のセッションの作成
-TSESSION *WtgNewSession(WT *wt, SOCK *sock, char *msid, void *session_id, bool use_compress, bool request_initial_pack, UINT tunnel_timeout, UINT tunnel_keepalive, bool tunnel_use_aggressive_timeout)
+TSESSION* WtgNewSession(WT* wt, SOCK* sock, char* msid, void* session_id, bool use_compress, bool request_initial_pack, UINT tunnel_timeout, UINT tunnel_keepalive, bool tunnel_use_aggressive_timeout,
+	IP* local_ip, wchar_t* local_hostname, char* local_version)
 {
 	TSESSION *s;
 	// 引数チェック
@@ -3141,6 +3177,10 @@ TSESSION *WtgNewSession(WT *wt, SOCK *sock, char *msid, void *session_id, bool u
 	s->UsedTunnelList = WtNewUsedTunnelIdList();
 	s->RequestInitialPack = request_initial_pack;
 	s->wt = wt;
+
+	CopyIP(&s->LocalIp, local_ip);
+	UniStrCpy(s->LocalHostname, sizeof(s->LocalHostname), local_hostname);
+	StrCpy(s->LocalVersion, sizeof(s->LocalVersion), local_version);
 
 	UCHAR rand[SHA1_SIZE] = CLEAN;
 	Rand(rand, sizeof(rand));

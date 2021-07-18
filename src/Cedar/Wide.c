@@ -2836,6 +2836,10 @@ void WideGatePackSession(PACK *p, TSESSION *s, UINT i, UINT num, LIST *sc_list)
 
 	PackAddInt64Ex(p, "ServerMask64", s->ServerMask64, i, num);
 
+	PackAddStrEx(p, "LocalVersion", s->LocalVersion, i, num);
+	PackAddUniStrEx(p, "LocalHostname", s->LocalHostname, i, num);
+	PackAddIpEx(p, "LocalIp", &s->LocalIp, i, num);
+
 	if (sc_list != NULL)
 	{
 		Lock(s->Lock);
@@ -3489,7 +3493,7 @@ void WideGateReportSessionList(WIDE *wide)
 			Free(sc);
 		}
 		ReleaseList(sc_list);
-
+		
 		ret = WtWpcCallWithCertAndKey(wt, "ReportSessionList", p, wide->GateCert, wide->GateKey, global_ip_only, false);
 
 		if (ret != NULL)
