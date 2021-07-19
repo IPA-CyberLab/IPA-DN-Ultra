@@ -96,7 +96,7 @@ struct RPC_DS_STATUS
 	bool SupportEventLog;
 	UINT NumConfigures;
 	UINT NumAdvancedUsers;
-	char GateIP[64];
+	char GateIP[256];
 	bool MsgForServerArrived;			// 新しいメッセージが WideController から届いている
 	wchar_t MsgForServer[MAX_SIZE];		// 届いているメッセージ
 	wchar_t MsgForServer2[MAX_SIZE * 2];	// 届いているメッセージ (ポリシー関係)

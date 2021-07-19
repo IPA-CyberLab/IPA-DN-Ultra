@@ -99,12 +99,18 @@ void WtsSessionMain(TSESSION *s)
 	// 現在の接続先 Gate の情報を取得
 	if (s->Sock != NULL)
 	{
-		IPToStr(s->wt->CurrentGateIp, sizeof(s->wt->CurrentGateIp), &s->Sock->RemoteIP);
+		char tmp[256] = CLEAN;
+
+		Format(tmp, sizeof(tmp), "%s: [%r]:%u", (IsIP6(&s->Sock->RemoteIP) ? "IPv6" : "IPv4") , &s->Sock->RemoteIP, s->Sock->RemotePort);
 
 		if (s->ConnectParam != NULL)
 		{
-			StrCpy(s->wt->CurrentGateIp, sizeof(s->wt->CurrentGateIp), s->ConnectParam->HostName);
+			StrCat(tmp, sizeof(tmp), " (");
+			StrCat(tmp, sizeof(tmp), s->ConnectParam->HostName);
+			StrCat(tmp, sizeof(tmp), ")");
 		}
+
+		StrCpy(s->wt->CurrentGateIp, sizeof(s->wt->CurrentGateIp), tmp);
 
 		WtSessionLog(s, "s->wt->CurrentGateIp = %s", s->wt->CurrentGateIp);
 	}
