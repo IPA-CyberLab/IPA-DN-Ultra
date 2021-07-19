@@ -129,20 +129,22 @@ struct DC_SESSION
 {
 	REF *Ref;							// 参照カウンタ
 	void *Param;						// パラメータ
-	UINT ListenPort;					// Listen しているポート番号
-	SOCK *Listener;						// リスナー
+	SOCK *ListenerIPv4;					// リスナー (IPv4)
+	SOCK* ListenerIPv6;					// リスナー (IPv6)
 	DC_PASSWORD_CALLBACK *PasswordCallback;	// パスワードコールバック
 	DC_OTP_CALLBACK *OtpCallback;		// OTP コールバック
 	DC_INSPECT_CALLBACK *InspectionCallback;	// 検疫コールバック
 	DC_ADVAUTH_CALLBACK *AdvAuthCallback;	// 新しい認証方法のコールバック
 	DC_EVENT_CALLBACK *EventCallback;	// イベントコールバック
-	char Hostname[MAX_PATH];			// 接続先ホスト名
+	char HostnameIPv4[MAX_PATH];		// 接続先ホスト名 (IPv4 用)
+	char HostnameIPv6[MAX_PATH];		// 接続先ホスト名 (IPv6 用)
 	char Pcid[WT_PCID_SIZE];			// PCID
 	DC *Dc;								// DC
 	UINT ServiceType;					// サービスタイプ
 	char CachedPassword[MAX_SIZE];		// キャッシュされたパスワード
 	DC_AUTH CachedAuthData;				// キャッシュされた拡張認証データ
-	THREAD *ListenThread;				// Listen スレッド
+	THREAD *ListenThreadIPv4;			// Listen スレッド (IPv4)
+	THREAD* ListenThreadIPv6;			// Listen スレッド (IPv6)
 	bool HaltListenThread;				// 停止フラグ
 	THREAD *ConnectThread;				// Connect スレッド
 	bool HaltConnectThread;				// Connect スレッドの停止
@@ -268,9 +270,9 @@ UINT NewDcSession(DC *dc, char *pcid, DC_PASSWORD_CALLBACK *password_callback, D
 UINT DcSessionConnect(DC_SESSION *s);
 void ReleaseDcSession(DC_SESSION *s);
 void CleanupDcSession(DC_SESSION *s);
-SOCK *DcListen();
-void DcGenerateHostname(char *hostname, UINT hostname_size, char *pcid);
-void DcGetBestHostnameForPcid(char *hostname, UINT hostname_size, char *pcid);
+SOCK *DcListen(bool ipv6);
+void DcGenerateHostname(char *hostname, UINT hostname_size, char *pcid, bool ipv6);
+void DcGetBestHostnameForPcid(char *hostname, UINT hostname_size, char *pcid, bool ipv6);
 bool DcSessionConnectAuthCallback1(DC *dc, DC_AUTH *auth, void *param);
 bool DcSessionConnectAuthCallback2(DC *dc, DC_AUTH *auth, void *param);
 bool DcSessionConnectOtpCallback1(DC *dc, char *otp, UINT otp_max_size, void *param);

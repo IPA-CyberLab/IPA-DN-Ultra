@@ -1108,7 +1108,7 @@ UINT DcGetUrdpClientArguments(DC_SESSION *s, char *arg, UINT arg_size, bool disa
 
 	if (version == 2)
 	{
-		Format(arg, arg_size, "%s::%u", s->Hostname, s->ListenPort);
+		Format(arg, arg_size, "%s::%u", s->HostnameIPv4, s->ListenerIPv4->LocalPort);
 
 		if (s->Dc->MstscUseShareClipboard == false || disable_share)
 		{
@@ -1124,11 +1124,11 @@ UINT DcGetUrdpClientArguments(DC_SESSION *s, char *arg, UINT arg_size, bool disa
 	{
 		if (/*disable_share == false && */s->Dc->MstscUseShareClipboard)
 		{
-			Format(arg, arg_size, "ServerCutText=1 ClientCutText=1 %s:%u", s->Hostname, s->ListenPort);
+			Format(arg, arg_size, "ServerCutText=1 ClientCutText=1 %s:%u", s->HostnameIPv4, s->ListenerIPv4->LocalPort);
 		}
 		else
 		{
-			Format(arg, arg_size, "ServerCutText=0 ClientCutText=0 %s:%u", s->Hostname, s->ListenPort);
+			Format(arg, arg_size, "ServerCutText=0 ClientCutText=0 %s:%u", s->HostnameIPv4, s->ListenerIPv4->LocalPort);
 		}
 	}
 
@@ -1156,7 +1156,14 @@ UINT DcGetMstscArguments(DC_SESSION *s, wchar_t *mstsc_exe, char *arg, UINT arg_
 		return ERR_DESK_FILE_IS_NOT_MSTSC;
 	}
 
-	Format(tmp, sizeof(tmp), "/v:%s:%u", s->Hostname, s->ListenPort);
+	if (IsFilledStr(s->HostnameIPv6))
+	{
+		Format(tmp, sizeof(tmp), "/v:%s:%u", s->HostnameIPv6, s->ListenerIPv6->LocalPort);
+	}
+	else
+	{
+		Format(tmp, sizeof(tmp), "/v:%s:%u", s->HostnameIPv4, s->ListenerIPv4->LocalPort);
+	}
 
 	if (IsEmptyStr(dc->MstscParams) == false)
 	{
@@ -2210,10 +2217,13 @@ void CleanupDcSession(DC_SESSION *s)
 
 	// Listen スレッドの停止
 	s->HaltListenThread = true;
-	Disconnect(s->Listener);
+	Disconnect(s->ListenerIPv4);
+	Disconnect(s->ListenerIPv6);
 	Set(s->EventForListenThread);
-	WaitThread(s->ListenThread, INFINITE);
-	ReleaseThread(s->ListenThread);
+	WaitThread(s->ListenThreadIPv4, INFINITE);
+	ReleaseThread(s->ListenThreadIPv4);
+	WaitThread(s->ListenThreadIPv6, INFINITE);
+	ReleaseThread(s->ListenThreadIPv6);
 
 	// ソケットスレッドリストの解放
 	FreeSockThreadList(s->SockThreadList);
@@ -2229,7 +2239,8 @@ void CleanupDcSession(DC_SESSION *s)
 	ReleaseEvent(s->EventForConnectThread);
 	ReleaseEvent(s->EventForListenThread);
 
-	ReleaseSock(s->Listener);
+	ReleaseSock(s->ListenerIPv4);
+	ReleaseSock(s->ListenerIPv6);
 
 	Free(s);
 }
@@ -2272,7 +2283,8 @@ void DcListenedSockThread(THREAD *thread, void *param)
 		{
 			// タイムアウトまたはキャンセル
 			s->HaltListenThread = true;
-			Disconnect(s->Listener);
+			Disconnect(s->ListenerIPv4);
+			Disconnect(s->ListenerIPv6);
 			break;
 		}
 
@@ -2376,14 +2388,29 @@ void DcListenedSockThread(THREAD *thread, void *param)
 	DelSockThread(s->SockThreadList, sock);
 }
 
-// Listen スレッド
+typedef struct DC_LISTEN_THREAD_PARAM
+{
+	DC_SESSION* Session;
+	bool IsIPv6;
+} DC_LISTEN_THREAD_PARAM;
+
+// Listen スレッド (IPv4 / IPv6 共通)
 void DcListenThread(THREAD *thread, void *param)
 {
-	DC_SESSION *s = (DC_SESSION *)param;
 	// 引数チェック
 	if (thread == NULL || param == NULL)
 	{
 		return;
+	}
+
+	DC_LISTEN_THREAD_PARAM* tp = (DC_LISTEN_THREAD_PARAM*)param;
+	DC_SESSION* s = tp->Session;
+
+	SOCK* listener = tp->IsIPv6 ? s->ListenerIPv6 : s->ListenerIPv4;
+
+	if (listener == NULL)
+	{
+		goto L_CLEANUP;
 	}
 
 	while (true)
@@ -2396,7 +2423,7 @@ void DcListenThread(THREAD *thread, void *param)
 		}
 
 		// 新しいコネクションを受け入れる
-		a = Accept(s->Listener);
+		a = Accept(listener);
 
 		if (a == NULL || s->HaltConnectThread)
 		{
@@ -2423,6 +2450,9 @@ void DcListenThread(THREAD *thread, void *param)
 
 	// Connect スレッドも停止させる
 	s->HaltConnectThread = true;
+
+L_CLEANUP:
+	Free(tp);
 }
 
 // Connect スレッド
@@ -2757,7 +2787,7 @@ UINT NewDcSession(DC *dc, char *pcid, DC_PASSWORD_CALLBACK *password_callback, D
 				  void *param, DC_SESSION **session)
 {
 	DC_SESSION *s;
-	SOCK *listener;
+	SOCK* listener_v4 = NULL;
 	// 引数チェック
 	if (dc == NULL || pcid == NULL || password_callback == NULL || event_callback == NULL || session == NULL)
 	{
@@ -2765,9 +2795,10 @@ UINT NewDcSession(DC *dc, char *pcid, DC_PASSWORD_CALLBACK *password_callback, D
 	}
 
 	// ポートを開く
-	listener = DcListen();
-	if (listener == NULL)
+	listener_v4 = DcListen(false);
+	if (listener_v4 == NULL)
 	{
+		// IPv4 のポート開くのに失敗した
 		return ERR_DESK_LISTENER_OPEN_FAILED;
 	}
 
@@ -2775,17 +2806,26 @@ UINT NewDcSession(DC *dc, char *pcid, DC_PASSWORD_CALLBACK *password_callback, D
 	s = ZeroMalloc(sizeof(DC_SESSION));
 	s->Ref = NewRef();
 	s->Param = param;
-	s->Listener = listener;
-	s->ListenPort = listener->LocalPort;
+	s->ListenerIPv4 = listener_v4;
+	s->ListenerIPv6 = DcListen(true); // IPv6 も開く
 	s->PasswordCallback = password_callback;
 	s->OtpCallback = otp_callback;
 	s->AdvAuthCallback = advauth_callback;
 	s->EventCallback = event_callback;
 	s->InspectionCallback = inspect_callback;
-	DcGetBestHostnameForPcid(s->Hostname, sizeof(s->Hostname), pcid);
 	if (dc->MstscNoFqdn)
 	{
-		StrCpy(s->Hostname, sizeof(s->Hostname), "127.0.0.1");
+		// IPv4 固定 localhost
+		StrCpy(s->HostnameIPv4, sizeof(s->HostnameIPv4), "127.0.0.1");
+	}
+	else
+	{
+		// かっこいい FQDN 名
+		DcGetBestHostnameForPcid(s->HostnameIPv4, sizeof(s->HostnameIPv4), pcid, false);
+		if (s->ListenerIPv6 != NULL)
+		{
+			DcGetBestHostnameForPcid(s->HostnameIPv6, sizeof(s->HostnameIPv6), pcid, true);
+		}
 	}
 	StrCpy(s->Pcid, sizeof(s->Pcid), pcid);
 	Trim(s->Pcid);
@@ -2795,8 +2835,20 @@ UINT NewDcSession(DC *dc, char *pcid, DC_PASSWORD_CALLBACK *password_callback, D
 	s->SockIoQueue = NewQueue();
 	s->SockThreadList = NewSockThreadList();
 
-	// Listen スレッドの開始
-	s->ListenThread = NewThread(DcListenThread, s);
+	// Listen スレッドの開始 (IPv4)
+	DC_LISTEN_THREAD_PARAM* tp = ZeroMalloc(sizeof(DC_LISTEN_THREAD_PARAM));
+	tp->Session = s;
+	tp->IsIPv6 = false;
+	s->ListenThreadIPv4 = NewThread(DcListenThread, tp);
+
+	if (s->ListenerIPv6 != NULL)
+	{
+		// Listen スレッドの開始 (IPv6)
+		tp = ZeroMalloc(sizeof(DC_LISTEN_THREAD_PARAM));
+		tp->Session = s;
+		tp->IsIPv6 = true;
+		s->ListenThreadIPv6 = NewThread(DcListenThread, tp);
+	}
 
 	*session = s;
 
@@ -2804,9 +2856,9 @@ UINT NewDcSession(DC *dc, char *pcid, DC_PASSWORD_CALLBACK *password_callback, D
 }
 
 // 指定した PCID のために最適なホスト名を生成する
-void DcGetBestHostnameForPcid(char *hostname, UINT hostname_size, char *pcid)
+void DcGetBestHostnameForPcid(char *hostname, UINT hostname_size, char *pcid, bool ipv6)
 {
-	IP ip;
+	IP ip = CLEAN;
 	bool b = true;
 	// 引数チェック
 	if (hostname == NULL || pcid == NULL)
@@ -2814,20 +2866,52 @@ void DcGetBestHostnameForPcid(char *hostname, UINT hostname_size, char *pcid)
 		return;
 	}
 
-	DcGenerateHostname(hostname, hostname_size, pcid);
+	DcGenerateHostname(hostname, hostname_size, pcid, ipv6);
 
-	if (GetIP4InnerWithNoCache(&ip, hostname) == false)
+	if (ipv6 == false)
 	{
-		b = false;
+		// IPv4 の場合
+		if (GetIP4InnerWithNoCache(&ip, hostname) == false)
+		{
+			// IPv4 ホスト名の取得に失敗
+			b = false;
+		}
+		else
+		{
+			IP ip6 = CLEAN;
+			if (GetIP6InnerWithNoCache(&ip6, hostname))
+			{
+				// IPv6 ホスト名の取得に成功してしまった。これは使用できない。
+				b = false;
+			}
+			else if (IsLocalHostIP4(&ip) == false)
+			{
+				// IPv4 ホスト名の取得に成功したが、127.0.0.1 ではない。
+				b = false;
+			}
+		}
 	}
 	else
 	{
-		IP local;
-		GetIP(&local, "localhost");
-
-		if (Cmp(&local, &ip, sizeof(IP)) != 0)
+		// IPv6 の場合
+		if (GetIP6InnerWithNoCache(&ip, hostname) == false)
 		{
+			// IPv6 ホスト名の取得に失敗
 			b = false;
+		}
+		else
+		{
+			IP ip4 = CLEAN;
+			if (GetIP4InnerWithNoCache(&ip4, hostname))
+			{
+				// IPv4 ホスト名の取得に成功してしまった。これは使用できない。
+				b = false;
+			}
+			else if (IsLocalHostIP6(&ip) == false)
+			{
+				// IPv6 ホスト名の取得に成功したが、::1 ではない。
+				b = false;
+			}
 		}
 	}
 
@@ -2837,12 +2921,12 @@ void DcGetBestHostnameForPcid(char *hostname, UINT hostname_size, char *pcid)
 	}
 	else
 	{
-		StrCpy(hostname, hostname_size, "127.0.0.1");
+		StrCpy(hostname, hostname_size, ipv6 ? "[::1]" : "127.0.0.1");
 	}
 }
 
 // 接続先のホスト名の生成
-void DcGenerateHostname(char *hostname, UINT hostname_size, char *pcid)
+void DcGenerateHostname(char *hostname, UINT hostname_size, char *pcid, bool ipv6)
 {
 	char tmp[MAX_PATH];
 	// 引数チェック
@@ -2874,17 +2958,30 @@ void DcGenerateHostname(char *hostname, UINT hostname_size, char *pcid)
 
 	StrLower(tmp);
 
-	Format(hostname, hostname_size, DESK_LOCALHOST_DUMMY_FQDN, tmp);
+	Format(hostname, hostname_size,
+		(ipv6 ? DESK_LOCALHOST_DUMMY_FQDN_V6 : DESK_LOCALHOST_DUMMY_FQDN),
+		tmp);
 }
 
 // 新しいポートを開いて Listen する
-SOCK *DcListen()
+SOCK *DcListen(bool ipv6)
 {
 	UINT port;
 
 	for (port = DC_RDP_PORT_START;port < 10000;port++)
 	{
-		SOCK *s = ListenEx(port, true);
+		SOCK* s;
+
+		if (ipv6 == false)
+		{
+			// IPv4
+			s = ListenEx(port, true);
+		}
+		else
+		{
+			// IPv6
+			s = ListenEx6(port, true);
+		}
 
 		if (s != NULL)
 		{

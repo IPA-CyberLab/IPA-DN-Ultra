@@ -2116,7 +2116,12 @@ void DuConnectMain(HWND hWnd, DU_MAIN *t, char *pcid)
 
 				if (ret == ERR_NO_ERROR)
 				{
-					process = DcRunMstsc(dc, exe, arg, s->Hostname, s->IsShareDisabled, &process_id, &rdp_file_write_failed);
+					char* hostname = s->HostnameIPv4;
+					if (IsFilledStr(s->HostnameIPv6))
+					{
+						hostname = s->HostnameIPv6;
+					}
+					process = DcRunMstsc(dc, exe, arg, hostname, s->IsShareDisabled, &process_id, &rdp_file_write_failed);
 				}
 			}
 			else
