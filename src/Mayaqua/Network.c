@@ -13974,7 +13974,7 @@ bool StartSSLEx2(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, c
 		// Check the certificate and the private key
 		if (CheckXandK(x, priv))
 		{
-			//if (use_sni_based_cert_selection == false)
+			if (use_sni_based_cert_selection == false)
 			{
 				// Use the certificate
 				x509 = x->x509;
