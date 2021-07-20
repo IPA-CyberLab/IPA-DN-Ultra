@@ -877,6 +877,14 @@ L_RETRY:
 
 	PackAddStr(pack, "function", function_name);
 
+	PackAddStr(pack, "env_product_name_suite", DESK_PRODUCT_NAME_SUITE);
+	PackAddInt(pack, "env_build", CEDAR_BUILD);
+	PackAddInt(pack, "env_ver", CEDAR_VER);
+	PackAddStr(pack, "env_commit_id", ULTRA_COMMIT_ID);
+	LANGLIST current_lang = CLEAN;
+	GetCurrentLang(&current_lang);
+	PackAddStr(pack, "env_language", current_lang.Name);
+
 	b = WpcGeneratePacket(pack, host_key, host_secret);
 	if (b == NULL)
 	{

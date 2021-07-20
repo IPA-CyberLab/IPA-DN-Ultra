@@ -493,6 +493,15 @@ L_PROXY_RETRY_WITH_ALTERNATIVE_FQDN:
 	{
 		PackAddInt(p, "se_lang", wt->Wide->SeLang);
 	}
+
+	PackAddStr(p, "env_product_name_suite", DESK_PRODUCT_NAME_SUITE);
+	PackAddInt(p, "env_build", CEDAR_BUILD);
+	PackAddInt(p, "env_ver", CEDAR_VER);
+	PackAddStr(p, "env_commit_id", ULTRA_COMMIT_ID);
+	LANGLIST current_lang = CLEAN;
+	GetCurrentLang(&current_lang);
+	PackAddStr(p, "env_language", current_lang.Name);
+
 	if (HttpClientSend(s, p) == false)
 	{
 		// 失敗
