@@ -13709,7 +13709,8 @@ typedef struct START_SSL_EX2_CLIENT_HELLO_CB_DATA
 	void* CertAndKeyCbParam;
 } START_SSL_EX2_CLIENT_HELLO_CB_DATA;
 
-int Sni_Callback_StartSSLEx2(SSL* s, int* al, void* arg)
+
+int Sni_Callback_ForTlsServerCertSelection(SSL* s, int* al, void* arg)
 {
 	START_SSL_EX2_CLIENT_HELLO_CB_DATA* data = (START_SSL_EX2_CLIENT_HELLO_CB_DATA*)arg;
 
@@ -13794,9 +13795,11 @@ bool StartSSLEx2(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, c
 	X509 *x509;
 	EVP_PKEY *key;
 	UINT prev_timeout = 1024;
-	SSL_CTX *ssl_ctx;
+	SSL_CTX* ssl_ctx = NULL;
 	bool use_sni_based_cert_selection = false;
 	START_SSL_EX2_CLIENT_HELLO_CB_DATA hello_cb_data = CLEAN;
+	bool clean_hello_cb = false;
+	bool ret = false;
 
 #ifdef UNIX_SOLARIS
 	SOCKET_TIMEOUT_PARAM *ttparam;
@@ -13942,9 +13945,11 @@ bool StartSSLEx2(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, c
 		if (use_sni_based_cert_selection)
 		{
 			// TLS 1.3 をサポートするためには Hello 用 CB と set_tlsext_servername CB の両方を指定する必要がある
-			SSL_CTX_set_client_hello_cb(ssl_ctx, Sni_Callback_StartSSLEx2, &hello_cb_data);
-			SSL_CTX_set_tlsext_servername_callback(ssl_ctx, Sni_Callback_StartSSLEx2);
+			SSL_CTX_set_client_hello_cb(ssl_ctx, Sni_Callback_ForTlsServerCertSelection, &hello_cb_data);
+			SSL_CTX_set_tlsext_servername_callback(ssl_ctx, Sni_Callback_ForTlsServerCertSelection);
 			SSL_CTX_set_tlsext_servername_arg(ssl_ctx, &hello_cb_data);
+
+			clean_hello_cb = true;
 		}
 
 		sock->ssl = SSL_new(ssl_ctx);
@@ -13969,7 +13974,7 @@ bool StartSSLEx2(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, c
 		// Check the certificate and the private key
 		if (CheckXandK(x, priv))
 		{
-			if (use_sni_based_cert_selection == false)
+			//if (use_sni_based_cert_selection == false)
 			{
 				// Use the certificate
 				x509 = x->x509;
@@ -14035,7 +14040,8 @@ bool StartSSLEx2(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, c
 			Unlock(sock->ssl_lock);
 			Debug("StartSSL Error: #5\n");
 			FreeSSLCtx(ssl_ctx);
-			return false;
+			ssl_ctx = NULL;
+			goto L_CLEANUP;
 		}
 
 #ifdef	SSL_CTRL_SET_TLSEXT_HOSTNAME
@@ -14081,7 +14087,8 @@ bool StartSSLEx2(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, c
 			Debug("StartSSL Error: #5\n");
 			SetTimeout(sock, prev_timeout);
 			FreeSSLCtx(ssl_ctx);
-			return false;
+			ssl_ctx = NULL;
+			goto L_CLEANUP;
 		}
 		Unlock(ssl_connect_lock);
 		SetTimeout(sock, prev_timeout);
@@ -14158,7 +14165,21 @@ bool StartSSLEx2(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, c
 	}
 #endif	// ENABLE_SSL_LOGGING
 
-	return true;
+	ret = true;
+
+L_CLEANUP:
+
+	if (clean_hello_cb)
+	{
+		if (ssl_ctx != NULL)
+		{
+			SSL_CTX_set_client_hello_cb(ssl_ctx, NULL, NULL);
+			SSL_CTX_set_tlsext_servername_callback(ssl_ctx, NULL);
+			SSL_CTX_set_tlsext_servername_arg(ssl_ctx, NULL);
+		}
+	}
+
+	return ret;
 }
 
 
