@@ -81,7 +81,7 @@
 #include <errno.h>
 #include <Mayaqua/Mayaqua.h>
 #include <Cedar/Cedar.h>
-#include "Ham.h"
+#include "UltraTest.h"
 
 static DS *dss = NULL;
 

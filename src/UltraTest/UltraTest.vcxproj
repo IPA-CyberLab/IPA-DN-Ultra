@@ -284,14 +284,14 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Ham.c" />
+    <ClCompile Include="UltraTest.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Ham.h" />
+    <ClInclude Include="UltraTest.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="Ham.rc" />
+    <ResourceCompile Include="UltraTest.rc" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="NIC.ico" />
