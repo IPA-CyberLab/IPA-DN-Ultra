@@ -105,6 +105,7 @@ namespace BuildTool
         public static readonly string SolutionBinDirName = ExeDirName;
         public static readonly string SolutionBaseDirName = IO.NormalizePath(Path.Combine(SolutionBinDirName, @"..\"));
         public static readonly string UtilityDirName = IO.NormalizePath(Path.Combine(SolutionBinDirName, @"..\BuildFiles\Utility"));
+        public static readonly bool IsIpaDnUltraSolution = false;
 
         public static readonly string UltraBaseDirName = IO.NormalizePath(Directory.Exists(Path.Combine(SolutionBinDirName, @"..\..\submodules\")) ? Path.Combine(SolutionBinDirName, @"..\..\submodules\IPA-DN-Ultra\src") : Path.Combine(SolutionBinDirName, @"..\"));
         public static readonly string UltraBinDirName = IO.NormalizePath(Path.Combine(UltraBaseDirName, "bin"));
@@ -198,6 +199,17 @@ namespace BuildTool
             {
                 Directory.CreateDirectory(Paths.TmpDirName);
             }
+
+            // Determine if the solution is IPA-DN-Ultra itself
+            string[] files = Directory.GetFiles(Paths.SolutionBaseDirName);
+            foreach (string file in files)
+            {
+                string fn = Path.GetFileName(file);
+                if (Str.InStr(fn, "IPA-DN-Ultra", false) && fn.EndsWith(".sln", StringComparison.OrdinalIgnoreCase))
+                {
+                    IsIpaDnUltraSolution = true;
+                }
+            }
         }
 
         // Visual Studio 2019 の「VsDevCmd.bat」ファイルのパスを取得する
@@ -258,6 +270,11 @@ namespace BuildTool
 
             string readmePath = Path.Combine(tmpPath, @"..\submodules\IPA-DN-Ultra\README.md");
 
+            if (Paths.IsIpaDnUltraSolution)
+            {
+                readmePath = Path.Combine(tmpPath, @"..\README.md");
+            }
+
             string[] lines = File.ReadAllLines(readmePath);
 
             string tag = "[Current Version]";
@@ -279,10 +296,16 @@ namespace BuildTool
         {
             string tmpPath = Paths.SolutionBaseDirName;
 
+            string headFilePath = @".git\modules\submodules\IPA-DN-Ultra\HEAD";
+            if (Paths.IsIpaDnUltraSolution)
+            {
+                headFilePath = @".git\HEAD";
+            }
+
             // Get the HEAD contents
             while (true)
             {
-                string headFilename = Path.Combine(tmpPath, @".git\modules\submodules\IPA-DN-Ultra\HEAD");
+                string headFilename = Path.Combine(tmpPath, headFilePath);
 
                 try
                 {

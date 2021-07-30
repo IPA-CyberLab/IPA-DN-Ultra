@@ -109,7 +109,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>false</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)..\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)..\;$(SolutionDir)Vars\</AdditionalIncludeDirectories>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <SupportJustMyCode>false</SupportJustMyCode>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -142,7 +142,7 @@
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
     <PreLinkEvent>
-      <Command>$(SolutionDir)bin\BuildTool.exe /CMD:GenerateVersionResource "$(TargetPath)" /OUT:"$(SolutionDir)tmp\VersionResources\$(TargetName)_$(PlatformName).res"</Command>
+      <Command>$(SolutionDir)bin\BuildTool.exe /CMD:GenerateVersionResource "$(TargetPath)" /OUT:"$(SolutionDir)tmp\VersionResources\$(TargetName)_$(PlatformName).res" /PRODUCT:UltraTest</Command>
     </PreLinkEvent>
     <PostBuildEvent>
       <Command>$(SolutionDir)bin\BuildTool.exe /CMD:SetManifest "$(TargetPath)" /MANIFEST:x86_user.manifest</Command>
@@ -156,7 +156,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;VPN_SPEED;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>false</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)..\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)..\;$(SolutionDir)Vars\</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <Optimization>Full</Optimization>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
@@ -186,7 +186,7 @@
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
     <PreLinkEvent>
-      <Command>$(SolutionDir)bin\BuildTool.exe /CMD:GenerateVersionResource "$(TargetPath)" /OUT:"$(SolutionDir)tmp\VersionResources\$(TargetName)_$(PlatformName).res"</Command>
+      <Command>$(SolutionDir)bin\BuildTool.exe /CMD:GenerateVersionResource "$(TargetPath)" /OUT:"$(SolutionDir)tmp\VersionResources\$(TargetName)_$(PlatformName).res" /PRODUCT:UltraTest</Command>
     </PreLinkEvent>
     <PostBuildEvent>
       <Command>$(SolutionDir)bin\BuildTool.exe /CMD:SetManifest "$(TargetPath)" /MANIFEST:x86_user.manifest</Command>
@@ -198,7 +198,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>false</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)..\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)..\;$(SolutionDir)Vars\</AdditionalIncludeDirectories>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <SupportJustMyCode>false</SupportJustMyCode>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -232,7 +232,7 @@
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
     <PreLinkEvent>
-      <Command>$(SolutionDir)bin\BuildTool.exe /CMD:GenerateVersionResource "$(TargetPath)" /OUT:"$(SolutionDir)tmp\VersionResources\$(TargetName)_$(PlatformName).res"</Command>
+      <Command>$(SolutionDir)bin\BuildTool.exe /CMD:GenerateVersionResource "$(TargetPath)" /OUT:"$(SolutionDir)tmp\VersionResources\$(TargetName)_$(PlatformName).res" /PRODUCT:UltraTest</Command>
     </PreLinkEvent>
     <PostBuildEvent>
       <Command>$(SolutionDir)bin\BuildTool.exe /CMD:SetManifest "$(TargetPath)" /MANIFEST:x64_user.manifest</Command>
@@ -246,7 +246,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;VPN_SPEED;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>false</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)..\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)..\;$(SolutionDir)Vars\</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <Optimization>Full</Optimization>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
@@ -277,7 +277,7 @@
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
     <PreLinkEvent>
-      <Command>$(SolutionDir)bin\BuildTool.exe /CMD:GenerateVersionResource "$(TargetPath)" /OUT:"$(SolutionDir)tmp\VersionResources\$(TargetName)_$(PlatformName).res"</Command>
+      <Command>$(SolutionDir)bin\BuildTool.exe /CMD:GenerateVersionResource "$(TargetPath)" /OUT:"$(SolutionDir)tmp\VersionResources\$(TargetName)_$(PlatformName).res" /PRODUCT:UltraTest</Command>
     </PreLinkEvent>
     <PostBuildEvent>
       <Command>$(SolutionDir)bin\BuildTool.exe /CMD:SetManifest "$(TargetPath)" /MANIFEST:x64_user.manifest</Command>

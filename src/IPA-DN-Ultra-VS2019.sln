@@ -28,6 +28,23 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PenCore", "PenCore\PenCore.
 		{9279DA54-8BBB-473F-A1FA-54B714CF33D8} = {9279DA54-8BBB-473F-A1FA-54B714CF33D8}
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution", "Solution", "{873FD6BB-B8CD-4DA4-963A-7DE234D698BD}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "IPA-DN-Ultra", "IPA-DN-Ultra", "{AED8EF82-51EC-44D6-97F8-E0C10CEBE193}"
+	ProjectSection(SolutionItems) = preProject
+		GlobalConst.h = GlobalConst.h
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Vars", "Vars", "{11E2CB00-48D1-4995-AAC6-21C78308FFC7}"
+	ProjectSection(SolutionItems) = preProject
+		Vars\Vars.cs = Vars\Vars.cs
+		Vars\Vars.h = Vars\Vars.h
+		Vars\Vars.props = Vars\Vars.props
+		Vars\VarsActivePatch.h = Vars\VarsActivePatch.h
+		Vars\VarsCurrentBuildInfo.h = Vars\VarsCurrentBuildInfo.h
+		Vars\VersionInfo.rc = Vars\VersionInfo.rc
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -36,14 +53,6 @@ Global
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{9279DA54-8BBB-473F-A1FA-54B714CF33D8}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{9279DA54-8BBB-473F-A1FA-54B714CF33D8}.Debug|x64.Build.0 = Debug|Any CPU
-		{9279DA54-8BBB-473F-A1FA-54B714CF33D8}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{9279DA54-8BBB-473F-A1FA-54B714CF33D8}.Debug|x86.Build.0 = Debug|Any CPU
-		{9279DA54-8BBB-473F-A1FA-54B714CF33D8}.Release|x64.ActiveCfg = Debug|Any CPU
-		{9279DA54-8BBB-473F-A1FA-54B714CF33D8}.Release|x64.Build.0 = Debug|Any CPU
-		{9279DA54-8BBB-473F-A1FA-54B714CF33D8}.Release|x86.ActiveCfg = Debug|Any CPU
-		{9279DA54-8BBB-473F-A1FA-54B714CF33D8}.Release|x86.Build.0 = Debug|Any CPU
 		{9B8781AE-F515-49D8-8064-3052BB7ABCC7}.Debug|x64.ActiveCfg = Debug|x64
 		{9B8781AE-F515-49D8-8064-3052BB7ABCC7}.Debug|x64.Build.0 = Debug|x64
 		{9B8781AE-F515-49D8-8064-3052BB7ABCC7}.Debug|x86.ActiveCfg = Debug|Win32
@@ -52,6 +61,14 @@ Global
 		{9B8781AE-F515-49D8-8064-3052BB7ABCC7}.Release|x64.Build.0 = Release|x64
 		{9B8781AE-F515-49D8-8064-3052BB7ABCC7}.Release|x86.ActiveCfg = Release|Win32
 		{9B8781AE-F515-49D8-8064-3052BB7ABCC7}.Release|x86.Build.0 = Release|Win32
+		{9279DA54-8BBB-473F-A1FA-54B714CF33D8}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{9279DA54-8BBB-473F-A1FA-54B714CF33D8}.Debug|x64.Build.0 = Debug|Any CPU
+		{9279DA54-8BBB-473F-A1FA-54B714CF33D8}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{9279DA54-8BBB-473F-A1FA-54B714CF33D8}.Debug|x86.Build.0 = Debug|Any CPU
+		{9279DA54-8BBB-473F-A1FA-54B714CF33D8}.Release|x64.ActiveCfg = Debug|Any CPU
+		{9279DA54-8BBB-473F-A1FA-54B714CF33D8}.Release|x64.Build.0 = Debug|Any CPU
+		{9279DA54-8BBB-473F-A1FA-54B714CF33D8}.Release|x86.ActiveCfg = Debug|Any CPU
+		{9279DA54-8BBB-473F-A1FA-54B714CF33D8}.Release|x86.Build.0 = Debug|Any CPU
 		{D11C227F-AE0E-4B8B-8D99-F9EA28FF3BE8}.Debug|x64.ActiveCfg = Debug|x64
 		{D11C227F-AE0E-4B8B-8D99-F9EA28FF3BE8}.Debug|x64.Build.0 = Debug|x64
 		{D11C227F-AE0E-4B8B-8D99-F9EA28FF3BE8}.Debug|x86.ActiveCfg = Debug|Win32
@@ -79,6 +96,10 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{AED8EF82-51EC-44D6-97F8-E0C10CEBE193} = {873FD6BB-B8CD-4DA4-963A-7DE234D698BD}
+		{11E2CB00-48D1-4995-AAC6-21C78308FFC7} = {873FD6BB-B8CD-4DA4-963A-7DE234D698BD}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {C6A1258E-EB3A-4010-B219-FAA5E2628EAC}

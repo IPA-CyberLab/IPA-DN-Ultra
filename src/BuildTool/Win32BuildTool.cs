@@ -138,7 +138,7 @@ namespace BuildTool
             }
 
             body = Str.ReplaceStr(body, "$PRODUCTNAME$", product_name);
-
+            body = Str.ReplaceStr(body, "$COPYRIGHT$", "IPA CyberLab");
             body = Str.ReplaceStr(body, "$INTERNALNAME$", internalName);
             body = Str.ReplaceStr(body, "$YEAR$", date.Year.ToString());
             body = Str.ReplaceStr(body, "$FILENAME$", exeFileName);
