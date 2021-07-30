@@ -1,4 +1,7 @@
 ﻿# IPA-DN-Ultra ライブラリ リリースノート (更新履歴)
+[![Build](https://github.com/IPA-CyberLab/IPA-DN-Ultra/actions/workflows/dotnet_test.yml/badge.svg)](https://github.com/IPA-CyberLab/IPA-DN-Ultra/actions)
+[![Coverity](https://scan.coverity.com/projects/23476/badge.svg?flat=1)](https://scan.coverity.com/projects/IPA-DN-Ultra-210730)
+
 
 この更新履歴ファイルの最新版は、[https://github.com/IPA-CyberLab/IPA-DN-Ultra/](https://github.com/IPA-CyberLab/IPA-DN-Ultra/) を参照してください。
 
