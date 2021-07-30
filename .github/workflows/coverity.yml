@@ -15,7 +15,7 @@ jobs:
       COVERITY_SCAN_PROJECT_NAME: "IPA-DN-Ultra-210730"
       COVERITY_SCAN_BRANCH_PATTERN: "*"
       COVERITY_SCAN_NOTIFICATION_EMAIL: "coe.lab-coverity-scan@admin.coe.ad.jp"
-      COVERITY_SCAN_BUILD_COMMAND: "cd ./src/ ; make DEBUG=YES"
+      COVERITY_SCAN_BUILD_COMMAND: "make DEBUG=YES"
 
     strategy:
       matrix:
@@ -44,6 +44,7 @@ jobs:
       - name: Build with Coverity Scan
         run: |
           export PATH=`pwd`/coverity-tools/bin:$PATH
+          cd ./src/
           cov-build --dir cov-int ${COVERITY_SCAN_BUILD_COMMAND}
           cat cov-int/build-log.txt
 
