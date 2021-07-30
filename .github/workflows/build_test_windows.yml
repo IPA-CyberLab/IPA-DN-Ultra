@@ -1,0 +1,26 @@
+name: Build and Test - Windows
+
+on:
+  push:
+    branches:
+      - *
+
+jobs:
+  build:
+    runs-on: ${{ matrix.operating-system }}
+    timeout-minutes: 15
+
+    strategy:
+      matrix:
+        operating-system: [windows-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      - name: Build and Test - Win32
+        run: |
+          src\Build_Win32.cmd
+
