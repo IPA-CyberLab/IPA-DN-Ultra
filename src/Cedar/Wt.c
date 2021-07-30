@@ -201,7 +201,7 @@ void WtDeleteOldUsedTunnelId(LIST *o)
 
 			if (u->Expires <= Tick64())
 			{
-				if (d != NULL)
+				if (d == NULL)
 				{
 					d = NewListFast(NULL);
 				}

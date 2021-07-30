@@ -302,8 +302,8 @@ void WideGetCurrentMachineId(WT_MACHINE_ID *d)
 }
 void WideGetCurrentMachineIdMain(WT_MACHINE_ID *d)
 {
-	char product_id[MAX_PATH];
-	char machine_name[MAX_PATH];
+	char product_id[MAX_PATH] = CLEAN;
+	char machine_name[MAX_PATH] = CLEAN;
 	UCHAR mac_address[6];
 	IP ip;
 	UINT ip_uint;
@@ -395,7 +395,7 @@ UINT WideClientConnect(WIDE *w, char *pc_id, UINT ver, UINT build, SOCKIO **sock
 	WT_CONNECT c;
 	char pcid[MAX_PATH];
 	// 引数チェック
-	if (w == NULL || pcid == NULL || sockio == NULL)
+	if (w == NULL || sockio == NULL)
 	{
 		return ERR_INTERNAL_ERROR;
 	}

@@ -151,7 +151,7 @@ bool Vars_ActivePatch_AddData(char* name, void* data, UINT data_size)
 
 	name_size = StrSize(name) + 4;
 	target->Name = malloc(name_size);
-	memset(target->Name, name_size, 0);
+	memset(target->Name, 0, name_size);
 	StrCpy(target->Name, name_size, name);
 
 	target->Data = malloc(data_size + 4);

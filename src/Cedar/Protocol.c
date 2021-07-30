@@ -7770,7 +7770,10 @@ SOCK *SocksConnectEx2(CONNECTION *c, char *proxy_host_name, UINT proxy_port,
 	if (c == NULL || proxy_host_name == NULL || proxy_port == 0 || server_host_name == NULL
 		|| server_port == 0)
 	{
-		c->Err = ERR_PROXY_CONNECT_FAILED;
+		if (c != NULL)
+		{
+			c->Err = ERR_PROXY_CONNECT_FAILED;
+		}
 		return NULL;
 	}
 
@@ -7951,7 +7954,10 @@ SOCK *ProxyConnectEx2NtlmAuth(CONNECTION *c, char *proxy_host_name, UINT proxy_p
 	if (c == NULL || proxy_host_name == NULL || proxy_port == 0 || server_host_name == NULL ||
 		server_port == 0)
 	{
-		c->Err = ERR_PROXY_CONNECT_FAILED;
+		if (c != NULL)
+		{
+			c->Err = ERR_PROXY_CONNECT_FAILED;
+		}
 		goto LABEL_CLEANUP;
 	}
 	use_auth = true;
@@ -8310,7 +8316,10 @@ SOCK *ProxyConnectEx2(CONNECTION *c, char *proxy_host_name, UINT proxy_port,
 	if (c == NULL || proxy_host_name == NULL || proxy_port == 0 || server_host_name == NULL ||
 		server_port == 0)
 	{
-		c->Err = ERR_PROXY_CONNECT_FAILED;
+		if (c != NULL)
+		{
+			c->Err = ERR_PROXY_CONNECT_FAILED;
+		}
 		return NULL;
 	}
 	if (username != NULL && password != NULL &&
@@ -9374,7 +9383,7 @@ UINT WsRecvSync(WS *w, void *data, UINT size)
 			return sz;
 		}
 		r = Recv(w->Sock, w->TmpBuf, sizeof(w->TmpBuf), w->Sock->SecureMode);
-		if (r == 0)
+		if (r == 0 || r == SOCKET_ERROR)
 		{
 			break;
 		}
@@ -9992,9 +10001,9 @@ UINT MvpnDoAccept(CONNECTION *c, WS *w)
 		StrCpy(ipc_param.HubName, sizeof(ipc_param.HubName), client_hub_name);
 		StrCpy(ipc_param.UserName, sizeof(ipc_param.UserName), auth_username);
 		CopyIP(&ipc_param.ClientIp, &w->Sock->RemoteIP);
-		ipc_param.ClientPort, w->Sock->RemotePort;
+		ipc_param.ClientPort = w->Sock->RemotePort;
 		CopyIP(&ipc_param.ServerIp, &w->Sock->LocalIP);
-		ipc_param.ServerPort, w->Sock->LocalPort;
+		ipc_param.ServerPort = w->Sock->LocalPort;
 		StrCpy(ipc_param.ClientHostname, sizeof(ipc_param.ClientHostname), w->Sock->RemoteHostname);
 		StrCpy(ipc_param.CryptName, sizeof(ipc_param.CryptName), w->Sock->CipherName);
 		ipc_param.Layer = IPC_LAYER_3; // TODO
