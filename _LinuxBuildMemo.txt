@@ -3,10 +3,10 @@ cd ~/
 git clone  --recursive https://github.com/IPA-CyberLab/IPA-DN-Ultra.git
 
 ### 2 回目以降
-(cd ~/IPA-DN-Ultra/ && (cd $(git rev-parse --show-toplevel) && git pull origin main && git submodule update --init --recursive))
+(cd ~/IPA-DN-Ultra/ && (cd $(git rev-parse --show-toplevel) && git pull origin master && git submodule update --init --recursive))
 
 
 ### ビルドおよび実行
-(cd ~/IPA-DN-Ultra/ && (cd $(git rev-parse --show-toplevel) && git pull origin main && git submodule update --init --recursive)) && cd ~/IPA-DN-Ultra/src/ && make -j 10 && bin/UltraTest
+(cd ~/IPA-DN-Ultra/ && (cd $(git rev-parse --show-toplevel) && git pull origin master && git submodule update --init --recursive)) && cd ~/IPA-DN-Ultra/src/ && make -j 10 && bin/UltraTest
 
 
