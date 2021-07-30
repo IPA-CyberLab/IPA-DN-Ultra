@@ -52,6 +52,7 @@ jobs:
         env:
           COVERITY_SCAN_TOKEN: ${{ secrets.COVERITY_SCAN_TOKEN }}
         run: |
+          cd ./src/
           tar czf myproject.tgz cov-int
           curl \
             --form token=${COVERITY_SCAN_TOKEN} \
