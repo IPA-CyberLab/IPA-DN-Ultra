@@ -95,7 +95,7 @@ void test(UINT num, char **arg)
 void unittest(UINT num, char** arg)
 {
 	// メモリリークが 1 バイトでも発生した場合、プロセス終了時に exit(1) する
-	MayaquaEnableExitCode1IfMemoryLeak();abc
+	MayaquaEnableExitCode1IfMemoryLeak();
 
 	// TODO: ユニットテストをここに書く！
 }
