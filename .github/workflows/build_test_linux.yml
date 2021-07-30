@@ -1,0 +1,47 @@
+name: Build and Test - Linux
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ${{ matrix.operating-system }}
+    timeout-minutes: 15
+
+    strategy:
+      matrix:
+        operating-system: [ubuntu-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      - name: Install apt dependencies
+        run: |
+          sudo apt-get -y update
+          sudo apt-get -y install build-essential libreadline-dev
+
+      - name: Build Debug
+        run: |
+          cd ./src/
+          make clean
+          make DEBUG=YES
+
+      - name: Test Debug
+        run: |
+          ./src/bin/UltraTest unittest
+
+      - name: Build Release
+        run: |
+          cd ./src/
+          make clean
+          make DEBUG=NO
+
+      - name: Test Release
+        run: |
+          ./src/bin/UltraTest unittest
+
