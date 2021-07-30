@@ -605,6 +605,7 @@ bool IsProbeEnabled();
 void WriteProbe(char *filename, UINT line, char *str);
 void WriteProbeData(char *filename, UINT line, char *str, void *data, UINT size);
 USHORT CalcChecksum16(void *buf, UINT size);
+void MayaquaEnableExitCode1IfMemoryLeak();
 
 
 #ifdef	OS_WIN32

@@ -86,8 +86,9 @@
 #include <Mayaqua/Mayaqua.h>
 
 // Global variable
-bool g_memcheck;								// Enable memory check
-bool g_debug;									// Debug mode
+bool g_memcheck = false;						// Enable memory check
+bool g_debug = false;							// Debug mode
+bool g_memcheck_exit_1_if_leak = false;			// Enable exit(1) if leak
 UINT64 kernel_status[NUM_KERNEL_STATUS];		// Kernel state
 UINT64 kernel_status_max[NUM_KERNEL_STATUS];	// Kernel state (maximum value)
 LOCK *kernel_status_lock[NUM_KERNEL_STATUS];	// Kernel state lock
@@ -134,6 +135,12 @@ void InitProcessCallOnceEx(int restricted_mode)
 		MsInitProcessCallOnce(restricted_mode);
 #endif	// OS_WIN32
 	}
+}
+
+// Enable memory leak exit(1) option
+void MayaquaEnableExitCode1IfMemoryLeak()
+{
+	g_memcheck_exit_1_if_leak = true;
 }
 
 // Calculate the checksum
@@ -1104,6 +1111,11 @@ void PrintKernelStatus()
 		Print("      !!! MEMORY LEAKS DETECTED !!!\n\n");
 		if (g_memcheck == false)
 		{
+			if (g_memcheck_exit_1_if_leak)
+			{
+				exit(1);
+			}
+
 			GetLine(NULL, 0);
 		}
 	}
