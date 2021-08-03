@@ -6004,6 +6004,8 @@ BMP_NWDETECT            BITMAP                  "nwdetect.bmp"
 
 AVI_PROGRESS            AVI                     "Progress.avi"
 
+AVI_CIRCLE              AVI                     "Circle.avi"
+
 
 /////////////////////////////////////////////////////////////////////////////
 //

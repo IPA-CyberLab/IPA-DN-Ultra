@@ -91,6 +91,7 @@
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Circle.avi" />
     <None Include="Dummy.bin" />
     <None Include="Progress.avi" />
   </ItemGroup>

@@ -33,6 +33,7 @@
     <None Include="Dummy.bin">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="Circle.avi" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="AboutBox.bmp">

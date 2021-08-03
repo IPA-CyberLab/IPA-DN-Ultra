@@ -234,6 +234,8 @@
 #define BMP_NWSELECT1                   251
 #define BMP_NWSELECT2                   252
 #define BMP_NWDETECT                    253
+#define IDR_AVI1                        254
+#define AVI_CIRCLE                      254
 #define S_TITLE                         1007
 #define S_INSERT_SECURE                 1008
 #define S_TITLE2                        1008
@@ -1474,7 +1476,7 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NO_MFC                     1
-#define _APS_NEXT_RESOURCE_VALUE        254
+#define _APS_NEXT_RESOURCE_VALUE        255
 #define _APS_NEXT_COMMAND_VALUE         40111
 #define _APS_NEXT_CONTROL_VALUE         1546
 #define _APS_NEXT_SYMED_VALUE           102
