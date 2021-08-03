@@ -566,6 +566,11 @@ bool CALLBACK SfxModeLangDialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM l
 	switch (msg)
 	{
 	case WM_INITDIALOG:
+
+		Hide(hWnd, 1986);
+		Animate_OpenEx(DlgItem(hWnd, 1986), MsGetCurrentModuleHandle(), MAKEINTRESOURCE(1985));
+		PlayAvi(hWnd, 1986, true);
+
 		UINT last_lang_id = SW_SFX_LANGUAGE_NONE;
 		char* last_lang = MsRegReadStrEx2(REG_CURRENT_USER, SW_REG_KEY, "Last User Language", false, true);
 		if (StrCmpi(last_lang, "ja") == 0)
