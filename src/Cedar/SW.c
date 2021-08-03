@@ -951,7 +951,7 @@ bool CALLBACK SwEnumResourceNamesProc(HMODULE hModule, const char* type, char* n
 UINT SWExec()
 {
 	UINT ret = 0;
-	bool is_datafile_exists = true;
+	bool is_datafile_exists = false;
 
 	// Examine whether DATAFILE resources are stored in setup.exe that is currently running
 	EnumResourceNamesA(NULL, SW_SFX_RESOURCE_TYPE, SwEnumResourceNamesProc, (LONG_PTR)(&is_datafile_exists));
