@@ -4966,7 +4966,7 @@ void SwPerformInit(HWND hWnd, SW* sw, WIZARD_PAGE* wp)
 	}
 
 	// Animation
-	OpenAvi(hWnd, A_PROGRESS, AVI_PROGRESS);
+	OpenAvi(hWnd, A_PROGRESS, AVI_CIRCLE);
 	PlayAvi(hWnd, A_PROGRESS, true);
 }
 
