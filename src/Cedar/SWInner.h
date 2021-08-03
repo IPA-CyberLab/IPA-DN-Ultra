@@ -110,6 +110,10 @@
 #define SW_REG_KEY_LIMITED				"Software\\" GC_REG_COMPANY_NAME "\\Setup Wizard Settings\\EnableLimitedModeDefault"
 
 
+#define SW_SFX_LANGUAGE_NONE		0
+#define SW_SFX_LANGUAGE_ENGLISH		1
+#define SW_SFX_LANGUAGE_JAPANESE	2
+
 // Component ID
 #define	SW_CMP_VPN_SERVER			1	// VPN Server
 #define	SW_CMP_VPN_CLIENT			2	// VPN Client
