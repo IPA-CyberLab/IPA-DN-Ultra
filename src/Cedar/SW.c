@@ -566,7 +566,6 @@ bool CALLBACK SfxModeLangDialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM l
 	switch (msg)
 	{
 	case WM_INITDIALOG:
-
 		Hide(hWnd, 1986);
 		Animate_OpenEx(DlgItem(hWnd, 1986), MsGetCurrentModuleHandle(), MAKEINTRESOURCE(1985));
 		PlayAvi(hWnd, 1986, true);
@@ -611,6 +610,15 @@ bool CALLBACK SfxModeLangDialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM l
 			break;
 		}
 		break;
+
+	case WM_CTLCOLORBTN:
+	case WM_CTLCOLORDLG:
+	case WM_CTLCOLOREDIT:
+	case WM_CTLCOLORLISTBOX:
+	case WM_CTLCOLORMSGBOX:
+	case WM_CTLCOLORSCROLLBAR:
+	case WM_CTLCOLORSTATIC:
+		return POINTER_TO_UINT32(GetStockObject(WHITE_BRUSH));
 	}
 
 	return false;
