@@ -586,6 +586,10 @@ bool CALLBACK SfxModeLangDialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM l
 		}
 		Check(hWnd, 1001, last_lang_id != SW_SFX_LANGUAGE_JAPANESE);
 		Check(hWnd, 1002, last_lang_id == SW_SFX_LANGUAGE_JAPANESE);
+		if (last_lang_id == SW_SFX_LANGUAGE_JAPANESE)
+		{
+			Focus(hWnd, 1002);
+		}
 		break;
 
 	case WM_COMMAND:
@@ -947,7 +951,7 @@ bool CALLBACK SwEnumResourceNamesProc(HMODULE hModule, const char* type, char* n
 UINT SWExec()
 {
 	UINT ret = 0;
-	bool is_datafile_exists = false;
+	bool is_datafile_exists = true;
 
 	// Examine whether DATAFILE resources are stored in setup.exe that is currently running
 	EnumResourceNamesA(NULL, SW_SFX_RESOURCE_TYPE, SwEnumResourceNamesProc, (LONG_PTR)(&is_datafile_exists));
