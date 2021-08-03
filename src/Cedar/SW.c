@@ -4886,6 +4886,10 @@ void SwPerformInit(HWND hWnd, SW* sw, WIZARD_PAGE* wp)
 		// Hide the progress bar in the case of Windows 2000 or earlier
 		Hide(hWnd, IDC_PROGRESS1);
 	}
+
+	// Animation
+	OpenAvi(hWnd, A_PROGRESS, AVI_PROGRESS);
+	PlayAvi(hWnd, A_PROGRESS, true);
 }
 
 // Do the set-up process
