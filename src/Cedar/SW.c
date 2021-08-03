@@ -566,7 +566,6 @@ bool CALLBACK SfxModeLangDialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM l
 	switch (msg)
 	{
 	case WM_INITDIALOG:
-	{
 		UINT last_lang_id = SW_SFX_LANGUAGE_NONE;
 		char* last_lang = MsRegReadStrEx2(REG_CURRENT_USER, SW_REG_KEY, "Last User Language", false, true);
 		if (StrCmpi(last_lang, "ja") == 0)
@@ -588,13 +587,12 @@ bool CALLBACK SfxModeLangDialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM l
 		Check(hWnd, 1001, last_lang_id != SW_SFX_LANGUAGE_JAPANESE);
 		Check(hWnd, 1002, last_lang_id == SW_SFX_LANGUAGE_JAPANESE);
 		break;
-	}
 
 	case WM_COMMAND:
 		switch (wParam)
 		{
 		case IDOK:
-		{
+		case IDCANCEL:
 			UINT ret = SW_SFX_LANGUAGE_ENGLISH;
 			if (IsChecked(hWnd, 1002))
 			{
@@ -603,20 +601,7 @@ bool CALLBACK SfxModeLangDialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM l
 			EndDialog(hWnd, ret);
 			break;
 		}
-
-		case IDCANCEL:
-		{
-			Close(hWnd);
-			break;
-		}
 		break;
-		}
-
-	case WM_CLOSE:
-	{
-		EndDialog(hWnd, SW_SFX_LANGUAGE_NONE);
-		break;
-	}
 	}
 
 	return false;
@@ -628,7 +613,7 @@ UINT SwSfwLanguageSelection(HWND hWnd)
 	UINT dialog_id = 10003;
 	UINT ret;
 
-	ret = (UINT)DialogBoxParamA(MsGetCurrentModuleHandle(), MAKEINTRESOURCEA(dialog_id), NULL, (DLGPROC)SfxModeLangDialogProc, 0);
+	ret = (UINT)DialogBoxParamA(MsGetCurrentModuleHandle(), MAKEINTRESOURCEA(dialog_id), hWnd, (DLGPROC)SfxModeLangDialogProc, 0);
 
 	return ret;
 }
@@ -654,20 +639,20 @@ bool SwSfxExtractProcess(HWND hWnd, bool* hide_error_msg)
 	Zero(exec_filename, sizeof(exec_filename));
 
 	// Language selection
-	UINT selected_language = SwSfwLanguageSelection(hWnd);
-	if (selected_language == SW_SFX_LANGUAGE_NONE)
+	if (UniInStrEx(current_params, SVC_ARG_SILENT_W, false) == false)
 	{
-		// Cancel
-		return false;
-	}
+		UINT selected_language = SwSfwLanguageSelection(hWnd);
+		if (selected_language != SW_SFX_LANGUAGE_NONE)
+		{
+			char* save_lang_id = "en";
+			if (selected_language == SW_SFX_LANGUAGE_JAPANESE)
+			{
+				save_lang_id = "ja";
+			}
 
-	char* save_lang_id = "en";
-	if (selected_language == SW_SFX_LANGUAGE_JAPANESE)
-	{
-		save_lang_id = "ja";
+			MsRegWriteStrEx2(REG_CURRENT_USER, SW_REG_KEY, "Last User Language", save_lang_id, false, true);
+		}
 	}
-
-	MsRegWriteStrEx2(REG_CURRENT_USER, SW_REG_KEY, "Last User Language", save_lang_id, false, true);
 
 	// Enumerate the DATAFILE resources
 	t = MsEnumResources(NULL, SW_SFX_RESOURCE_TYPE);
