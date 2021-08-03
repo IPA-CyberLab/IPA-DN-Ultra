@@ -642,22 +642,6 @@ bool SwSfxExtractProcess(HWND hWnd, bool* hide_error_msg)
 
 	Zero(exec_filename, sizeof(exec_filename));
 
-	// Language selection
-	if (UniInStrEx(current_params, SVC_ARG_SILENT_W, false) == false)
-	{
-		UINT selected_language = SwSfwLanguageSelection(hWnd);
-		if (selected_language != SW_SFX_LANGUAGE_NONE)
-		{
-			char* save_lang_id = "en";
-			if (selected_language == SW_SFX_LANGUAGE_JAPANESE)
-			{
-				save_lang_id = "ja";
-			}
-
-			MsRegWriteStrEx2(REG_CURRENT_USER, SW_REG_KEY, "Last User Language", save_lang_id, false, true);
-		}
-	}
-
 	// Enumerate the DATAFILE resources
 	t = MsEnumResources(NULL, SW_SFX_RESOURCE_TYPE);
 
@@ -795,6 +779,22 @@ bool SwSfxExtractProcess(HWND hWnd, bool* hide_error_msg)
 			UniStrCat(params, sizeof(params), tmp);
 
 			UniTrim(params);
+
+			// Language selection
+			if (UniInStrEx(current_params, SVC_ARG_SILENT_W, false) == false)
+			{
+				UINT selected_language = SwSfwLanguageSelection(hWnd);
+				if (selected_language != SW_SFX_LANGUAGE_NONE)
+				{
+					char* save_lang_id = "en";
+					if (selected_language == SW_SFX_LANGUAGE_JAPANESE)
+					{
+						save_lang_id = "ja";
+					}
+
+					MsRegWriteStrEx2(REG_CURRENT_USER, SW_REG_KEY, "Last User Language", save_lang_id, false, true);
+				}
+			}
 
 			// Specify a language by the lang.config
 			last_lang = MsRegReadStrEx2(REG_CURRENT_USER, SW_REG_KEY, "Last User Language", false, true);
