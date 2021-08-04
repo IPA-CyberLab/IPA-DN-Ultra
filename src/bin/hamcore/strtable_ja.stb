@@ -444,6 +444,8 @@ DU_SOUMU_DISABLE_SHARE	$APPFULL$ では、総務省 「地方公共団体にお�
 
 DU_IDLE_TIMEOUT			マウスが %u 秒間未操作であったため、アイドルタイムアウトが発生しました。\r\n\r\nアイドルタイムアウトまでの間隔は、接続先 $APPSHORT_SERVER$ のネットワーク管理者が設置しているポリシーサーバーの「IDLE_TIMEOUT」の値で規定されています。詳しくは、ネットワーク管理者にお問い合わせください。
 
+DU_WEB_URL				$THINWEB_WEBAPP_TOP_URL$
+
 
 
 # シン・テレワークシステム サーバー管理ツール関係
@@ -4617,6 +4619,8 @@ S9						設定が完了したら、[閉じる] ボタンをクリックしてこ
 S_SYSTEM				中継システム:
 S_REG_1					初回利用時のため、「登録キー」を入力する必要があります。「登録キーの入力」ボタンをクリックして、設定を行なってください。
 B_REG					登録キーの入力(&N)
+B_WEBCLIENT				Web 版クライアントを開く(&C)
+S_WEBCLIENT				Web 版クライアントを用いると、Chromebook や Mac からでも、Web ブラウザでこの PC に接続できます。
 
 
 PREFIX					D_DG_PROXY
@@ -4749,6 +4753,8 @@ B_ERASE					履歴消去(&E)
 B_SHARE					共有設定(&S)...
 B_OPTION				オプション(&O)...
 S_SYSTEM				接続先中継システム:
+B_WEB					&Web ブラウザ版
+
 
 
 PREFIX					D_DU_OPTION

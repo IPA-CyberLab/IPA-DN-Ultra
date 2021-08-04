@@ -794,7 +794,7 @@ bool SwSfxExtractProcess(HWND hWnd, bool* hide_error_msg)
 			UniTrim(params);
 
 			// Language selection
-			if (UniInStrEx(current_params, SVC_ARG_SILENT_W, false) == false)
+			if (UniInStrEx(current_params, L"/auto:1", false) == false)
 			{
 				UINT selected_language = SwSfwLanguageSelection(hWnd);
 				if (selected_language != SW_SFX_LANGUAGE_NONE)

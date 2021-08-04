@@ -126,7 +126,6 @@ typedef void *HWND;
 #define	SVC_ARG_UIHELP				"/uihelp"
 #define	SVC_ARG_UIHELP_W			L"/uihelp"
 #define SVC_ARG_SILENT				"/silent"
-#define SVC_ARG_SILENT_W			L"/silent"
 
 // Time to suicide, if the service freezed
 #define	SVC_SELFKILL_TIMEOUT		(5 * 60 * 1000)

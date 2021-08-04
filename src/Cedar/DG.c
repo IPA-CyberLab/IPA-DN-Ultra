@@ -2188,6 +2188,12 @@ void DgMainDlgInit(HWND hWnd, DG *dg)
 
 	DlgFont(hWnd, S_REG_1, 0, true);
 	DlgFont(hWnd, B_REG, 0, true);
+
+	if (IsEmptyStr(_SS("DU_WEB_URL")))
+	{
+		Hide(hWnd, B_WEBCLIENT);
+		Hide(hWnd, S_WEBCLIENT);
+	}
 }
 
 // コントロールの更新
@@ -2704,6 +2710,11 @@ UINT DgMainDlgProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam, void *para
 				// 変更があった場合は再試行をいたします
 				DgMainDlgRefresh(hWnd, dg, false);
 			}
+			break;
+
+		case B_WEBCLIENT:
+			// Web クライアント
+			ShellExecute(hWnd, "open", _SS("DU_WEB_URL"), NULL, NULL, SW_SHOW);
 			break;
 
 		case IDCANCEL:
