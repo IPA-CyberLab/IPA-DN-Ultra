@@ -2117,7 +2117,7 @@ void DuConnectMain(HWND hWnd, DU_MAIN *t, char *pcid)
 				if (ret == ERR_NO_ERROR)
 				{
 					char* hostname = s->HostnameIPv4;
-					if (IsFilledStr(s->HostnameIPv6))
+					if (IsFilledStr(s->HostnameIPv6) && StrCmpi(s->HostnameIPv6, "[::1]") != 0)
 					{
 						hostname = s->HostnameIPv6;
 					}

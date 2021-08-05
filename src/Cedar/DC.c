@@ -1156,7 +1156,7 @@ UINT DcGetMstscArguments(DC_SESSION *s, wchar_t *mstsc_exe, char *arg, UINT arg_
 		return ERR_DESK_FILE_IS_NOT_MSTSC;
 	}
 
-	if (IsFilledStr(s->HostnameIPv6))
+	if (IsFilledStr(s->HostnameIPv6) && StrCmpi(s->HostnameIPv6, "[::1]") != 0)
 	{
 		Format(tmp, sizeof(tmp), "/v:%s:%u", s->HostnameIPv6, s->ListenerIPv6->LocalPort);
 	}
@@ -2871,7 +2871,7 @@ void DcGetBestHostnameForPcid(char *hostname, UINT hostname_size, char *pcid, bo
 	if (ipv6 == false)
 	{
 		// IPv4 の場合
-		if (GetIP4InnerWithNoCache(&ip, hostname) == false)
+		if (GetIP4InnerWithNoCache(&ip, hostname, true) == false)
 		{
 			// IPv4 ホスト名の取得に失敗
 			b = false;
@@ -2879,7 +2879,7 @@ void DcGetBestHostnameForPcid(char *hostname, UINT hostname_size, char *pcid, bo
 		else
 		{
 			IP ip6 = CLEAN;
-			if (GetIP6InnerWithNoCache(&ip6, hostname))
+			if (GetIP6InnerWithNoCache(&ip6, hostname, true))
 			{
 				// IPv6 ホスト名の取得に成功してしまった。これは使用できない。
 				b = false;
@@ -2894,7 +2894,7 @@ void DcGetBestHostnameForPcid(char *hostname, UINT hostname_size, char *pcid, bo
 	else
 	{
 		// IPv6 の場合
-		if (GetIP6InnerWithNoCache(&ip, hostname) == false)
+		if (GetIP6InnerWithNoCache(&ip, hostname, true) == false)
 		{
 			// IPv6 ホスト名の取得に失敗
 			b = false;
@@ -2902,7 +2902,7 @@ void DcGetBestHostnameForPcid(char *hostname, UINT hostname_size, char *pcid, bo
 		else
 		{
 			IP ip4 = CLEAN;
-			if (GetIP4InnerWithNoCache(&ip4, hostname))
+			if (GetIP4InnerWithNoCache(&ip4, hostname, true))
 			{
 				// IPv4 ホスト名の取得に成功してしまった。これは使用できない。
 				b = false;

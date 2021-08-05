@@ -18363,7 +18363,7 @@ bool GetIP6Inner(IP *ip, char *hostname)
 
 	return true;
 }
-bool GetIP6InnerWithNoCache(IP* ip, char* hostname)
+bool GetIP6InnerWithNoCache(IP* ip, char* hostname, bool only_if_address_configured)
 {
 	struct sockaddr_in6 in;
 	struct in6_addr addr;
@@ -18390,6 +18390,15 @@ bool GetIP6InnerWithNoCache(IP* ip, char* hostname)
 	{
 		// Forward resolution
 		Zero(&hint, sizeof(hint));
+#ifdef OS_WIN32
+		if (MsIsVista())
+		{
+			if (only_if_address_configured)
+			{
+				hint.ai_flags |= AI_ADDRCONFIG;
+			}
+		}
+#endif // OS_WIN32
 		hint.ai_family = AF_INET6;
 		hint.ai_socktype = SOCK_STREAM;
 		hint.ai_protocol = IPPROTO_TCP;
@@ -18467,7 +18476,7 @@ bool GetIP4Inner(IP *ip, char *hostname)
 
 	return true;
 }
-bool GetIP4InnerWithNoCache(IP *ip, char *hostname)
+bool GetIP4InnerWithNoCache(IP *ip, char *hostname, bool only_if_address_configured)
 {
 	struct sockaddr_in in;
 	struct in_addr addr;
@@ -18494,6 +18503,15 @@ bool GetIP4InnerWithNoCache(IP *ip, char *hostname)
 	{
 		// Forward resolution
 		Zero(&hint, sizeof(hint));
+#ifdef OS_WIN32
+		if (MsIsVista())
+		{
+			if (only_if_address_configured)
+			{
+				hint.ai_flags |= AI_ADDRCONFIG;
+			}
+		}
+#endif // OS_WIN32
 		hint.ai_family = AF_INET;
 		hint.ai_socktype = SOCK_STREAM;
 		hint.ai_protocol = IPPROTO_TCP;
