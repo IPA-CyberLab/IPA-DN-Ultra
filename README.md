@@ -9,9 +9,9 @@
 
 このライブラリは未完成です。まだ使用することはできません。2021/08/04 登
 
-## [Current Version] beta7preview17
+## [Current Version] beta7
 
-## beta7preview17
+## beta7
 1. HTML5 版 Web クライアントに対応しました。HTML5 版 Web クライアントを使用すると、Web ブラウザから職場の「シン・テレワークシステム サーバー」端末に接続し、Windows デスクトップにリモートログインできます。自宅の Mac や ChromeBook などの端末から、職場の Windows を安全・快適に、全画面で操作できます。
 1. ポリシー規制サーバーの設定ファイルで、新たに「DENY_CLIENTS_APP」および「DENY_CLIENTS_HTML5」値が設定できるようになりました。DENY_CLIENTS_APP に 1 を設定すると、従来のデスクトップアプリ版のシン・テレワークシステム クライアントからの接続が禁止されます。DENY_CLIENTS_HTML5 に 1 を設定すると、HTML5 版 Web クライアントからの接続が禁止されます。DENY_CLIENTS_APP と DENY_CLIENTS_HTML5 の両方に 1 を設定することはできません。
 1. NTT ドコモ等の IPv6 シングルスタック (IPv6 SS) 環境 (NAT64 / DNS64) に対応しました。
