@@ -283,6 +283,8 @@ struct WT
 	char SmtpOtpFrom[128];
 	STATMAN* StatMan;
 	LIST* ProxyTargetUrlList;
+	LIST* ErrorControllersList;
+	LOCK* ErrorControllersListLock;
 
 	// Client / Server / Gate 共通
 	char EntranceUrl[MAX_PATH];			// エントランス URL

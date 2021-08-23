@@ -995,6 +995,9 @@ WT *NewWt(X *master_cert)
 
 	wt = ZeroMalloc(sizeof(WT));
 
+	wt->ErrorControllersList = NewStrList();
+	wt->ErrorControllersListLock = NewLock();
+
 	wt->BootTime = SystemTime64();
 	wt->BootTick = Tick64();
 
@@ -1047,6 +1050,9 @@ void CleanupWt(WT *wt)
 	DeleteLock(wt->EntranceCacheLock);
 	DeleteLock(wt->CfgRwSaveLock);
 	Free(wt->InternetSetting);
+
+	FreeStrList(wt->ErrorControllersList);
+	DeleteLock(wt->ErrorControllersListLock);
 
 	Free(wt);
 }

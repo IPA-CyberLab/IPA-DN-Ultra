@@ -1068,7 +1068,7 @@ UINT WideClientGetWoLMacList(WIDE *w, char *pcid, UINT ver, UINT build, char *ma
 	PackAddInt(r, "Ver", ver);
 	PackAddInt(r, "Build", build);
 	PackAddData(r, "ClientId", w->ClientId, sizeof(w->ClientId));
-	p = WideCall(w, "ClientGetWoLMacList", r, false, true);
+	p = WideCall(w, "ClientGetWoLMacList", r, false, true, 0, false);
 	FreePack(r);
 
 	ret = GetErrorFromPack(p);
@@ -1109,7 +1109,7 @@ UINT WideClientConnectInner(WIDE *w, WT_CONNECT *c, char *pcid, UINT ver, UINT b
 		PackAddInt(r, "Build", build);
 		PackAddInt(r, "ClientOptions", client_options);
 		PackAddData(r, "ClientId", w->ClientId, sizeof(w->ClientId));
-		p = WideCall(w, "ClientConnect", r, false, true);
+		p = WideCall(w, "ClientConnect", r, false, true, 0, false);
 		FreePack(r);
 
 		ret = GetErrorFromPack(p);
@@ -1223,7 +1223,7 @@ UINT WideServerConnect(WIDE *w, WT_CONNECT *c)
 	PackAddInt64(r, "ServerMask64", w->ServerMask64);
 	PackAddStr(r, "RegistrationPassword", w->RegistrationPassword);
 	PackAddStr(r, "RegistrationEmail", w->RegistrationEmail);
-	p = WideCall(w, "ServerConnect", r, false, true);
+	p = WideCall(w, "ServerConnect", r, false, true, 0, false);
 	FreePack(r);
 
 	ret = GetErrorFromPack(p);
@@ -1293,7 +1293,7 @@ UINT WideGetEnvStr(WIDE *w, char *name, char *ret_str, UINT ret_size)
 	r = NewPack();
 	PackAddStr(r, "Name", name);
 
-	p = WideCall(w, "GetEnvStr", r, false, true);
+	p = WideCall(w, "GetEnvStr", r, false, true, 0, false);
 	FreePack(r);
 
 	ret = GetErrorFromPack(p);
@@ -1331,7 +1331,7 @@ UINT WideServerSendOtpEmail(WIDE *w, char *otp, char *email, char *ip, char *fqd
 	WideLog(w, "SendOtpEmail. OTP = %s, Email = %s, IP = %s, Fqdn = %s",
 		otp, email, ip, fqdn);
 
-	p = WideCall(w, "SendOtpEmail", r, false, true);
+	p = WideCall(w, "SendOtpEmail", r, false, true, 0, false);
 	FreePack(r);
 
 	ret = GetErrorFromPack(p);
@@ -1363,7 +1363,7 @@ UINT WideServerRenameMachine(WIDE *w, char *new_name)
 	r = NewPack();
 	PackAddStr(r, "NewName", new_name);
 
-	p = WideCall(w, "RenameMachine", r, false, true);
+	p = WideCall(w, "RenameMachine", r, false, true, 0, false);
 	FreePack(r);
 
 	ret = GetErrorFromPack(p);
@@ -1402,7 +1402,7 @@ UINT WideServerRegistMachine(WIDE *w, char *pcid, X *cert, K *key)
 	PackAddStr(r, "RegistrationPassword", w->RegistrationPassword);
 	PackAddStr(r, "RegistrationEmail", w->RegistrationEmail);
 
-	p = WtWpcCallWithCertAndKey(wt, "RegistMachine", r, cert, key, false, true);
+	p = WtWpcCallWithCertAndKey(wt, "RegistMachine", r, cert, key, false, true, 0, false);
 	FreePack(r);
 
 	ret = GetErrorFromPack(p);
@@ -1424,7 +1424,7 @@ UINT WideServerGetLoginInfo(WIDE *w, WIDE_LOGIN_INFO *info)
 	}
 
 	r = NewPack();
-	p = WideCall(w, "GetLoginInfo", r, false, true);
+	p = WideCall(w, "GetLoginInfo", r, false, true, 0, false);
 	FreePack(r);
 
 	ret = GetErrorFromPack(p);
@@ -1487,7 +1487,7 @@ UINT WideServerGetPcidCandidate(WIDE *w, char *name, UINT size, char *current_us
 	PackAddStr(r, "ComputerName", computer_name);
 	PackAddStr(r, "UserName", user_name);
 
-	p = WideCall(w, "GetPcidCandidate", r, false, true);
+	p = WideCall(w, "GetPcidCandidate", r, false, true, 0, false);
 	FreePack(r);
 
 	ret = GetErrorFromPack(p);
@@ -1506,7 +1506,7 @@ UINT WideServerGetPcidCandidate(WIDE *w, char *name, UINT size, char *current_us
 }
 
 // WPC の呼び出し
-PACK *WideCall(WIDE *wide, char *function_name, PACK *pack, bool global_ip_only, bool try_secondary)
+PACK* WideCall(WIDE* wide, char* function_name, PACK* pack, bool global_ip_only, bool try_secondary, UINT timeout, bool parallel_skip_last_error_controller)
 {
 	WT *wt;
 	X *server_x = NULL;
@@ -1537,7 +1537,7 @@ PACK *WideCall(WIDE *wide, char *function_name, PACK *pack, bool global_ip_only,
 		WideLog(wide, "This Server's Cert Hash: %s", hash_str);
 	}
 
-	ret = WtWpcCallWithCertAndKey(wt, function_name, pack, server_x, server_k, global_ip_only, try_secondary);
+	ret = WtWpcCallWithCertAndKey(wt, function_name, pack, server_x, server_k, global_ip_only, try_secondary, timeout, parallel_skip_last_error_controller);
 
 	FreeX(server_x);
 	FreeK(server_k);
@@ -3149,6 +3149,18 @@ void WideGateLoadCertKey(X **cert, K **key)
 // セッション削除の報告
 void WideGateReportSessionDel(WIDE *wide, UCHAR *session_id)
 {
+	bool b = true;
+	UINT64 gateway_interval;
+	if (wide->GateSettings_Int_ReportSettings_Received == false)
+	{
+		gateway_interval = (UINT64)WideGateGetIniEntry("GatewayInterval");
+	}
+	else
+	{
+		gateway_interval = (UINT64)wide->GateSettings_Int_ReportInterval;
+	}
+	gateway_interval = MIN(gateway_interval, WIDE_GATEWAY_INTERVAL_HARD_MAX);
+
 	bool global_ip_only = true;
 	WT *wt;
 	// 引数チェック
@@ -3156,6 +3168,30 @@ void WideGateReportSessionDel(WIDE *wide, UCHAR *session_id)
 	{
 		return;
 	}
+
+	wt = wide->wt;
+
+	Lock(wide->ReportIntervalLock);
+	{
+		UINT64 now = Tick64();
+
+		if (wide->LastReportTick == 0 ||
+			(wide->LastReportTick + (UINT64)WIDE_REPORT_FAST_SEND_INTERVAL) <= now)
+		{
+			// 直ちに今回の報告を行なう
+		}
+		else
+		{
+			// 最近 WIDE_REPORT_FAST_SEND_INTERVAL ミリ秒以内にセッション追加の報告
+			// が行われたので、今回の報告は行わずに、遅延報告を行う
+
+			wide->NextReportTick2 = now + (UINT64)(gateway_interval / 2);
+
+			b = false;
+		}
+		wide->LastReportTick = now;
+	}
+	Unlock(wide->ReportIntervalLock);
 
 	if (WideGateGetIniEntry("DisableRegister"))
 	{
@@ -3169,29 +3205,34 @@ void WideGateReportSessionDel(WIDE *wide, UCHAR *session_id)
 		global_ip_only = false;
 	}
 
-	wt = wide->wt;
-
-	Lock(wide->LockReport);
+	if (b)
 	{
-		PACK *p = NewPack();
-		PACK *ret = NULL;
-
-		PackAddStr(p, "GateKey", wide->GateKeyStr);
-
-		PackAddData(p, "SessionId", session_id, WT_SESSION_ID_SIZE);
-		WideGatePackGateInfo(p, wt);
-
-		ret = WtWpcCallWithCertAndKey(wt, "ReportSessionDel", p, wide->GateCert, wide->GateKey, global_ip_only, false);
-
-		if (ret != NULL)
+		if (Inc(wide->SessionAddDelCriticalCounter) <= WIDE_MAX_CONCURRENT_SESSION_ADD_DEL_COUNT)
 		{
-			WideGateReadGateSettingsFromPack(wide, ret);
-			FreePack(ret);
+			Lock(wide->LockReport);
+			{
+				PACK* p = NewPack();
+				PACK* ret = NULL;
+
+				PackAddStr(p, "GateKey", wide->GateKeyStr);
+
+				PackAddData(p, "SessionId", session_id, WT_SESSION_ID_SIZE);
+				WideGatePackGateInfo(p, wt);
+
+				ret = WtWpcCallWithCertAndKey(wt, "ReportSessionDel", p, wide->GateCert, wide->GateKey, global_ip_only, false, WIDE_SESSION_ADD_DEL_REPORT_COMM_TIMEOUT, true);
+
+				if (ret != NULL)
+				{
+					FreePack(ret);
+				}
+
+				FreePack(p);
+			}
+			Unlock(wide->LockReport);
 		}
 
-		FreePack(p);
+		Dec(wide->SessionAddDelCriticalCounter);
 	}
-	Unlock(wide->LockReport);
 }
 
 CERTS_AND_KEY* WideGetWebSocketCertsAndKey(WIDE* wide)
@@ -3383,7 +3424,7 @@ void WideGateReportSessionAdd(WIDE *wide, TSESSION *s)
 		if (wide->LastReportTick == 0 ||
 			(wide->LastReportTick + (UINT64)WIDE_REPORT_FAST_SEND_INTERVAL) <= now)
 		{
-			// 何もしない
+			// 直ちに今回の報告を行なう
 		}
 		else
 		{
@@ -3412,27 +3453,31 @@ void WideGateReportSessionAdd(WIDE *wide, TSESSION *s)
 
 	if (b)
 	{
-		Lock(wide->LockReport);
+		if (Inc(wide->SessionAddDelCriticalCounter) <= WIDE_MAX_CONCURRENT_SESSION_ADD_DEL_COUNT)
 		{
-			PACK *p = NewPack();
-			PACK *ret = NULL;
-
-			PackAddStr(p, "GateKey", wide->GateKeyStr);
-
-			WideGatePackSession(p, s, 0, 1, NULL);
-			WideGatePackGateInfo(p, wt);
-
-			ret = WtWpcCallWithCertAndKey(wt, "ReportSessionAdd", p, wide->GateCert, wide->GateKey, global_ip_only, false);
-
-			if (ret != NULL)
+			Lock(wide->LockReport);
 			{
-				WideGateReadGateSettingsFromPack(wide, ret);
-				FreePack(ret);
-			}
+				PACK* p = NewPack();
+				PACK* ret = NULL;
 
-			FreePack(p);
+				PackAddStr(p, "GateKey", wide->GateKeyStr);
+
+				WideGatePackSession(p, s, 0, 1, NULL);
+				WideGatePackGateInfo(p, wt);
+
+				ret = WtWpcCallWithCertAndKey(wt, "ReportSessionAdd", p, wide->GateCert, wide->GateKey, global_ip_only, false, WIDE_SESSION_ADD_DEL_REPORT_COMM_TIMEOUT, true);
+
+				if (ret != NULL)
+				{
+					FreePack(ret);
+				}
+
+				FreePack(p);
+			}
+			Unlock(wide->LockReport);
 		}
-		Unlock(wide->LockReport);
+
+		Dec(wide->SessionAddDelCriticalCounter);
 	}
 }
 
@@ -3494,7 +3539,7 @@ void WideGateReportSessionList(WIDE *wide)
 		}
 		ReleaseList(sc_list);
 		
-		ret = WtWpcCallWithCertAndKey(wt, "ReportSessionList", p, wide->GateCert, wide->GateKey, global_ip_only, false);
+		ret = WtWpcCallWithCertAndKey(wt, "ReportSessionList", p, wide->GateCert, wide->GateKey, global_ip_only, false, 0, false);
 
 		if (ret != NULL)
 		{
@@ -3754,6 +3799,7 @@ WIDE *WideGateStart()
 	w = ZeroMalloc(sizeof(WIDE));
 
 	w->Type = WIDE_TYPE_GATE;
+	w->SessionAddDelCriticalCounter = NewCounter();
 	w->wt = NewWtFromHamcore();
 	w->wt->Wide = w;
 	w->GateHalt = false;
@@ -3953,6 +3999,8 @@ void WideGateStopEx(WIDE* wide, bool daemon_force_exit)
 	FreeCertsAndKey(wide->WebSocketCertsAndKey);
 
 	DeleteLock(wide->WebSocketCertsAndKeyLock);
+
+	DeleteCounter(wide->SessionAddDelCriticalCounter);
 
 	Free(wide);
 }
