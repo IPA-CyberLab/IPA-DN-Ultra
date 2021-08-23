@@ -3149,6 +3149,12 @@ void WideGateLoadCertKey(X **cert, K **key)
 // セッション削除の報告
 void WideGateReportSessionDel(WIDE *wide, UCHAR *session_id)
 {
+	// 引数チェック
+	if (wide == NULL)
+	{
+		return;
+	}
+
 	bool b = true;
 	UINT64 gateway_interval;
 	if (wide->GateSettings_Int_ReportSettings_Received == false)
@@ -3163,11 +3169,6 @@ void WideGateReportSessionDel(WIDE *wide, UCHAR *session_id)
 
 	bool global_ip_only = true;
 	WT *wt;
-	// 引数チェック
-	if (wide == NULL)
-	{
-		return;
-	}
 
 	wt = wide->wt;
 
@@ -3209,26 +3210,26 @@ void WideGateReportSessionDel(WIDE *wide, UCHAR *session_id)
 	{
 		if (Inc(wide->SessionAddDelCriticalCounter) <= WIDE_MAX_CONCURRENT_SESSION_ADD_DEL_COUNT)
 		{
-			Lock(wide->LockReport);
+			PACK* p = NewPack();
+			PACK* ret = NULL;
+
+			PackAddStr(p, "GateKey", wide->GateKeyStr);
+
+			PackAddData(p, "SessionId", session_id, WT_SESSION_ID_SIZE);
+			WideGatePackGateInfo(p, wt);
+
+			ret = WtWpcCallWithCertAndKey(wt, "ReportSessionDel", p, wide->GateCert, wide->GateKey, global_ip_only, false, WIDE_SESSION_ADD_DEL_REPORT_COMM_TIMEOUT, true);
+
+			if (ret != NULL)
 			{
-				PACK* p = NewPack();
-				PACK* ret = NULL;
-
-				PackAddStr(p, "GateKey", wide->GateKeyStr);
-
-				PackAddData(p, "SessionId", session_id, WT_SESSION_ID_SIZE);
-				WideGatePackGateInfo(p, wt);
-
-				ret = WtWpcCallWithCertAndKey(wt, "ReportSessionDel", p, wide->GateCert, wide->GateKey, global_ip_only, false, WIDE_SESSION_ADD_DEL_REPORT_COMM_TIMEOUT, true);
-
-				if (ret != NULL)
-				{
-					FreePack(ret);
-				}
-
-				FreePack(p);
+				FreePack(ret);
 			}
-			Unlock(wide->LockReport);
+
+			FreePack(p);
+		}
+		else
+		{
+			Print("WideGateReportSessionDel: Skip\n");
 		}
 
 		Dec(wide->SessionAddDelCriticalCounter);
@@ -3395,6 +3396,12 @@ void WideGateReadGateSettingsFromPack(WIDE *wide, PACK *p)
 // セッション追加の報告
 void WideGateReportSessionAdd(WIDE *wide, TSESSION *s)
 {
+	// 引数チェック
+	if (wide == NULL || s == NULL)
+	{
+		return;
+	}
+
 	WT *wt;
 	bool b = true;
 	UINT64 gateway_interval;
@@ -3409,11 +3416,6 @@ void WideGateReportSessionAdd(WIDE *wide, TSESSION *s)
 	gateway_interval = MIN(gateway_interval, WIDE_GATEWAY_INTERVAL_HARD_MAX);
 
 	bool global_ip_only = true;
-	// 引数チェック
-	if (wide == NULL)
-	{
-		return;
-	}
 
 	wt = wide->wt;
 
@@ -3453,28 +3455,29 @@ void WideGateReportSessionAdd(WIDE *wide, TSESSION *s)
 
 	if (b)
 	{
+		Print("wide->SessionAddDelCriticalCounter = %u\n", Count(wide->SessionAddDelCriticalCounter));
 		if (Inc(wide->SessionAddDelCriticalCounter) <= WIDE_MAX_CONCURRENT_SESSION_ADD_DEL_COUNT)
 		{
-			Lock(wide->LockReport);
+			PACK* p = NewPack();
+			PACK* ret = NULL;
+
+			PackAddStr(p, "GateKey", wide->GateKeyStr);
+
+			WideGatePackSession(p, s, 0, 1, NULL);
+			WideGatePackGateInfo(p, wt);
+
+			ret = WtWpcCallWithCertAndKey(wt, "ReportSessionAdd", p, wide->GateCert, wide->GateKey, global_ip_only, false, WIDE_SESSION_ADD_DEL_REPORT_COMM_TIMEOUT, true);
+
+			if (ret != NULL)
 			{
-				PACK* p = NewPack();
-				PACK* ret = NULL;
-
-				PackAddStr(p, "GateKey", wide->GateKeyStr);
-
-				WideGatePackSession(p, s, 0, 1, NULL);
-				WideGatePackGateInfo(p, wt);
-
-				ret = WtWpcCallWithCertAndKey(wt, "ReportSessionAdd", p, wide->GateCert, wide->GateKey, global_ip_only, false, WIDE_SESSION_ADD_DEL_REPORT_COMM_TIMEOUT, true);
-
-				if (ret != NULL)
-				{
-					FreePack(ret);
-				}
-
-				FreePack(p);
+				FreePack(ret);
 			}
-			Unlock(wide->LockReport);
+
+			FreePack(p);
+		}
+		else
+		{
+			Print("WideGateReportSessionAdd: Skip\n");
 		}
 
 		Dec(wide->SessionAddDelCriticalCounter);
