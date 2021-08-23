@@ -254,6 +254,9 @@ struct WIDE
 
 	COUNTER* SessionAddDelCriticalCounter;
 
+	UINT64 NextRebootTime;
+	LOCK* NextRebootTimeLock;
+
 	// 2020/4/15 追加 アグレッシブタイムアウト機能
 	LOCK *AggressiveTimeoutLock;
 	UINT GateTunnelTimeout;
@@ -441,6 +444,7 @@ void WideGateSetControllerGateSecretKey(WIDE *wide, char *key);
 bool WideGateGetControllerGateSecretKey(WIDE *wide, char *key, UINT key_size);
 void WideGateReadGateSettingsFromPack(WIDE *wide, PACK *p);
 void WideGenerateRandomDummyDomain(char *str, UINT size);
+void WideGateCheckNextRebootTime64(WIDE* wide);
 
 void WideGateLoadAggressiveTimeoutSettings(WIDE *wide);
 void WideGateLoadAggressiveTimeoutSettingsWithInterval(WIDE *wide);

@@ -3252,6 +3252,30 @@ CERTS_AND_KEY* WideGetWebSocketCertsAndKey(WIDE* wide)
 	return ret;
 }
 
+void WideGateCheckNextRebootTime64(WIDE* wide)
+{
+	UINT64 value = 0;
+	if (wide == NULL)
+	{
+		return;
+	}
+
+	Lock(wide->NextRebootTimeLock);
+	{
+		value = wide->NextRebootTime;
+	}
+	Unlock(wide->NextRebootTimeLock);
+
+	if (value != 0)
+	{
+		UINT64 now = SystemTime64();
+		if (now >= value)
+		{
+			AbortExitEx("now >= next_reboot_time");
+		}
+	}
+}
+
 void WideGateReadGateSettingsFromPack(WIDE *wide, PACK *p)
 {
 	char controller_gate_secret_key[64] = {0};
@@ -3261,6 +3285,16 @@ void WideGateReadGateSettingsFromPack(WIDE *wide, PACK *p)
 	{
 		return;
 	}
+
+	UINT64 next_reboot_time64 = PackGetInt64(p, "NextRebootTime64");
+
+	Lock(wide->NextRebootTimeLock);
+	{
+		wide->NextRebootTime = next_reboot_time64;
+	}
+	Unlock(wide->NextRebootTimeLock);
+
+	WideGateCheckNextRebootTime64(wide);
 
 	if (PackGetStr(p, "ControllerGateSecretKey", controller_gate_secret_key, sizeof(controller_gate_secret_key)))
 	{
@@ -3668,6 +3702,8 @@ void WideGateReportThread(THREAD *thread, void *param)
 
 			Wait(wide->ReportThreadHaltEvent, 512);
 
+			WideGateCheckNextRebootTime64(wide);
+
 			Lock(wide->ReportIntervalLock);
 			{
 				UINT64 now = Tick64();
@@ -3794,6 +3830,7 @@ WIDE *WideGateStart()
 	w = ZeroMalloc(sizeof(WIDE));
 
 	w->Type = WIDE_TYPE_GATE;
+	w->NextRebootTimeLock = NewLock();
 	w->SessionAddDelCriticalCounter = NewCounter();
 	w->wt = NewWtFromHamcore();
 	w->wt->Wide = w;
@@ -3996,6 +4033,8 @@ void WideGateStopEx(WIDE* wide, bool daemon_force_exit)
 	DeleteLock(wide->WebSocketCertsAndKeyLock);
 
 	DeleteCounter(wide->SessionAddDelCriticalCounter);
+
+	DeleteLock(wide->NextRebootTimeLock);
 
 	Free(wide);
 }
