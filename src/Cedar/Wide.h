@@ -159,7 +159,7 @@ struct SESSION_AND_CLIENT
 #define WIDE_SESSION_ADD_DEL_REPORT_COMM_TIMEOUT	(5 * 1000)
 
 // 同時にセッションの追加 / 削除報告を行なって良い多重数
-#define WIDE_MAX_CONCURRENT_SESSION_ADD_DEL_COUNT	3
+#define WIDE_MAX_CONCURRENT_SESSION_ADD_DEL_COUNT	10
 
 // GatewayInterval および EntryExpires の最大値
 #define WIDE_GATEWAY_INTERVAL_HARD_MAX	(5 * 60 * 1000)

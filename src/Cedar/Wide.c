@@ -3227,10 +3227,6 @@ void WideGateReportSessionDel(WIDE *wide, UCHAR *session_id)
 
 			FreePack(p);
 		}
-		else
-		{
-			Print("WideGateReportSessionDel: Skip\n");
-		}
 
 		Dec(wide->SessionAddDelCriticalCounter);
 	}
@@ -3474,10 +3470,6 @@ void WideGateReportSessionAdd(WIDE *wide, TSESSION *s)
 			}
 
 			FreePack(p);
-		}
-		else
-		{
-			Print("WideGateReportSessionAdd: Skip\n");
 		}
 
 		Dec(wide->SessionAddDelCriticalCounter);
