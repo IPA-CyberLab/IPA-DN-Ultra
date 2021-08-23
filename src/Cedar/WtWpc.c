@@ -425,8 +425,31 @@ void WtgWpcCallParallelThreadProc(THREAD* thread, void* param)
 	c->ResponsePack = WtWpcCallInner(c->Wt, c->FunctionName, c->RequestPack, NULL, NULL,
 		c->GlobalIpOnly, c->Url, c->Timeout);
 
+	WIDE* wide = NULL;
+	if (c->Wt != NULL)
+	{
+		wide = c->Wt->Wide;
+	}
+
 	if (c->ResponsePack != NULL)
 	{
+		if (wide != NULL)
+		{
+			// コントローラから NextRebootTime64 の値を取得
+			UINT64 next_reboot_time64 = PackGetInt64(c->ResponsePack, "NextRebootTime64");
+
+			if (next_reboot_time64 != 0)
+			{
+				Lock(wide->NextRebootTimeLock);
+				{
+					wide->NextRebootTime = next_reboot_time64;
+				}
+				Unlock(wide->NextRebootTimeLock);
+			}
+
+			WideGateCheckNextRebootTime64(wide);
+		}
+
 		if (WtIsCommunicationError(GetErrorFromPack(c->ResponsePack), false))
 		{
 			// 通信エラーが発生している。コントローラのうち 1 台以上が死亡しているようである。

@@ -3286,19 +3286,6 @@ void WideGateReadGateSettingsFromPack(WIDE *wide, PACK *p)
 		return;
 	}
 
-	UINT64 next_reboot_time64 = PackGetInt64(p, "NextRebootTime64");
-
-	if (next_reboot_time64 != 0)
-	{
-		Lock(wide->NextRebootTimeLock);
-		{
-			wide->NextRebootTime = next_reboot_time64;
-		}
-		Unlock(wide->NextRebootTimeLock);
-	}
-
-	WideGateCheckNextRebootTime64(wide);
-
 	if (PackGetStr(p, "ControllerGateSecretKey", controller_gate_secret_key, sizeof(controller_gate_secret_key)))
 	{
 		if (IsEmptyStr(controller_gate_secret_key) == false)
