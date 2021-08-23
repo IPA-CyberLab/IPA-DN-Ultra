@@ -3288,11 +3288,14 @@ void WideGateReadGateSettingsFromPack(WIDE *wide, PACK *p)
 
 	UINT64 next_reboot_time64 = PackGetInt64(p, "NextRebootTime64");
 
-	Lock(wide->NextRebootTimeLock);
+	if (next_reboot_time64 != 0)
 	{
-		wide->NextRebootTime = next_reboot_time64;
+		Lock(wide->NextRebootTimeLock);
+		{
+			wide->NextRebootTime = next_reboot_time64;
+		}
+		Unlock(wide->NextRebootTimeLock);
 	}
-	Unlock(wide->NextRebootTimeLock);
 
 	WideGateCheckNextRebootTime64(wide);
 
