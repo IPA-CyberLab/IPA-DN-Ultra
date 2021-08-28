@@ -151,6 +151,7 @@ struct CERT_SERVER_CLIENT_PARAM
 	char CertKeySrcUrl[MAX_PATH];
 	char BasicAuthUsername[MAX_PATH];
 	char BasicAuthPassword[MAX_PATH];
+	char ManagerLogName[MAX_PATH];
 	wchar_t DestDir[MAX_PATH];
 };
 
@@ -160,13 +161,14 @@ struct CERT_SERVER_CLIENT
 	THREAD* Thread;
 	volatile bool Halt;
 	EVENT* HaltEvent;
+	WT* Wt;
 };
 
 #define MAX_CERT_SERVER_CLIENT_DOWNLOAD_SIZE	(256 * 1024)
 
 #define CERT_SERVER_CLIENT_INTERVAL_NORMAL			(5 * 1000)
 #define CERT_SERVER_CLIENT_INTERVAL_RETRY_INITIAL	(1 * 1000)
-#define CERT_SERVER_CLIENT_INTERVAL_RETRY_MAX		(1 * 1000)
+#define CERT_SERVER_CLIENT_INTERVAL_RETRY_MAX		(5 * 1000)
 
 
 
@@ -242,6 +244,11 @@ BUF* HttpDownload(char* url, char *basic_auth_username, char *basic_auth_passwor
 	void* sha1_cert_hash, UINT num_hashes,
 	bool* cancel, UINT max_recv_size);
 void GenerateHttpBasicAuthHeaderValue(char* dst, UINT dst_size, char* username, char* password);
+CERTS_AND_KEY* DownloadCertsAndKeyFromCertServer(CERT_SERVER_CLIENT_PARAM* param, bool* cancel);
+void FreeCertServerClient(CERT_SERVER_CLIENT* c);
+CERT_SERVER_CLIENT* NewCertServerClient(WT *wt, CERT_SERVER_CLIENT_PARAM* param);
+void CertServerClientThreadProc(THREAD* thread, void* param);
+
 
 
 #endif	// WPC_H

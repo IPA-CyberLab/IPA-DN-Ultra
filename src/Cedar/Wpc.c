@@ -89,27 +89,52 @@
 void CertServerClientThreadProc(THREAD* thread, void* param)
 {
 	CERT_SERVER_CLIENT* c = NULL;
+	char log_prefix[MAX_PATH] = CLEAN;
 	if (thread == NULL || param == NULL)
 	{
 		return;
 	}
 	c = (CERT_SERVER_CLIENT*)param;
 
+	Format(log_prefix, sizeof(log_prefix), "CertificateManager/%s", c->Param.ManagerLogName);
+	UINT num_retry = 0;
+
 	while (c->Halt == false)
 	{
 		UINT next_wait = GenRandInterval2(CERT_SERVER_CLIENT_INTERVAL_NORMAL, 30);
+
+		WtLogEx(c->Wt, log_prefix, "Downloading the SSL certificates from the URL '%s' ...", c->Param.CertListSrcUrl);
 
 		CERTS_AND_KEY* ck = DownloadCertsAndKeyFromCertServer(&c->Param, (bool *)&c->Halt);
 
 		if (ck != NULL)
 		{
+			if (SaveCertsAndKeyToDir(ck, c->Param.DestDir))
+			{
+				WtLogEx(c->Wt, log_prefix, "Download SSL certificates OK from the URL '%s'. Certificate files are saved to the local directory '%S'.", c->Param.CertListSrcUrl, c->Param.DestDir);
+			}
+			else
+			{
+				WtLogEx(c->Wt, log_prefix, "Error: Download SSL certificates OK from the URL '%s', but saving these certificate files are saved to the local directory '%S' failed.", c->Param.CertListSrcUrl, c->Param.DestDir);
+			}
+
+			FreeCertsAndKey(ck);
+			num_retry = 0;
 		}
+		else
+		{
+			num_retry++;
+			next_wait = GenRandIntervalWithRetry(CERT_SERVER_CLIENT_INTERVAL_RETRY_INITIAL, num_retry, CERT_SERVER_CLIENT_INTERVAL_RETRY_MAX, 30);
+			WtLogEx(c->Wt, log_prefix, "Error: Failed to download the SSL certificates from the URL '%s'.", c->Param.CertListSrcUrl);
+		}
+
+		WtLogEx(c->Wt, log_prefix, "Waiting for %u msecs to next download.", next_wait);
 
 		Wait(c->HaltEvent, next_wait);
 	}
 }
 
-CERT_SERVER_CLIENT* NewCertServerClient(CERT_SERVER_CLIENT_PARAM* param)
+CERT_SERVER_CLIENT* NewCertServerClient(WT* wt, CERT_SERVER_CLIENT_PARAM* param)
 {
 	CERT_SERVER_CLIENT* c = NULL;
 	if (param == NULL)
@@ -118,7 +143,9 @@ CERT_SERVER_CLIENT* NewCertServerClient(CERT_SERVER_CLIENT_PARAM* param)
 	}
 
 	c = ZeroMalloc(sizeof(CERT_SERVER_CLIENT));
+
 	Copy(&c->Param, param, sizeof(CERT_SERVER_CLIENT_PARAM));
+	c->Wt = wt;
 
 	c->HaltEvent = NewEvent();
 	c->Thread = NewThread(CertServerClientThreadProc, c);
@@ -138,6 +165,7 @@ void FreeCertServerClient(CERT_SERVER_CLIENT* c)
 	Set(c->HaltEvent);
 
 	WaitThread(c->Thread, INFINITE);
+	ReleaseThread(c->Thread);
 
 	ReleaseEvent(c->HaltEvent);
 

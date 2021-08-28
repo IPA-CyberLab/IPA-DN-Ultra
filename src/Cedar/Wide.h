@@ -277,6 +277,9 @@ struct WIDE
 	UINT64 NextRebootTime;
 	LOCK* NextRebootTimeLock;
 
+	CERT_SERVER_CLIENT* Standalone_WebSocketCertDownloader;
+	CERT_SERVER_CLIENT* Standalone_WebAppCertDownloader;
+
 	// 2020/4/15 追加 アグレッシブタイムアウト機能
 	LOCK *AggressiveTimeoutLock;
 	UINT GateTunnelTimeout;

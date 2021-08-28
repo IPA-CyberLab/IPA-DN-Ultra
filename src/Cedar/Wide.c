@@ -3942,8 +3942,6 @@ WIDE *WideGateStart()
 		}
 
 		save_log = INT_TO_BOOL(IniIntValue(o, "SaveLog"));
-
-		WideFreeIni(o);
 	}
 
 	if (port == 0)
@@ -4025,12 +4023,45 @@ WIDE *WideGateStart()
 
 	w->WebSocketCertsAndKeyLock = NewLock();
 
-	// WebApp 用証明書の読み込み
-	GetExeDirW(exe_dir, sizeof(exe_dir));
-	CombinePathW(ws_cert_dir, sizeof(ws_cert_dir), exe_dir, WIDE_WEBAPP_CERT_SET_DEST_DIR);
-	w->WebAppCertsAndKey = NewCertsAndKeyFromDir(ws_cert_dir);
+	// WebApp 用証明書の読み込み (Standalone mode のみ)
+	if (w->IsStandaloneMode)
+	{
+		GetExeDirW(exe_dir, sizeof(exe_dir));
+		CombinePathW(ws_cert_dir, sizeof(ws_cert_dir), exe_dir, WIDE_WEBAPP_CERT_SET_DEST_DIR);
+		w->WebAppCertsAndKey = NewCertsAndKeyFromDir(ws_cert_dir);
+	}
 
 	w->WebAppCertsAndKeyLock = NewLock();
+
+	// WebSocket 用証明書と WebApp 用証明書の自動ダウンロードマネージャの動作開始
+	if (w->IsStandaloneMode)
+	{
+		CERT_SERVER_CLIENT_PARAM p;
+
+		GetExeDirW(exe_dir, sizeof(exe_dir));
+
+		// WebSocket 用証明書
+		Zero(&p, sizeof(p));
+		StrCpy(p.CertListSrcUrl, sizeof(p.CertListSrcUrl), IniStrValue(o, "WebSocketCertListSrcUrl"));
+		StrCpy(p.CertKeySrcUrl, sizeof(p.CertKeySrcUrl), IniStrValue(o, "WebSocketCertKeySrcUrl"));
+		StrCpy(p.BasicAuthUsername, sizeof(p.BasicAuthUsername), IniStrValue(o, "WebSocketCertBasicAuthUsername"));
+		StrCpy(p.BasicAuthPassword, sizeof(p.BasicAuthPassword), IniStrValue(o, "WebSocketCertBasicAuthPassword"));
+		StrCpy(p.ManagerLogName, sizeof(p.ManagerLogName), "WebSocket");
+		CombinePathW(p.DestDir, sizeof(p.DestDir), exe_dir, WIDE_WEBSOCKET_CERT_SET_DEST_DIR);
+
+		w->Standalone_WebSocketCertDownloader = NewCertServerClient(w->wt, &p);
+
+		// WebApp 用証明書
+		Zero(&p, sizeof(p));
+		StrCpy(p.CertListSrcUrl, sizeof(p.CertListSrcUrl), IniStrValue(o, "WebAppCertListSrcUrl"));
+		StrCpy(p.CertKeySrcUrl, sizeof(p.CertKeySrcUrl), IniStrValue(o, "WebAppCertKeySrcUrl"));
+		StrCpy(p.BasicAuthUsername, sizeof(p.BasicAuthUsername), IniStrValue(o, "WebAppCertBasicAuthUsername"));
+		StrCpy(p.BasicAuthPassword, sizeof(p.BasicAuthPassword), IniStrValue(o, "WebAppCertBasicAuthPassword"));
+		StrCpy(p.ManagerLogName, sizeof(p.ManagerLogName), "WebApp");
+		CombinePathW(p.DestDir, sizeof(p.DestDir), exe_dir, WIDE_WEBAPP_CERT_SET_DEST_DIR);
+
+		w->Standalone_WebAppCertDownloader = NewCertServerClient(w->wt, &p);
+	}
 
 	// DoS 攻撃検知無効
 	if (w->DisableDoSProtection)
@@ -4049,6 +4080,8 @@ WIDE *WideGateStart()
 	}
 
 	w->IsWideGateStarted = true;
+
+	WideFreeIni(o);
 
 	return w;
 }
@@ -4110,6 +4143,16 @@ void WideGateStopEx(WIDE* wide, bool daemon_force_exit)
 	FreeK(wide->GateKey);
 
 	FreeStrList(wide->wt->ProxyTargetUrlList);
+
+	if (wide->Standalone_WebSocketCertDownloader != NULL)
+	{
+		FreeCertServerClient(wide->Standalone_WebSocketCertDownloader);
+	}
+
+	if (wide->Standalone_WebAppCertDownloader != NULL)
+	{
+		FreeCertServerClient(wide->Standalone_WebAppCertDownloader);
+	}
 
 	ReleaseWt(wide->wt);
 
