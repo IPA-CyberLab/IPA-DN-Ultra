@@ -171,12 +171,15 @@ struct SESSION_AND_CLIENT
 // 待機すべきか
 #define WIDE_REPORT_FAST_SEND_INTERVAL	200
 
+// セッション追加・削除報告における通信のタイムアウト値
+#define WIDE_SESSION_ADD_DEL_REPORT_COMM_TIMEOUT	(5 * 1000)
+
+// 同時にセッションの追加 / 削除報告を行なって良い多重数
+#define WIDE_MAX_CONCURRENT_SESSION_ADD_DEL_COUNT	10
+
 // GatewayInterval および EntryExpires の最大値
 #define WIDE_GATEWAY_INTERVAL_HARD_MAX	(5 * 60 * 1000)
 #define WIDE_ENTRY_EXPIRES_HARD_MAX		(10 * 60 * 1000)
-
-// その場合次のセッションリスト報告を送信するまでの間の遅延
-//#define	WIDE_REPORT_FAST_SEND_DELAY		4000
 
 // ログ
 #define WIDE_LOG_DIRNAME				"@tunnel_log"
@@ -269,6 +272,11 @@ struct WIDE
 	bool IsWideGateStarted;
 	STATMAN* StatMan;
 
+	COUNTER* SessionAddDelCriticalCounter;
+
+	UINT64 NextRebootTime;
+	LOCK* NextRebootTimeLock;
+
 	// 2020/4/15 追加 アグレッシブタイムアウト機能
 	LOCK *AggressiveTimeoutLock;
 	UINT GateTunnelTimeout;
@@ -349,7 +357,7 @@ PACK *WideReadSecurePackConvertFromBuf(wchar_t *filename, BUF *src);
 LIST *WideNewSecurePackFolderList();
 void WideFreeSecurePackFolderList(LIST *o);
 void WideGenerateSecurePackFileName(UINT type, wchar_t *filename, UINT size, wchar_t *foldername, char *name, bool for_user);
-PACK *WideCall(WIDE *wide, char *function_name, PACK *pack, bool global_ip_only, bool try_secondary);
+PACK* WideCall(WIDE* wide, char* function_name, PACK* pack, bool global_ip_only, bool try_secondary, UINT timeout, bool parallel_skip_last_error_controller);
 void WideSetDontCheckCert(WIDE *w, bool dont_check_cert);
 bool WideGetDontCheckCert(WIDE *w);
 UINT WideGetErrorLevel(UINT code);
@@ -456,6 +464,7 @@ void WideGateSetControllerGateSecretKey(WIDE *wide, char *key);
 bool WideGateGetControllerGateSecretKey(WIDE *wide, char *key, UINT key_size);
 void WideGateReadGateSettingsFromPack(WIDE *wide, PACK *p);
 void WideGenerateRandomDummyDomain(char *str, UINT size);
+void WideGateCheckNextRebootTime64(WIDE* wide);
 
 void WideGateLoadAggressiveTimeoutSettings(WIDE *wide);
 void WideGateLoadAggressiveTimeoutSettingsWithInterval(WIDE *wide);

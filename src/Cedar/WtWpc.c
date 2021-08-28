@@ -100,7 +100,7 @@ UINT WpcCommCheck(WT *wt)
 	p = NewPack();
 	PackAddStr(p, "str", "hello");
 
-	r = WtWpcCall(wt, "CommCheck", p, NULL, NULL, false, false);
+	r = WtWpcCall(wt, "CommCheck", p, NULL, NULL, false, false, 0, false);
 	FreePack(p);
 
 	ret = GetErrorFromPack(r);
@@ -423,17 +423,61 @@ void WtgWpcCallParallelThreadProc(THREAD* thread, void* param)
 	if (thread == NULL || c == NULL) return;
 
 	c->ResponsePack = WtWpcCallInner(c->Wt, c->FunctionName, c->RequestPack, NULL, NULL,
-		c->GlobalIpOnly, c->Url);
+		c->GlobalIpOnly, c->Url, c->Timeout);
+
+	WIDE* wide = NULL;
+	if (c->Wt != NULL)
+	{
+		wide = c->Wt->Wide;
+	}
+
+	if (c->ResponsePack != NULL)
+	{
+		if (wide != NULL)
+		{
+			// コントローラから NextRebootTime64 の値を取得
+			UINT64 next_reboot_time64 = PackGetInt64(c->ResponsePack, "NextRebootTime64");
+
+			if (next_reboot_time64 != 0)
+			{
+				Lock(wide->NextRebootTimeLock);
+				{
+					wide->NextRebootTime = next_reboot_time64;
+				}
+				Unlock(wide->NextRebootTimeLock);
+			}
+
+			WideGateCheckNextRebootTime64(wide);
+		}
+
+		if (WtIsCommunicationError(GetErrorFromPack(c->ResponsePack), false))
+		{
+			// 通信エラーが発生している。コントローラのうち 1 台以上が死亡しているようである。
+			c->HasProtocolError = true;
+		}
+	}
 }
 
 // 複数コントローラに対する並列 WPC 呼び出し
-PACK* WtgWpcCallParallel(WT* wt, LIST* url_list, PACK* pack, char* function_name, bool global_ip_only)
+PACK* WtgWpcCallParallel(WT* wt, LIST* url_list, PACK* pack, char* function_name, bool global_ip_only, UINT timeout, bool* has_protocol_error, bool skip_last_error_controller)
 {
 	UINT i;
 	PACK* ret = NULL;
+	LIST* error_controllers_list = NULL;
+	static BOOL dummy_bool = false;
+	if (has_protocol_error == NULL)
+	{
+		has_protocol_error = &dummy_bool;
+	}
+	*has_protocol_error = false;
 	if (wt == NULL || url_list == NULL || pack == NULL)
 	{
 		return PackError(ERR_INTERNAL_ERROR);
+	}
+
+	if (skip_last_error_controller == false)
+	{
+		error_controllers_list = NewStrList();
 	}
 
 	LIST* call_list = NewList(NULL);
@@ -441,18 +485,35 @@ PACK* WtgWpcCallParallel(WT* wt, LIST* url_list, PACK* pack, char* function_name
 	for (i = 0;i < LIST_NUM(url_list);i++)
 	{
 		char* url = LIST_DATA(url_list, i);
+		bool skip_this = false;
 
-		WT_PARALLEL_CALL* c = ZeroMalloc(sizeof(WT_PARALLEL_CALL));
+		if (skip_last_error_controller)
+		{
+			Lock(wt->ErrorControllersListLock);
+			{
+				if (IsInListStr(wt->ErrorControllersList, url))
+				{
+					skip_this = true;
+				}
+			}
+			Unlock(wt->ErrorControllersListLock);
+		}
 
-		c->Wt = wt;
-		c->RequestPack = ClonePack(pack);
-		StrCpy(c->Url, sizeof(c->Url), url);
-		StrCpy(c->FunctionName, sizeof(c->FunctionName), function_name);
-		c->GlobalIpOnly = global_ip_only;
+		if (skip_this == false)
+		{
+			WT_PARALLEL_CALL* c = ZeroMalloc(sizeof(WT_PARALLEL_CALL));
 
-		c->Thread = NewThread(WtgWpcCallParallelThreadProc, c);
+			c->Wt = wt;
+			c->RequestPack = ClonePack(pack);
+			StrCpy(c->Url, sizeof(c->Url), url);
+			StrCpy(c->FunctionName, sizeof(c->FunctionName), function_name);
+			c->GlobalIpOnly = global_ip_only;
+			c->Timeout = timeout;
 
-		Add(call_list, c);
+			c->Thread = NewThread(WtgWpcCallParallelThreadProc, c);
+
+			Add(call_list, c);
+		}
 	}
 
 	for (i = 0;i < LIST_NUM(call_list);i++)
@@ -465,6 +526,14 @@ PACK* WtgWpcCallParallel(WT* wt, LIST* url_list, PACK* pack, char* function_name
 		}
 
 		ReleaseThread(c->Thread);
+
+		if (c->HasProtocolError)
+		{
+			// いずれかのコントローラでプロトコルエラーが発生している
+			*has_protocol_error = true;
+
+			AddStrToStrListDistinct(error_controllers_list, c->Url);
+		}
 
 		if (c->ResponsePack != NULL && GetErrorFromPack(c->ResponsePack) == ERR_NO_ERROR && ret == NULL)
 		{
@@ -484,15 +553,34 @@ PACK* WtgWpcCallParallel(WT* wt, LIST* url_list, PACK* pack, char* function_name
 
 	ReleaseList(call_list);
 
+	if (error_controllers_list != NULL)
+	{
+		// エラーが発生しているコントローラのリストの更新
+		Lock(wt->ErrorControllersListLock);
+		{
+			ReleaseStrList(wt->ErrorControllersList);
+
+			wt->ErrorControllersList = error_controllers_list;
+		}
+		Unlock(wt->ErrorControllersListLock);
+	}
+
 	return ret;
 }
 
 // 通信に起因するエラー (つまり、間の FW 等が問題でネットワーク上のエラーが発生している) かどうか判定
-bool WtIsCommunicationError(UINT error)
+bool WtIsCommunicationError(UINT error, bool include_ssl_errors)
 {
-	if (error == ERR_SSL_X509_UNTRUSTED || error == ERR_CERT_NOT_TRUSTED ||
-		error == ERR_SSL_X509_EXPIRED || 
-		error == ERR_PROTOCOL_ERROR || error == ERR_CONNECT_FAILED ||
+	if (include_ssl_errors)
+	{
+		if (error == ERR_SSL_X509_UNTRUSTED || error == ERR_CERT_NOT_TRUSTED ||
+			error == ERR_SSL_X509_EXPIRED)
+		{
+			return true;
+		}
+	}
+	
+	if (error == ERR_PROTOCOL_ERROR || error == ERR_CONNECT_FAILED ||
 		error == ERR_TIMEOUTED || error == ERR_DISCONNECTED)
 	{
 		return true;
@@ -501,7 +589,7 @@ bool WtIsCommunicationError(UINT error)
 	return false;
 }
 
-PACK *WtWpcCallWithCertAndKey(WT *wt, char *function_name, PACK *pack, X *cert, K *key, bool global_ip_only, bool try_secondary)
+PACK *WtWpcCallWithCertAndKey(WT *wt, char *function_name, PACK *pack, X *cert, K *key, bool global_ip_only, bool try_secondary, UINT timeout, bool parallel_skip_last_error_controller)
 {
 	BUF *k_buf;
 	if (wt == NULL || function_name == NULL || pack == NULL)
@@ -525,15 +613,15 @@ PACK *WtWpcCallWithCertAndKey(WT *wt, char *function_name, PACK *pack, X *cert, 
 
 		FreeBuf(k_buf);
 
-		return WtWpcCall(wt, function_name, pack, host_key, host_secret, global_ip_only, try_secondary);
+		return WtWpcCall(wt, function_name, pack, host_key, host_secret, global_ip_only, try_secondary, timeout, parallel_skip_last_error_controller);
 	}
 	else
 	{
-		return WtWpcCall(wt, function_name, pack, NULL, NULL, global_ip_only, try_secondary);
+		return WtWpcCall(wt, function_name, pack, NULL, NULL, global_ip_only, try_secondary, timeout, parallel_skip_last_error_controller);
 	}
 }
 
-PACK *WtWpcCall(WT *wt, char *function_name, PACK *pack, UCHAR *host_key, UCHAR *host_secret, bool global_ip_only, bool try_secondary)
+PACK* WtWpcCall(WT* wt, char* function_name, PACK* pack, UCHAR* host_key, UCHAR* host_secret, bool global_ip_only, bool try_secondary, UINT timeout, bool parallel_skip_last_error_controller)
 {
 	UINT error = ERR_NO_ERROR;
 	PACK *ret = NULL;
@@ -575,9 +663,11 @@ PACK *WtWpcCall(WT *wt, char *function_name, PACK *pack, UCHAR *host_key, UCHAR 
 
 	if (controller_urls_for_gate != NULL && LIST_NUM(controller_urls_for_gate) >= 1)
 	{
+		bool has_protocol_error = false;
+
 		// widegate.ini の ControllerUrl が指定されており、1 つ以上 URL が存在する場合は、
 		// 並列方式で呼び出すことにする
-		ret = WtgWpcCallParallel(wt, controller_urls_for_gate, pack, function_name, global_ip_only);
+		ret = WtgWpcCallParallel(wt, controller_urls_for_gate, pack, function_name, global_ip_only, timeout, &has_protocol_error, parallel_skip_last_error_controller);
 
 		if (ret == NULL)
 		{
@@ -605,7 +695,7 @@ PACK *WtWpcCall(WT *wt, char *function_name, PACK *pack, UCHAR *host_key, UCHAR 
 	if (try_secondary == false)
 	{
 		// SECONDARY ホストを試さない。普通の URL のみ。従来どおり。
-		ret = WtWpcCallInner(wt, function_name, pack, host_key, host_secret, global_ip_only, url);
+		ret = WtWpcCallInner(wt, function_name, pack, host_key, host_secret, global_ip_only, url, timeout);
 	}
 	else
 	{
@@ -617,7 +707,7 @@ PACK *WtWpcCall(WT *wt, char *function_name, PACK *pack, UCHAR *host_key, UCHAR 
 			WtLog(wt, "WtWpcCall: Use wt->RecommendedSecondaryUrl: %s", wt->RecommendedSecondaryUrl);
 			Debug("WtWpcCall: Use wt->RecommendedSecondaryUrl: %s\n", wt->RecommendedSecondaryUrl);
 			// まず、前回成功したセカンダリ URL を覚えている場合はそれに接続をする
-			p = WtWpcCallInner(wt, function_name, pack, host_key, host_secret, global_ip_only, wt->RecommendedSecondaryUrl);
+			p = WtWpcCallInner(wt, function_name, pack, host_key, host_secret, global_ip_only, wt->RecommendedSecondaryUrl, timeout);
 
 			if (GetErrorFromPack(p) == ERR_NO_ERROR)
 			{
@@ -627,7 +717,7 @@ PACK *WtWpcCall(WT *wt, char *function_name, PACK *pack, UCHAR *host_key, UCHAR 
 				ret = p;
 				goto L_CLEANUP;
 			}
-			else if (WtIsCommunicationError(GetErrorFromPack(p)))
+			else if (WtIsCommunicationError(GetErrorFromPack(p), true))
 			{
 				// 通信エラーが発生した。間におかしな中継 FW がいる可能性がある
 				// のでセカンダリ URL キャッシュを削除する
@@ -654,7 +744,7 @@ PACK *WtWpcCall(WT *wt, char *function_name, PACK *pack, UCHAR *host_key, UCHAR 
 
 #ifndef	WT_TEST_WIDECONTROL_PROXY_CLIENT
 		// 本家接続
-		p = WtWpcCallInner(wt, function_name, pack, host_key, host_secret, global_ip_only, url);
+		p = WtWpcCallInner(wt, function_name, pack, host_key, host_secret, global_ip_only, url, timeout);
 #else	// WT_TEST_WIDECONTROL_PROXY_CLIENT
 		// テスト: エラーにする
 		p = PackError(ERR_CONNECT_FAILED);
@@ -670,7 +760,7 @@ PACK *WtWpcCall(WT *wt, char *function_name, PACK *pack, UCHAR *host_key, UCHAR 
 			ClearStr(wt->RecommendedSecondaryUrl, sizeof(wt->RecommendedSecondaryUrl));
 			goto L_CLEANUP;
 		}
-		else if (WtIsCommunicationError(GetErrorFromPack(p)) == false)
+		else if (WtIsCommunicationError(GetErrorFromPack(p), true) == false)
 		{
 			// 本家と通信できているが、本家の側でエラーが発生しているのでもうここで
 			// 諦めることとする。この結果を返す
@@ -707,7 +797,7 @@ PACK *WtWpcCall(WT *wt, char *function_name, PACK *pack, UCHAR *host_key, UCHAR 
 
 				// セカンダリの URL を決定した。
 				// 接続してみる
-				p2 = WtWpcCallInner(wt, function_name, pack, host_key, host_secret, global_ip_only, secondary_url);
+				p2 = WtWpcCallInner(wt, function_name, pack, host_key, host_secret, global_ip_only, secondary_url, timeout);
 
 				if (GetErrorFromPack(p2) == ERR_NO_ERROR)
 				{
@@ -721,7 +811,7 @@ PACK *WtWpcCall(WT *wt, char *function_name, PACK *pack, UCHAR *host_key, UCHAR 
 					StrCpy(wt->RecommendedSecondaryUrl, sizeof(wt->RecommendedSecondaryUrl), secondary_url);
 					goto L_CLEANUP;
 				}
-				else if (WtIsCommunicationError(GetErrorFromPack(p2)) == false)
+				else if (WtIsCommunicationError(GetErrorFromPack(p2), true) == false)
 				{
 					// 本家と通信できているが、本家の側でエラーが発生した。
 					WtLog(wt, "WtWpcCall: Generic Error. Error: %u", GetErrorFromPack(p2));
@@ -762,7 +852,7 @@ L_CLEANUP:
 	return ret;
 }
 
-PACK *WtWpcCallInner(WT *wt, char *function_name, PACK *pack, UCHAR *host_key, UCHAR *host_secret, bool global_ip_only, char *url)
+PACK* WtWpcCallInner(WT* wt, char* function_name, PACK* pack, UCHAR* host_key, UCHAR* host_secret, bool global_ip_only, char* url, UINT timeout)
 {
 	URL_DATA data = CLEAN;
 	BUF *b, *recv;
@@ -823,10 +913,10 @@ PACK *WtWpcCallInner(WT *wt, char *function_name, PACK *pack, UCHAR *host_key, U
 
 				WtLog(wt, "Trying %u for the URL: %s", i, url2);
 				Debug("Trying %u for the URL: %s\n", i, url2);
-				PACK* p_ret = WtWpcCallInner(wt, function_name, pack_request_copy, host_key, host_secret, global_ip_only, url2);
+				PACK* p_ret = WtWpcCallInner(wt, function_name, pack_request_copy, host_key, host_secret, global_ip_only, url2, timeout);
 				UINT p_err = GetErrorFromPack(p_ret);
 
-				if (p_ret != NULL && (p_err == ERR_NO_ERROR || WtIsCommunicationError(p_err) == false))
+				if (p_ret != NULL && (p_err == ERR_NO_ERROR || WtIsCommunicationError(p_err, true) == false))
 				{
 					// コレを返す
 					url_list_ret_pack = p_ret;
@@ -895,7 +985,7 @@ L_RETRY:
 	WriteBufInt(b, 0);
 	SeekBuf(b, 0, 0);
 
-	recv = HttpRequestEx5(&data, NULL, 0, 0, &error,
+	recv = HttpRequestEx5(&data, NULL, timeout, timeout, &error,
 		wt->CheckSslTrust, b->Buf, NULL, NULL, NULL, 0, NULL, 0, NULL, NULL, wt, global_ip_only, false);
 
 	if (recv == NULL)
@@ -912,7 +1002,7 @@ L_RETRY:
 	if (recv == NULL)
 	{
 #ifndef	WT_TEST_WIDECONTROL_PROXY_CLIENT
-		if (WtIsCommunicationError(error))
+		if (WtIsCommunicationError(error, true))
 		{
 			if (wt->EnableUpdateEntryPoint && num_retry == 0)
 			{

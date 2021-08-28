@@ -164,6 +164,8 @@ struct WT_PARALLEL_CALL
 	PACK* RequestPack;
 	PACK* ResponsePack;
 	bool GlobalIpOnly;
+	UINT Timeout;
+	bool HasProtocolError;
 };
 
 SOCK *WtSockConnectHttpProxy(WT_CONNECT *param, char *target, UINT *error_code);
@@ -182,15 +184,15 @@ UINT WpcGetEntranceUrlEx(WT *wt, char *entrance, UINT entrance_size, UINT cache_
 UINT WpcCommCheck(WT *wt);
 void WtSetDefaultEntranceUrlCacheExpireSpan(WT *wt, UINT span);
 
-PACK *WtWpcCallWithCertAndKey(WT *wt, char *function_name, PACK *pack, X *cert, K *key, bool global_ip_only, bool try_secondary);
+PACK *WtWpcCallWithCertAndKey(WT *wt, char *function_name, PACK *pack, X *cert, K *key, bool global_ip_only, bool try_secondary, UINT timeout, bool parallel_skip_last_error_controller);
 
-PACK *WtWpcCall(WT *wt, char *function_name, PACK *pack, UCHAR *host_key, UCHAR *host_secret, bool global_ip_only, bool try_secondary);
-PACK *WtWpcCallInner(WT *wt, char *function_name, PACK *pack, UCHAR *host_key, UCHAR *host_secret, bool global_ip_only, char *url);
+PACK *WtWpcCall(WT *wt, char *function_name, PACK *pack, UCHAR *host_key, UCHAR *host_secret, bool global_ip_only, bool try_secondary, UINT timeout, bool parallel_skip_last_error_controller);
+PACK *WtWpcCallInner(WT *wt, char *function_name, PACK *pack, UCHAR *host_key, UCHAR *host_secret, bool global_ip_only, char *url, UINT timeout);
 
-PACK *WtgWpcCallParallel(WT* wt, LIST* url_list, PACK* pack, char* function_name, bool global_ip_only);
+PACK *WtgWpcCallParallel(WT* wt, LIST* url_list, PACK* pack, char* function_name, bool global_ip_only, UINT timeout, bool* has_protocol_error, bool skip_last_error_controller);
 void WtgWpcCallParallelThreadProc(THREAD* thread, void* param);
 
-bool WtIsCommunicationError(UINT error);
+bool WtIsCommunicationError(UINT error, bool include_ssl_errors);
 
 
 #endif	// WTWPC_H

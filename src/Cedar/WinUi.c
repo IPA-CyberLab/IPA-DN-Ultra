@@ -4741,6 +4741,9 @@ void AboutDlgInit(HWND hWnd, WINUI_ABOUT *a)
 	SetShow(hWnd, B_UPDATE_CONFIG, (a->Update != NULL));
 
 	//Show(hWnd, B_AUTHORS);
+
+	OpenAvi(hWnd, A_PROGRESS, AVI_CIRCLE);
+	PlayAvi(hWnd, A_PROGRESS, true);
 }
 
 // Version information procedure

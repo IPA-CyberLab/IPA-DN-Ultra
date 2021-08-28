@@ -1353,6 +1353,8 @@ void WtgSessionMain(TSESSION *s)
 
 			s->Stat_ClientToServerTraffic = 0;
 			s->Stat_ServerToClientTraffic = 0;
+
+			WideGateCheckNextRebootTime64(s->wt->Wide);
 		}
 
 		// ソケットイベントを待機

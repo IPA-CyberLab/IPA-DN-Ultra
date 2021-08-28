@@ -560,6 +560,81 @@ bool SwSfxExtractFile(HWND hWnd, void* data, UINT size, wchar_t* dst, bool compr
 	return ret;
 }
 
+// Language selection dialog procedure
+bool CALLBACK SfxModeLangDialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+	switch (msg)
+	{
+	case WM_INITDIALOG:
+		Hide(hWnd, 1986);
+		Animate_OpenEx(DlgItem(hWnd, 1986), MsGetCurrentModuleHandle(), MAKEINTRESOURCE(1985));
+		PlayAvi(hWnd, 1986, true);
+
+		UINT last_lang_id = SW_SFX_LANGUAGE_NONE;
+		char* last_lang = MsRegReadStrEx2(REG_CURRENT_USER, SW_REG_KEY, "Last User Language", false, true);
+		if (StrCmpi(last_lang, "ja") == 0)
+		{
+			last_lang_id = SW_SFX_LANGUAGE_JAPANESE;
+		}
+		else if (StrCmpi(last_lang, "en") == 0)
+		{
+			last_lang_id = SW_SFX_LANGUAGE_ENGLISH;
+		}
+		if (last_lang_id == SW_SFX_LANGUAGE_NONE)
+		{
+			last_lang_id = SW_SFX_LANGUAGE_ENGLISH;
+			if (MsIsCurrentUserLocaleIdJapanese())
+			{
+				last_lang_id = SW_SFX_LANGUAGE_JAPANESE;
+			}
+		}
+		Check(hWnd, 1001, last_lang_id != SW_SFX_LANGUAGE_JAPANESE);
+		Check(hWnd, 1002, last_lang_id == SW_SFX_LANGUAGE_JAPANESE);
+		if (last_lang_id == SW_SFX_LANGUAGE_JAPANESE)
+		{
+			Focus(hWnd, 1002);
+		}
+		break;
+
+	case WM_COMMAND:
+		switch (wParam)
+		{
+		case IDOK:
+		case IDCANCEL:
+			UINT ret = SW_SFX_LANGUAGE_ENGLISH;
+			if (IsChecked(hWnd, 1002))
+			{
+				ret = SW_SFX_LANGUAGE_JAPANESE;
+			}
+			EndDialog(hWnd, ret);
+			break;
+		}
+		break;
+
+	case WM_CTLCOLORBTN:
+	case WM_CTLCOLORDLG:
+	case WM_CTLCOLOREDIT:
+	case WM_CTLCOLORLISTBOX:
+	case WM_CTLCOLORMSGBOX:
+	case WM_CTLCOLORSCROLLBAR:
+	case WM_CTLCOLORSTATIC:
+		return POINTER_TO_UINT32(GetStockObject(WHITE_BRUSH));
+	}
+
+	return false;
+}
+
+// Language selection dialog
+UINT SwSfwLanguageSelection(HWND hWnd)
+{
+	UINT dialog_id = 10003;
+	UINT ret;
+
+	ret = (UINT)DialogBoxParamA(MsGetCurrentModuleHandle(), MAKEINTRESOURCEA(dialog_id), hWnd, (DLGPROC)SfxModeLangDialogProc, 0);
+
+	return ret;
+}
+
 // SFX extraction process
 bool SwSfxExtractProcess(HWND hWnd, bool* hide_error_msg)
 {
@@ -569,6 +644,7 @@ bool SwSfxExtractProcess(HWND hWnd, bool* hide_error_msg)
 	wchar_t exec_filename[MAX_SIZE];
 	bool is_easy_installer = false;
 	bool dummy_bool = false;
+	wchar_t* current_params = GetCommandLineUniStr();
 
 	if (hide_error_msg == NULL)
 	{
@@ -680,7 +756,6 @@ bool SwSfxExtractProcess(HWND hWnd, bool* hide_error_msg)
 		{
 			void* handle = NULL;
 			wchar_t params[MAX_SIZE];
-			wchar_t* current_params = GetCommandLineUniStr();
 			wchar_t tmp[MAX_SIZE];
 			char* last_lang;
 			wchar_t copy_of_me[MAX_PATH];
@@ -717,6 +792,22 @@ bool SwSfxExtractProcess(HWND hWnd, bool* hide_error_msg)
 			UniStrCat(params, sizeof(params), tmp);
 
 			UniTrim(params);
+
+			// Language selection
+			if (UniInStrEx(current_params, L"/auto:1", false) == false)
+			{
+				UINT selected_language = SwSfwLanguageSelection(hWnd);
+				if (selected_language != SW_SFX_LANGUAGE_NONE)
+				{
+					char* save_lang_id = "en";
+					if (selected_language == SW_SFX_LANGUAGE_JAPANESE)
+					{
+						save_lang_id = "ja";
+					}
+
+					MsRegWriteStrEx2(REG_CURRENT_USER, SW_REG_KEY, "Last User Language", save_lang_id, false, true);
+				}
+			}
 
 			// Specify a language by the lang.config
 			last_lang = MsRegReadStrEx2(REG_CURRENT_USER, SW_REG_KEY, "Last User Language", false, true);
@@ -4886,6 +4977,10 @@ void SwPerformInit(HWND hWnd, SW* sw, WIZARD_PAGE* wp)
 		// Hide the progress bar in the case of Windows 2000 or earlier
 		Hide(hWnd, IDC_PROGRESS1);
 	}
+
+	// Animation
+	OpenAvi(hWnd, A_PROGRESS, AVI_CIRCLE);
+	PlayAvi(hWnd, A_PROGRESS, true);
 }
 
 // Do the set-up process

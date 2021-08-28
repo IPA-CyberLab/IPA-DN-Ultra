@@ -234,6 +234,8 @@
 #define BMP_NWSELECT1                   251
 #define BMP_NWSELECT2                   252
 #define BMP_NWDETECT                    253
+#define IDR_AVI1                        254
+#define AVI_CIRCLE                      254
 #define S_TITLE                         1007
 #define S_INSERT_SECURE                 1008
 #define S_TITLE2                        1008
@@ -1094,6 +1096,8 @@
 #define D_SW_NWSELECT_BMP_NWSELECT2     1544
 #define BMP_NWDETECT_D_SW_NWDETECT      1545
 #define D_SW_NWDETECT_BMP_NWDETECT      1545
+#define B_WEBCLIENT                     1546
+#define S_WEBCLIENT                     1547
 #define B_ONLINE                        1655
 #define D_NM_CONNECT                    1998
 #define D_NM_MAIN                       1999
@@ -1474,9 +1478,9 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NO_MFC                     1
-#define _APS_NEXT_RESOURCE_VALUE        254
+#define _APS_NEXT_RESOURCE_VALUE        255
 #define _APS_NEXT_COMMAND_VALUE         40111
-#define _APS_NEXT_CONTROL_VALUE         1546
+#define _APS_NEXT_CONTROL_VALUE         1548
 #define _APS_NEXT_SYMED_VALUE           102
 #endif
 #endif

@@ -448,6 +448,8 @@ DU_SOUMU_DISABLE_SHARE			The Ministry of Internal Affairs and Communications (MI
 
 DU_IDLE_TIMEOUT					An idle timeout has occurred because the mouse has been inactive for %u seconds.\r\n\r\nThe interval seconds of the idle timeout is specified by the "IDLE_TIMEOUT" value of the policy server installed by the network administrator of the destination $APPSHORT_SERVER$. For more information, please contact your network administrator.
 
+DU_WEB_URL				$THINWEB_WEBAPP_TOP_URL$
+
 
 
 # PacketiX Desktop VPN サーバー管理ツール関係
@@ -4611,6 +4613,9 @@ S9						Please press Close after all settings are completed.
 S_SYSTEM				Gateway System:
 S_REG_1					You have to enter the Unlock Key before using this system. Click the Unlock Key button to configure.
 B_REG					&Unlock Key
+B_WEBCLIENT				Open Web &Client
+S_WEBCLIENT				You can connect to this PC remotely from your Chromebook or Mac with Web Client.
+
 
 PREFIX					D_DG_PROXY
 CAPTION					Proxy Server Settings
@@ -4741,6 +4746,7 @@ B_ERASE					&Erase history
 B_SHARE					&Sharing...
 B_OPTION				&Options...
 S_SYSTEM				Gateway System:
+B_WEB					&Web Client
 
 
 PREFIX					D_DU_OPTION

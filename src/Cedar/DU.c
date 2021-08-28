@@ -2117,7 +2117,7 @@ void DuConnectMain(HWND hWnd, DU_MAIN *t, char *pcid)
 				if (ret == ERR_NO_ERROR)
 				{
 					char* hostname = s->HostnameIPv4;
-					if (IsFilledStr(s->HostnameIPv6))
+					if (IsFilledStr(s->HostnameIPv6) && StrCmpi(s->HostnameIPv6, "[::1]") != 0)
 					{
 						hostname = s->HostnameIPv6;
 					}
@@ -2912,6 +2912,11 @@ void DuMainDlgInit(HWND hWnd, DU_MAIN *t)
 		Hide(hWnd, S_BANNER1);
 	}
 
+	if (IsEmptyStr(_SS("DU_WEB_URL")))
+	{
+		Hide(hWnd, B_WEB);
+	}
+
 	SetTimer(hWnd, 1, 100, NULL);
 	SetTimer(hWnd, 2, DU_BANNER_SWITCH_INTERVAL, NULL);
 
@@ -3127,6 +3132,11 @@ UINT DuMainDlgProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam, void *para
 			DuWoLDlg(hWnd, t);
 
 			DuMainDlgInitPcidCandidate(hWnd, t);
+			break;
+
+		case B_WEB:
+			// Web browser
+			ShellExecute(hWnd, "open", _SS("DU_WEB_URL"), NULL, NULL, SW_SHOW);
 			break;
 		}
 		break;
