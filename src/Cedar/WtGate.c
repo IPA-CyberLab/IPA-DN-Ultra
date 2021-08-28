@@ -2749,20 +2749,35 @@ void WtgAccept(WT *wt, SOCK *s)
 	s->SslAcceptSettings.Tls_Disable1_2 = Vars_ActivePatch_GetBool("WtGateDisableTls1_2");
 	s->SslAcceptSettings.Tls_Disable1_3 = Vars_ActivePatch_GetBool("WtGateDisableTls1_3");
 
-	// WebSocket 用証明書の取得
+
+	// WebSocket 用, WebApp 用証明書の取得
+	CERTS_AND_KEY* ssl_additional_certs_array[2] = CLEAN;
 	UINT num_certs_array_items = 0;
+
 	CERTS_AND_KEY* web_socket_certs = WideGetWebSocketCertsAndKey(wt->Wide);
+	CERTS_AND_KEY* web_app_certs = NULL;
+	if (wt->IsStandaloneMode)
+	{
+		web_app_certs = WideGetWebAppCertsAndKey(wt->Wide);
+	}
+
 	if (web_socket_certs != NULL)
 	{
 		web_socket_certs->DetermineUseCallback = WtgDetermineWebSocketSslCertUseCallback;
-		num_certs_array_items = 1;
+		ssl_additional_certs_array[num_certs_array_items] = web_socket_certs;
+		num_certs_array_items++;
 	}
-	CERTS_AND_KEY* web_socket_certs_array[1] = CLEAN;
-	web_socket_certs_array[0] = web_socket_certs;
+
+	if (web_app_certs != NULL)
+	{
+		web_app_certs->DetermineUseCallback = WtgDetermineWebAppSslCertUseCallback;
+		ssl_additional_certs_array[num_certs_array_items] = web_app_certs;
+		num_certs_array_items++;
+	}
 
 	WtLogEx(wt, log_prefix, "Trying StartSSLEx2()...");
 
-	if (StartSSLEx2(s, wt->GateCert, wt->GateKey, true, 0, NULL, web_socket_certs_array, num_certs_array_items, NULL) == false)
+	if (StartSSLEx2(s, wt->GateCert, wt->GateKey, true, 0, NULL, ssl_additional_certs_array, num_certs_array_items, NULL) == false)
 	{
 		WtLogEx(wt, log_prefix, "StartSSLEx2() error. Connection will be disconnected.");
 		Debug("StartSSL Failed.\n");
@@ -2770,6 +2785,7 @@ void WtgAccept(WT *wt, SOCK *s)
 		AddNoSsl(wt->Cedar, &s->RemoteIP);
 
 		FreeCertsAndKey(web_socket_certs);
+		FreeCertsAndKey(web_app_certs);
 
 		return;
 	}
@@ -2785,6 +2801,7 @@ void WtgAccept(WT *wt, SOCK *s)
 	}
 
 	FreeCertsAndKey(web_socket_certs);
+	FreeCertsAndKey(web_app_certs);
 
 	// シグネチャのダウンロード
 	continue_ok = WtgDownloadSignature(wt, s, &check_ssl_ok, wt->Wide->GateKeyStr, wt->EntranceUrlForProxy, wt->ProxyTargetUrlList);

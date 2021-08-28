@@ -3270,6 +3270,23 @@ CERTS_AND_KEY* WideGetWebSocketCertsAndKey(WIDE* wide)
 
 	Lock(wide->WebSocketCertsAndKeyLock);
 	{
+		if (wide->wt->IsStandaloneMode)
+		{
+			wchar_t exe_dir[MAX_PATH] = CLEAN;
+			wchar_t cert_dir[MAX_PATH] = CLEAN;
+
+			GetExeDirW(exe_dir, sizeof(exe_dir));
+			CombinePathW(cert_dir, sizeof(cert_dir), exe_dir, WIDE_WEBSOCKET_CERT_SET_DEST_DIR);
+
+			CERTS_AND_KEY *new_certs_and_key = NewCertsAndKeyFromDir(cert_dir);
+
+			if (new_certs_and_key != NULL)
+			{
+				FreeCertsAndKey(wide->WebSocketCertsAndKey);
+				wide->WebSocketCertsAndKey = new_certs_and_key;
+			}
+		}
+
 		if (wide->WebSocketCertsAndKey != NULL)
 		{
 			ret = CloneCertsAndKey(wide->WebSocketCertsAndKey);
@@ -3290,6 +3307,23 @@ CERTS_AND_KEY* WideGetWebAppCertsAndKey(WIDE* wide)
 
 	Lock(wide->WebAppCertsAndKeyLock);
 	{
+		if (wide->wt->IsStandaloneMode)
+		{
+			wchar_t exe_dir[MAX_PATH] = CLEAN;
+			wchar_t cert_dir[MAX_PATH] = CLEAN;
+
+			GetExeDirW(exe_dir, sizeof(exe_dir));
+			CombinePathW(cert_dir, sizeof(cert_dir), exe_dir, WIDE_WEBAPP_CERT_SET_DEST_DIR);
+
+			CERTS_AND_KEY* new_certs_and_key = NewCertsAndKeyFromDir(cert_dir);
+
+			if (new_certs_and_key != NULL)
+			{
+				FreeCertsAndKey(wide->WebAppCertsAndKey);
+				wide->WebAppCertsAndKey = new_certs_and_key;
+			}
+		}
+
 		if (wide->WebAppCertsAndKey != NULL)
 		{
 			ret = CloneCertsAndKey(wide->WebAppCertsAndKey);
@@ -4015,11 +4049,11 @@ WIDE *WideGateStart()
 	WideGateLoadCertKey(&w->GateCert, &w->GateKey);
 
 	// WebSocket 用証明書の読み込み
-	wchar_t ws_cert_dir[MAX_PATH] = CLEAN;
+	wchar_t cert_dir[MAX_PATH] = CLEAN;
 	wchar_t exe_dir[MAX_PATH] = CLEAN;
 	GetExeDirW(exe_dir, sizeof(exe_dir));
-	CombinePathW(ws_cert_dir, sizeof(ws_cert_dir), exe_dir, WIDE_WEBSOCKET_CERT_SET_DEST_DIR);
-	w->WebSocketCertsAndKey = NewCertsAndKeyFromDir(ws_cert_dir);
+	CombinePathW(cert_dir, sizeof(cert_dir), exe_dir, WIDE_WEBSOCKET_CERT_SET_DEST_DIR);
+	w->WebSocketCertsAndKey = NewCertsAndKeyFromDir(cert_dir);
 
 	w->WebSocketCertsAndKeyLock = NewLock();
 
@@ -4027,8 +4061,8 @@ WIDE *WideGateStart()
 	if (w->IsStandaloneMode)
 	{
 		GetExeDirW(exe_dir, sizeof(exe_dir));
-		CombinePathW(ws_cert_dir, sizeof(ws_cert_dir), exe_dir, WIDE_WEBAPP_CERT_SET_DEST_DIR);
-		w->WebAppCertsAndKey = NewCertsAndKeyFromDir(ws_cert_dir);
+		CombinePathW(cert_dir, sizeof(cert_dir), exe_dir, WIDE_WEBAPP_CERT_SET_DEST_DIR);
+		w->WebAppCertsAndKey = NewCertsAndKeyFromDir(cert_dir);
 	}
 
 	w->WebAppCertsAndKeyLock = NewLock();
