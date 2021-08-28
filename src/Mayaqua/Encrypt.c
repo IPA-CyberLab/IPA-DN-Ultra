@@ -145,6 +145,90 @@ typedef struct CB_PARAM
 } CB_PARAM;
 
 
+LIST* BufToXList(BUF* b)
+{
+	if (b == NULL)
+	{
+		return NULL;
+	}
+
+	SeekBufToBegin(b);
+
+	LIST* ret = NewList(NULL);
+
+	UINT mode = 0;
+
+	BUF* current_buf = NewBuf();
+
+	while (true)
+	{
+		char* line = CfgReadNextLine(b);
+
+		if (line == NULL)
+		{
+			break;
+		}
+
+		if (mode == 0 && StrCmpi(line, "-----BEGIN CERTIFICATE-----") == 0)
+		{
+			mode = 1;
+			WriteBuf(current_buf, line, StrLen(line));
+			WriteBuf(current_buf, "\n", 1);
+		}
+		else if (mode == 1)
+		{
+			if (StrCmpi(line, "-----END CERTIFICATE-----") == 0)
+			{
+				mode = 0;
+			}
+			WriteBuf(current_buf, line, StrLen(line));
+			WriteBuf(current_buf, "\n", 1);
+
+			if (mode == 0)
+			{
+				X* x = BufToX(current_buf, true);
+				if (x != NULL)
+				{
+					Add(ret, x);
+				}
+
+				FreeBuf(current_buf);
+				current_buf = NewBuf();
+			}
+		}
+
+		Free(line);
+	}
+
+	FreeBuf(current_buf);
+
+	if (LIST_NUM(ret) == 0)
+	{
+		ReleaseList(ret);
+		return NULL;
+	}
+
+	return ret;
+}
+
+void FreeXList(LIST* o)
+{
+	if (o == NULL)
+	{
+		return;
+	}
+
+	UINT i;
+	for (i = 0;i < LIST_NUM(o);i++)
+	{
+		X* x = LIST_DATA(o, i);
+
+		FreeX(x);
+	}
+
+	ReleaseList(o);
+}
+
 CERTS_AND_KEY* NewCertsAndKeyFromDir(wchar_t* dir_name)
 {
 	CERTS_AND_KEY* ret = NULL;
@@ -295,6 +379,37 @@ bool SaveCertsAndKeyToDir(CERTS_AND_KEY* c, wchar_t* dir)
 	FreeStrList(filename_list);
 
 	return ret;
+}
+
+CERTS_AND_KEY* NewCertsAndKeyFromObjects(LIST* cert_list, K* key)
+{
+	CERTS_AND_KEY* ret = NULL;
+	if (cert_list == NULL || LIST_NUM(cert_list) == 0 || key == NULL)
+	{
+		return NULL;
+	}
+
+	ret = ZeroMalloc(sizeof(CERTS_AND_KEY));
+
+	ret->CertList = NewListFast(NULL);
+
+	ret->Key = CloneK(key);
+	if (ret->Key == NULL) goto L_ERROR;
+
+	UINT i;
+	for (i = 0;i < LIST_NUM(cert_list);i++)
+	{
+		X* x = LIST_DATA(cert_list, i);
+		if (x == NULL) goto L_ERROR;
+
+		Add(ret->CertList, CloneX(x));
+	}
+
+	return ret;
+
+L_ERROR:
+	FreeCertsAndKey(ret);
+	return NULL;
 }
 
 CERTS_AND_KEY* NewCertsAndKeyFromMemory(LIST* cert_buf_list, BUF* key_buf)

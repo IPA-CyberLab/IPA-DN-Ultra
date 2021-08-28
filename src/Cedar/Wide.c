@@ -2039,7 +2039,30 @@ void WtSessionLog(TSESSION* s, char* format, ...)
 		return;
 	}
 
-	Format(format2, sizeof(format2), "[%s] %s", s->ServerSessionName, format);
+	if (s->SessionType == WT_SESSION_GATE)
+	{
+		char info[MAX_PATH] = CLEAN;
+		char session_id_str[64] = CLEAN;
+		char client_ip[64] = CLEAN;
+		UINT client_port = 0;
+
+		BinToStr(session_id_str, sizeof(session_id_str), s->SessionId, sizeof(s->SessionId));
+
+		if (s->ServerTcp != NULL)
+		{
+			IPToStr(client_ip, sizeof(client_ip), &s->ServerTcp->Ip);
+			client_port = s->ServerTcp->Port;
+		}
+
+		Format(info, sizeof(info), "SessionID=%s/MSID=%s/ClientIP=%s/ClientPort=%u/ClientLocalIP=%r/ClientHostname=%S/ClientVersion=%s",
+			session_id_str, s->Msid, client_ip, client_port, &s->LocalIp, s->LocalHostname, s->LocalVersion);
+
+		Format(format2, sizeof(format2), "[%s] %s", info, format);
+	}
+	else
+	{
+		Format(format2, sizeof(format2), "[%s] %s", s->ServerSessionName, format);
+	}
 
 	va_start(args, format);
 
@@ -3157,6 +3180,11 @@ void WideGateReportSessionDel(WIDE *wide, UCHAR *session_id)
 		return;
 	}
 
+	if (wide->IsStandaloneMode)
+	{
+		return;
+	}
+
 	if (WideGateGetIniEntry("DisableRegister"))
 	{
 		// 一時的に登録無効化
@@ -3210,6 +3238,26 @@ CERTS_AND_KEY* WideGetWebSocketCertsAndKey(WIDE* wide)
 		}
 	}
 	Unlock(wide->WebSocketCertsAndKeyLock);
+
+	return ret;
+}
+
+CERTS_AND_KEY* WideGetWebAppCertsAndKey(WIDE* wide)
+{
+	CERTS_AND_KEY* ret = NULL;
+	if (wide == NULL)
+	{
+		return NULL;
+	}
+
+	Lock(wide->WebAppCertsAndKeyLock);
+	{
+		if (wide->WebAppCertsAndKey != NULL)
+		{
+			ret = CloneCertsAndKey(wide->WebAppCertsAndKey);
+		}
+	}
+	Unlock(wide->WebAppCertsAndKeyLock);
 
 	return ret;
 }
@@ -3370,6 +3418,11 @@ void WideGateReportSessionAdd(WIDE *wide, TSESSION *s)
 	bool global_ip_only = true;
 	// 引数チェック
 	if (wide == NULL)
+	{
+		return;
+	}
+
+	if (wide->IsStandaloneMode)
 	{
 		return;
 	}
@@ -3750,6 +3803,7 @@ WIDE *WideGateStart()
 	WIDE *w;
 	LIST *o;
 	UINT port = 0;
+	bool save_log = false;
 
 	w = ZeroMalloc(sizeof(WIDE));
 
@@ -3819,12 +3873,51 @@ WIDE *WideGateStart()
 			}
 		}
 
+		save_log = INT_TO_BOOL(IniIntValue(o, "SaveLog"));
+
 		WideFreeIni(o);
 	}
 
 	if (port == 0)
 	{
 		port = WT_PORT;
+	}
+
+	if (save_log)
+	{
+		w->WideLog = NewLog(WIDE_GATE_LOG_DIRNAME, "gate", LOG_SWITCH_DAY);
+		w->WideLog->Flush = w->IsStandaloneMode;
+
+		WideLog(w, "-------------------- Start Thin Gate System --------------------");
+		WideLog(w, "CEDAR_VER: %u", CEDAR_VER);
+		WideLog(w, "CEDAR_BUILD: %u", CEDAR_BUILD);
+		WideLog(w, "BUILD_DATE: %04u/%02u/%02u %02u:%02u:%02u", BUILD_DATE_Y, BUILD_DATE_M, BUILD_DATE_D,
+			BUILD_DATE_HO, BUILD_DATE_MI, BUILD_DATE_SE);
+		WideLog(w, "ULTRA_COMMIT_ID: %s", ULTRA_COMMIT_ID);
+		WideLog(w, "ULTRA_VER_LABEL: %s", ULTRA_VER_LABEL);
+
+		OS_INFO* os = GetOsInfo();
+		if (os != NULL)
+		{
+			WideLog(w, "OsType: %u", os->OsType);
+			WideLog(w, "OsServicePack: %u", os->OsServicePack);
+			WideLog(w, "OsSystemName: %s", os->OsSystemName);
+			WideLog(w, "OsProductName: %s", os->OsProductName);
+			WideLog(w, "OsVendorName: %s", os->OsVendorName);
+			WideLog(w, "OsVersion: %s", os->OsVersion);
+			WideLog(w, "KernelName: %s", os->KernelName);
+			WideLog(w, "KernelVersion: %s", os->KernelVersion);
+		}
+
+		MEMINFO mem = CLEAN;
+		GetMemInfo(&mem);
+
+		WideLog(w, "Memory - TotalMemory: %I64u", mem.TotalMemory);
+		WideLog(w, "Memory - UsedMemory: %I64u", mem.UsedMemory);
+		WideLog(w, "Memory - FreeMemory: %I64u", mem.FreeMemory);
+		WideLog(w, "Memory - TotalPhys: %I64u", mem.TotalPhys);
+		WideLog(w, "Memory - UsedPhys: %I64u", mem.UsedPhys);
+		WideLog(w, "Memory - FreePhys: %I64u", mem.FreePhys);
 	}
 
 	// 統計送付
@@ -3863,6 +3956,13 @@ WIDE *WideGateStart()
 	w->WebSocketCertsAndKey = NewCertsAndKeyFromDir(ws_cert_dir);
 
 	w->WebSocketCertsAndKeyLock = NewLock();
+
+	// WebApp 用証明書の読み込み
+	GetExeDirW(exe_dir, sizeof(exe_dir));
+	CombinePathW(ws_cert_dir, sizeof(ws_cert_dir), exe_dir, WIDE_WEBAPP_CERT_SET_DEST_DIR);
+	w->WebAppCertsAndKey = NewCertsAndKeyFromDir(ws_cert_dir);
+
+	w->WebAppCertsAndKeyLock = NewLock();
 
 	// DoS 攻撃検知無効
 	if (w->DisableDoSProtection)
@@ -3951,8 +4051,14 @@ void WideGateStopEx(WIDE* wide, bool daemon_force_exit)
 	}
 
 	FreeCertsAndKey(wide->WebSocketCertsAndKey);
+	FreeCertsAndKey(wide->WebAppCertsAndKey);
 
 	DeleteLock(wide->WebSocketCertsAndKeyLock);
+	DeleteLock(wide->WebAppCertsAndKeyLock);
+
+	WideLog(wide, "-------------------- Stop Thin Gate System --------------------");
+
+	FreeLog(wide->WideLog);
 
 	Free(wide);
 }

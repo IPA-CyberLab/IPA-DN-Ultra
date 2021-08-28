@@ -86,6 +86,169 @@
 #include <Mayaqua/Mayaqua.h>
 #include <Cedar/Cedar.h>
 
+void CertServerClientThreadProc(THREAD* thread, void* param)
+{
+	CERT_SERVER_CLIENT* c = NULL;
+	if (thread == NULL || param == NULL)
+	{
+		return;
+	}
+	c = (CERT_SERVER_CLIENT*)param;
+
+	while (c->Halt == false)
+	{
+		UINT next_wait = GenRandInterval2(CERT_SERVER_CLIENT_INTERVAL_NORMAL, 30);
+
+		CERTS_AND_KEY* ck = DownloadCertsAndKeyFromCertServer(&c->Param, (bool *)&c->Halt);
+
+		if (ck != NULL)
+		{
+		}
+
+		Wait(c->HaltEvent, next_wait);
+	}
+}
+
+CERT_SERVER_CLIENT* NewCertServerClient(CERT_SERVER_CLIENT_PARAM* param)
+{
+	CERT_SERVER_CLIENT* c = NULL;
+	if (param == NULL)
+	{
+		return NULL;
+	}
+
+	c = ZeroMalloc(sizeof(CERT_SERVER_CLIENT));
+	Copy(&c->Param, param, sizeof(CERT_SERVER_CLIENT_PARAM));
+
+	c->HaltEvent = NewEvent();
+	c->Thread = NewThread(CertServerClientThreadProc, c);
+
+	return c;
+}
+
+void FreeCertServerClient(CERT_SERVER_CLIENT* c)
+{
+	if (c == NULL)
+	{
+		return;
+	}
+
+	c->Halt = true;
+
+	Set(c->HaltEvent);
+
+	WaitThread(c->Thread, INFINITE);
+
+	ReleaseEvent(c->HaltEvent);
+
+	Free(c);
+}
+
+CERTS_AND_KEY* DownloadCertsAndKeyFromCertServer(CERT_SERVER_CLIENT_PARAM* param, bool* cancel)
+{
+	BUF* certs_buf = NULL;
+	BUF* key_buf = NULL;
+	LIST* certs_list = NULL;
+	K* key = NULL;
+	CERTS_AND_KEY* ret = NULL;
+
+	if (param == NULL)
+	{
+		return NULL;
+	}
+	
+	certs_buf = HttpDownload(param->CertListSrcUrl, param->BasicAuthUsername, param->BasicAuthPassword,
+		NULL, 0, 0, NULL, false, NULL, 0, cancel, MAX_CERT_SERVER_CLIENT_DOWNLOAD_SIZE);
+
+	if (certs_buf == NULL)
+	{
+		goto L_CLEANUP;
+	}
+
+	key_buf = HttpDownload(param->CertKeySrcUrl, param->BasicAuthUsername, param->BasicAuthPassword,
+		NULL, 0, 0, NULL, false, NULL, 0, cancel, MAX_CERT_SERVER_CLIENT_DOWNLOAD_SIZE);
+
+	if (key_buf == NULL)
+	{
+		goto L_CLEANUP;
+	}
+
+	certs_list = BufToXList(certs_buf);
+	key = BufToK(key_buf, true, true, NULL);
+
+	ret = NewCertsAndKeyFromObjects(certs_list, key);
+
+L_CLEANUP:
+	FreeBuf(certs_buf);
+	FreeBuf(key_buf);
+	FreeXList(certs_list);
+	FreeK(key);
+
+	return ret;
+}
+
+void GenerateHttpBasicAuthHeaderValue(char* dst, UINT dst_size, char* username, char* password)
+{
+	char* tmp;
+	UINT tmp_size;
+	char tmp2[MAX_PATH] = CLEAN;
+	if (dst == NULL)
+	{
+		return;
+	}
+
+	Format(tmp2, sizeof(tmp2), "%s:%s", username, password);
+
+	tmp_size = (StrLen(tmp2) + 4) * 4;
+	tmp = ZeroMalloc(tmp_size);
+
+	Encode64(tmp, tmp2);
+
+	Format(dst, dst_size, "Basic %s", tmp);
+
+	Free(tmp);
+}
+
+BUF* HttpDownload(char* url, char* basic_auth_username, char* basic_auth_password,
+	INTERNET_SETTING* setting, UINT timeout_connect, UINT timeout_comm,
+	UINT* error_code, bool check_ssl_trust,
+	void* sha1_cert_hash, UINT num_hashes,
+	bool* cancel, UINT max_recv_size)
+{
+	static UINT _dummy = 0;
+	if (error_code == NULL)
+	{
+		error_code = &_dummy;
+	}
+	*error_code = ERR_INTERNAL_ERROR;
+	if (url == NULL)
+	{
+		return NULL;
+	}
+
+	URL_DATA url_data = CLEAN;
+
+	if (ParseUrl(&url_data, url, false, NULL) == false)
+	{
+		return NULL;
+	}
+
+	char basic_auth_value[MAX_PATH] = CLEAN;
+
+	if (IsFilledStr(basic_auth_username) || IsFilledStr(basic_auth_password))
+	{
+		GenerateHttpBasicAuthHeaderValue(basic_auth_value, sizeof(basic_auth_value),
+			basic_auth_username, basic_auth_password);
+	}
+
+	BUF* recv = HttpRequestEx5(&url_data, setting, timeout_connect, timeout_comm,
+		error_code, check_ssl_trust, NULL, NULL, NULL,
+		sha1_cert_hash, num_hashes, cancel, max_recv_size,
+		"Authorization", basic_auth_value, NULL, false, false);
+
+	return recv;
+}
+
 // Get whether the proxy server is specified by a private IP
 bool IsProxyPrivateIp(INTERNET_SETTING *s)
 {

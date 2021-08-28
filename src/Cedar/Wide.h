@@ -91,6 +91,22 @@
 #define	WIDE_WEBSOCKET_SNI_NAME_INSTR1	"--ws."
 #define	WIDE_WEBSOCKET_SNI_NAME_INSTR2	"--websocket."
 
+
+// スタンドアロンモードの WebApp (HTML5) 証明書セット書き出し先ディレクトリ名
+#define WIDE_WEBAPP_CERT_SET_DEST_DIR		L"webapp_certs_cache"
+
+// スタンドアロンモードの WebApp (HTML5) 用証明書を応答すべき SNI ホスト名の最初の文字列
+#define	WIDE_WEBAPP_SNI_NAME_STARTWITH1	"webapp-"
+#define	WIDE_WEBAPP_SNI_NAME_STARTWITH2	"app-"
+#define	WIDE_WEBAPP_SNI_NAME_STARTWITH3	"web-"
+#define	WIDE_WEBAPP_SNI_NAME_STARTWITH4	"login-"
+#define	WIDE_WEBAPP_SNI_NAME_INSTR1	"--webapp."
+#define	WIDE_WEBAPP_SNI_NAME_INSTR2	"--app."
+#define	WIDE_WEBAPP_SNI_NAME_INSTR3	"--web."
+#define	WIDE_WEBAPP_SNI_NAME_INSTR4	"--login."
+
+
+
 // エラーレベル
 #define DESK_ERRORLEVEL_NETWORK			0		// ネットワークエラー
 #define DESK_ERRORLEVEL_SERVER_SIDE		1		// サーバー側エラー
@@ -165,6 +181,8 @@ struct SESSION_AND_CLIENT
 // ログ
 #define WIDE_LOG_DIRNAME				"@tunnel_log"
 
+#define WIDE_GATE_LOG_DIRNAME			"@gate_log"
+
 
 // WIDEGATE の Caps (64 bit)
 #define WG_CAPS_WEBSOCKET		((UINT64)1)
@@ -228,7 +246,9 @@ struct WIDE
 	X *GateCert;
 	K *GateKey;
 	CERTS_AND_KEY* WebSocketCertsAndKey;
+	CERTS_AND_KEY* WebAppCertsAndKey;
 	LOCK* WebSocketCertsAndKeyLock;
+	LOCK* WebAppCertsAndKeyLock;
 	THREAD *ReportThread;
 	EVENT *ReportThreadHaltEvent;
 	LOCK *LockReport;
@@ -445,6 +465,7 @@ bool WideHasDebugFileWithCorrectKey();
 void WideStatManCallback(STATMAN* stat, void* param, PACK* ret);
 
 CERTS_AND_KEY* WideGetWebSocketCertsAndKey(WIDE* wide);
+CERTS_AND_KEY* WideGetWebAppCertsAndKey(WIDE* wide);
 
 
 #endif	// WIDE_H

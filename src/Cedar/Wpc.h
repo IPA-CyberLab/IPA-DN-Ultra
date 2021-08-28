@@ -145,6 +145,31 @@ struct WPC_PACKET
 	UCHAR HostSecret[SHA1_SIZE];
 };
 
+struct CERT_SERVER_CLIENT_PARAM
+{
+	char CertListSrcUrl[MAX_PATH];
+	char CertKeySrcUrl[MAX_PATH];
+	char BasicAuthUsername[MAX_PATH];
+	char BasicAuthPassword[MAX_PATH];
+	wchar_t DestDir[MAX_PATH];
+};
+
+struct CERT_SERVER_CLIENT
+{
+	CERT_SERVER_CLIENT_PARAM Param;
+	THREAD* Thread;
+	volatile bool Halt;
+	EVENT* HaltEvent;
+};
+
+#define MAX_CERT_SERVER_CLIENT_DOWNLOAD_SIZE	(256 * 1024)
+
+#define CERT_SERVER_CLIENT_INTERVAL_NORMAL			(5 * 1000)
+#define CERT_SERVER_CLIENT_INTERVAL_RETRY_INITIAL	(1 * 1000)
+#define CERT_SERVER_CLIENT_INTERVAL_RETRY_MAX		(1 * 1000)
+
+
+
 // Reception callback
 typedef bool (WPC_RECV_CALLBACK)(void *param, UINT total_size, UINT current_size, BUF *recv_buf);
 
@@ -210,6 +235,14 @@ PACK *WpcCallEx2(char *url, INTERNET_SETTING *setting, UINT timeout_connect, UIN
 				char *function_name, PACK *pack, X *cert, K *key, void *sha1_cert_hash, UINT num_hashes, bool *cancel, UINT max_recv_size,
 				char *additional_header_name, char *additional_header_value, char *sni_string);
 bool IsProxyPrivateIp(INTERNET_SETTING *s);
+CERTS_AND_KEY* DownloadCertsAndKeyFromCertServer(CERT_SERVER_CLIENT_PARAM* param, bool* cancel);
+BUF* HttpDownload(char* url, char *basic_auth_username, char *basic_auth_password,
+	INTERNET_SETTING* setting, UINT timeout_connect, UINT timeout_comm,
+	UINT* error_code, bool check_ssl_trust,
+	void* sha1_cert_hash, UINT num_hashes,
+	bool* cancel, UINT max_recv_size);
+void GenerateHttpBasicAuthHeaderValue(char* dst, UINT dst_size, char* username, char* password);
+
 
 #endif	// WPC_H
 

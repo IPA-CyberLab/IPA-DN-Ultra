@@ -273,11 +273,16 @@ bool WtgWebSocketGetHandler(WT* wt, SOCK* s, HTTP_HEADER* h, char* url_target)
 		return false;
 	}
 
+	char log_prefix[MAX_PATH] = CLEAN;
+
+	Format(log_prefix, sizeof(log_prefix), "AcceptNewSession(WebSocket)/ClientIP=%r/ClientPort=%u/ServerIP=%r/ServerPort=%u", &s->RemoteIP, s->RemotePort, s->LocalIP, s->LocalPort);
+
 	req_upgrade = GetHttpValue(h, "Upgrade");
 	if (req_upgrade == NULL || StrCmpi(req_upgrade->Data, "websocket") != 0)
 	{
 		MvpnSendReply(s, 400, "Bad Request", bad_request_body, StrLen(bad_request_body),
 			NULL, NULL, NULL, NULL, NULL, h, false);
+		WtLogEx(wt, log_prefix, "WebSocket Bad Request: Invalid headers");
 		return false;
 	}
 
@@ -287,6 +292,7 @@ bool WtgWebSocketGetHandler(WT* wt, SOCK* s, HTTP_HEADER* h, char* url_target)
 	{
 		MvpnSendReply(s, 400, "Bad Request", NULL, 0,
 			NULL, "Sec-WebSocket-Version", "13", NULL, NULL, h, false);
+		WtLogEx(wt, log_prefix, "WebSocket Bad Request: client_ws_version = %u, not 13", client_ws_version);
 		return false;
 	}
 
@@ -305,6 +311,7 @@ bool WtgWebSocketGetHandler(WT* wt, SOCK* s, HTTP_HEADER* h, char* url_target)
 	{
 		MvpnSendReply(s, 400, "Bad Request", NULL, 0,
 			NULL, "Sec-WebSocket-Version", "13", NULL, NULL, h, false);
+		WtLogEx(wt, log_prefix, "WebSocket Bad Request: No Sec-WebSocket-Key");
 		return false;
 	}
 
@@ -315,6 +322,8 @@ bool WtgWebSocketGetHandler(WT* wt, SOCK* s, HTTP_HEADER* h, char* url_target)
 		StrCpy(protocol, sizeof(protocol), protocol_value->Data);
 	}
 
+	WtLogEx(wt, log_prefix, "WebSocket protocol header value: '%s'", protocol);
+
 	TSESSION* session = NULL;
 	TUNNEL* tunnel = NULL;
 
@@ -323,6 +332,7 @@ bool WtgWebSocketGetHandler(WT* wt, SOCK* s, HTTP_HEADER* h, char* url_target)
 	{
 		MvpnSendReply(s, 400, "Bad Request - WebSocket Session Not Found", NULL, 0, NULL, NULL, NULL, NULL, NULL, h, false);
 		Debug("WebSocket: Session not found for URL %s\n", url_target);
+		WtLogEx(wt, log_prefix, "WebSocket: Session not found for URL %s", url_target);
 		return false;
 	}
 
@@ -332,6 +342,7 @@ bool WtgWebSocketGetHandler(WT* wt, SOCK* s, HTTP_HEADER* h, char* url_target)
 		h, true);
 
 	Debug("WebSocket: Session reconnect OK for URL %s\n", url_target);
+	WtLogEx(wt, log_prefix, "WebSocket: Session reconnect OK for URL %s", url_target);
 
 	WtgWebSocketAccept(wt, s, url_target, session, tunnel);
 
@@ -684,6 +695,10 @@ PACK* WtgSamDoProcess(WT* wt, SOCK* s, WPC_PACKET* packet)
 		goto LABEL_CLEANUP;
 	}
 
+	char log_prefix[MAX_PATH] = CLEAN;
+
+	Format(log_prefix, sizeof(log_prefix), "RPC Request Processor/Anonymouse/ClientIP=%r/ClientPort=%u/ServerIP=%r/ServerPort=%u", &s->RemoteIP, s->RemotePort, s->LocalIP, s->LocalPort);
+
 	req = packet->Pack;
 
 	LockList(wt->MachineDatabase);
@@ -708,9 +723,18 @@ PACK* WtgSamDoProcess(WT* wt, SOCK* s, WPC_PACKET* packet)
 				break;
 			}
 		}
+
+		if (authed != NULL)
+		{
+			Format(log_prefix, sizeof(log_prefix), "RPC Request Processor/Authed_Server/PCID=%s/MSID=%s/ClientIP=%r/ClientPort=%u/ServerIP=%r/ServerPort=%u",
+				authed->Pcid, authed->Msid,
+				&s->RemoteIP, s->RemotePort, s->LocalIP, s->LocalPort);
+		}
 	}
 
 	PackGetStr(req, "Function", function, sizeof(function));
+
+	WtLogEx(wt, log_prefix, "Calling RPC function name: '%s'", function);
 
 	if (StrCmpi(function, "RegistMachine") == 0)
 	{
@@ -1089,6 +1113,15 @@ LABEL_CLEANUP:
 
 	Free(wol_maclist);
 
+	if (err == ERR_NO_ERROR)
+	{
+		WtLogEx(wt, log_prefix, "RPC function '%s' result OK.", function);
+	}
+	else
+	{
+		WtLogEx(wt, log_prefix, "RPC function '%s' result error. Error code: %u", function, err);
+	}
+
 	return ret;
 }
 
@@ -1303,6 +1336,8 @@ void WtgSessionMain(TSESSION *s)
 
 	UINT64 last_traffic_stat = 0;
 
+	WtSessionLog(s, "WtgSessionMain() start.");
+
 	while (true)
 	{
 		bool disconnected = false;
@@ -1351,6 +1386,7 @@ void WtgSessionMain(TSESSION *s)
 
 				if (disconnected)
 				{
+					WtSessionLog(s, "Server session is disconnected.");
 					break;
 				}
 			}
@@ -1376,6 +1412,8 @@ void WtgSessionMain(TSESSION *s)
 	WtgDisconnectAllClientSession(s);
 
 	Debug("WtgSessionMain End.\n");
+
+	WtSessionLog(s, "WtgSessionMain() End.");
 }
 
 // すべてのクライアントセッションの切断
@@ -1418,6 +1456,10 @@ bool WtgCheckDisconnect(TSESSION *s)
 			// サーバー側から受け取った切断信号に対応するクライアントとの
 			// コネクションは切断しなければならない
 			t->ClientTcp->Disconnected = true;
+
+			WtSessionLog(s, "Client session (Tunnel ID: %u, EndPoint: [%r]:%u) is disconnected "
+				"because of server's termination request.",
+				t->TunnelId, &t->ClientTcp->Sock->RemoteIP, t->ClientTcp->Sock->RemotePort);
 		}
 
 		bool disconnect_this_tunnel = false;
@@ -1468,6 +1510,9 @@ bool WtgCheckDisconnect(TSESSION *s)
 			{
 				t->ClientTcp->Disconnected = true;
 			}
+
+			WtSessionLog(s, "Client session (Tunnel ID: %u, EndPoint: [%r]:%u)'s Web Socket is disconnected.",
+				t->TunnelId, &t->WebSocket->Sock->RemoteIP, t->WebSocket->Sock->RemotePort);
 		}
 
 		if (disconnect_this_tunnel)
@@ -1493,6 +1538,9 @@ bool WtgCheckDisconnect(TSESSION *s)
 			tunnel_id = t->TunnelId;
 
 //			Debug("Disconnect Tunnel: %u, time: %I64u\n", tunnel_id, SystemTime64());
+
+			WtSessionLog(s, "Client session (Tunnel ID: %u, EndPoint: [%r]:%u) is now disconnected.",
+				t->TunnelId, &t->ClientTcp->Sock->RemoteIP, t->ClientTcp->Sock->RemotePort);
 
 			Delete(s->TunnelList, t);
 
@@ -2150,6 +2198,8 @@ void WtgRecvFromClient(TSESSION *s)
 				if (r == 0)
 				{
 					// 切断された
+					WtSessionLog(s, "WtgRecvFromClient: EndPoint [%r]:%u WebSocket is disconnected.",
+						&ws->Sock->RemoteIP, ws->Sock->RemotePort);
 					break;
 				}
 				else if (r == INFINITE)
@@ -2261,8 +2311,12 @@ READ_DATA_SIZE:
 						// WebSocket への切替え要求を受信したので、切替え処理を いたします。
 						if (tunnel != NULL)
 						{
-							Debug("Received: Switch to WebSocket\n");
-							tunnel->Gate_ClientSession_SwitchToWebSocketRequested = true;
+							if (tunnel->Gate_ClientSession_SwitchToWebSocketRequested == false)
+							{
+								Debug("Received: Switch to WebSocket\n");
+								WtSessionLog(s, "WtParseRecvTTcp: EndPoint [%r]:%u Received the request: Switch to WebSocket", &ttcp->Sock->RemoteIP, ttcp->Sock->RemotePort);
+								tunnel->Gate_ClientSession_SwitchToWebSocketRequested = true;
+							}
 						}
 						break;
 					}
@@ -2270,7 +2324,7 @@ READ_DATA_SIZE:
 				else
 				{
 					// 不正なデータサイズを受信。通信エラーか
-					WtSessionLog(s, "WtParseRecvTTcp: Invalid receive data. i > WT_MAX_BLOCK_SIZE. i = %u", i);
+					WtSessionLog(s, "WtParseRecvTTcp: EndPoint [%r]:%u Invalid receive data. i > WT_MAX_BLOCK_SIZE. i = %u", &ttcp->Sock->RemoteIP, ttcp->Sock->RemotePort, i);
 					ttcp->Disconnected = true;
 					ttcp->WantSize = sizeof(UINT);
 					ReadFifo(fifo, NULL, sizeof(UINT));
@@ -2435,7 +2489,8 @@ void WtSendTTcp(TSESSION *s, TTCP *ttcp)
 		{
 			// 切断された
 			ttcp->Disconnected = true;
-			WtSessionLog(s, "WtSendTTcp: WtSendSock(): Physical socket is disconnected.");
+			WtSessionLog(s, "WtSendTTcp: EndPoint [%r:%u] WtSendSock(): Physical socket is disconnected.",
+				&ttcp->Sock->RemoteIP, ttcp->Sock->RemotePort);
 			ClearFifo(fifo);
 			break;
 		}
@@ -2504,7 +2559,8 @@ RECV_START:
 	{
 TTCP_DISCONNECTED:
 		// コネクションが切断された
-		WtSessionLog(s, "WtRecvTTcpEx: WtRecvSock(): Physical socket is disconnected.");
+		WtSessionLog(s, "WtRecvTTcpEx: WtRecvSock(): EndPoint [%r]:%u Physical socket is disconnected.",
+			&ttcp->Sock->RemoteIP, ttcp->Sock->RemotePort);
 		ttcp->Disconnected = true;
 		return;
 	}
@@ -2513,8 +2569,8 @@ TTCP_DISCONNECTED:
 		// 受信待ち
 		if ((s->Tick > ttcp->LastCommTime) && ((s->Tick - ttcp->LastCommTime) >= (UINT64)ttcp->TunnelTimeout))
 		{
-			WtSessionLog(s, "WtIsTTcpDisconnected: Receive timeout detected. ttcp->LastCommTime = %I64u, ttcp->TunnelTimeout = %u, s->Tick = %I64u",
-				ttcp->LastCommTime, ttcp->TunnelTimeout, s->Tick);
+			WtSessionLog(s, "WtIsTTcpDisconnected: EndPoint [%r]:%u Receive timeout detected. ttcp->LastCommTime = %I64u, ttcp->TunnelTimeout = %u, s->Tick = %I64u",
+				&ttcp->Sock->RemoteIP, ttcp->Sock->RemotePort, ttcp->LastCommTime, ttcp->TunnelTimeout, s->Tick);
 			// タイムアウト発生
 			goto TTCP_DISCONNECTED;
 		}
@@ -2611,6 +2667,24 @@ bool WtgDetermineWebSocketSslCertUseCallback(char* sni_name, void* param)
 		InStr(sni_name, WIDE_WEBSOCKET_SNI_NAME_INSTR2);
 }
 
+// SNI 名を見て WebApp 用証明書を利用するかどうか判断するコールバック関数
+bool WtgDetermineWebAppSslCertUseCallback(char* sni_name, void* param)
+{
+	if (sni_name == NULL)
+	{
+		return false;
+	}
+
+	return StartWith(sni_name, WIDE_WEBAPP_SNI_NAME_STARTWITH1) ||
+		StartWith(sni_name, WIDE_WEBAPP_SNI_NAME_STARTWITH2) ||
+		StartWith(sni_name, WIDE_WEBAPP_SNI_NAME_STARTWITH3) ||
+		StartWith(sni_name, WIDE_WEBAPP_SNI_NAME_STARTWITH4) ||
+		InStr(sni_name, WIDE_WEBAPP_SNI_NAME_INSTR1) ||
+		InStr(sni_name, WIDE_WEBAPP_SNI_NAME_INSTR2) ||
+		InStr(sni_name, WIDE_WEBAPP_SNI_NAME_INSTR3) ||
+		InStr(sni_name, WIDE_WEBAPP_SNI_NAME_INSTR4);
+}
+
 // Gate による接続受付
 void WtgAccept(WT *wt, SOCK *s)
 {
@@ -2637,6 +2711,10 @@ void WtgAccept(WT *wt, SOCK *s)
 		return;
 	}
 
+	char log_prefix[MAX_PATH] = CLEAN;
+
+	Format(log_prefix, sizeof(log_prefix), "AcceptNewSession/ClientIP=%r/ClientPort=%u/ServerIP=%r/ServerPort=%u", &s->RemoteIP, s->RemotePort, s->LocalIP, s->LocalPort);
+
 	StatManReportInt64(wt->StatMan, "WtgConnectedTcp_Total", 1);
 
 	if (IsEmptyStr(wt->EntranceUrlForProxy))
@@ -2647,6 +2725,7 @@ void WtgAccept(WT *wt, SOCK *s)
 	IPToStr(ip_str, sizeof(ip_str), &s->RemoteIP);
 
 	Debug("WtgAccept() from %s\n", ip_str);
+	WtLogEx(wt, log_prefix, "WtgAccept() started.");
 
 	SetTimeout(s, CONNECTING_TIMEOUT);
 
@@ -2654,6 +2733,9 @@ void WtgAccept(WT *wt, SOCK *s)
 
 	// セッション ID の生成
 	Rand(session_id, sizeof(session_id));
+
+	char session_id_str[64] = CLEAN;
+	BinToStr(session_id_str, sizeof(session_id_str), session_id, sizeof(session_id));
 
 	//SetWantToUseCipher(s, "RC4-MD5");
 
@@ -2676,8 +2758,11 @@ void WtgAccept(WT *wt, SOCK *s)
 	CERTS_AND_KEY* web_socket_certs_array[1] = CLEAN;
 	web_socket_certs_array[0] = web_socket_certs;
 
+	WtLogEx(wt, log_prefix, "Trying StartSSLEx2()...");
+
 	if (StartSSLEx2(s, wt->GateCert, wt->GateKey, true, 0, NULL, web_socket_certs_array, num_certs_array_items, NULL) == false)
 	{
+		WtLogEx(wt, log_prefix, "StartSSLEx2() error. Connection will be disconnected.");
 		Debug("StartSSL Failed.\n");
 
 		AddNoSsl(wt->Cedar, &s->RemoteIP);
@@ -2685,6 +2770,16 @@ void WtgAccept(WT *wt, SOCK *s)
 		FreeCertsAndKey(web_socket_certs);
 
 		return;
+	}
+
+	WtLogEx(wt, log_prefix, "SSL connection is established. SNI hostname: '%s', Cipher: '%s'.",
+		s->SniHostname, s->CipherName);
+
+	if (s->LocalX != NULL)
+	{
+		wchar_t x_names[MAX_PATH] = CLEAN;
+		GetAllNameFromName(x_names, sizeof(x_names), s->LocalX->subject_name);
+		WtLogEx(wt, log_prefix, "Selected Server Certificate: %S\n", x_names);
 	}
 
 	FreeCertsAndKey(web_socket_certs);
@@ -2702,22 +2797,28 @@ void WtgAccept(WT *wt, SOCK *s)
 		return;
 	}
 
+	WtLogEx(wt, log_prefix, "WtgDownloadSignature OK.");
+
 	// Hello パケットのアップロード
 	if (WtgUploadHello(wt, s, session_id) == false)
 	{
 		Debug("WtgUploadHello Failed.\n");
+		WtLogEx(wt, log_prefix, "WtgUploadHello Error.");
 		WtgSendError(s, ERR_PROTOCOL_ERROR);
 		return;
 	}
+	WtLogEx(wt, log_prefix, "WtgUploadHello OK.");
 
 	// 接続パラメータのダウンロード
 	p = HttpServerRecv(s);
 	if (p == NULL)
 	{
 		Debug("HttpServerRecv Failed.\n");
+		WtLogEx(wt, log_prefix, "HttpServerRecv Error.");
 		WtgSendError(s, ERR_PROTOCOL_ERROR);
 		return;
 	}
+	WtLogEx(wt, log_prefix, "HttpServerRecv OK.");
 
 	if (PackGetStr(p, "method", method, sizeof(method)) == false)
 	{
@@ -2780,9 +2881,17 @@ void WtgAccept(WT *wt, SOCK *s)
 	char local_version[128] = CLEAN;
 	PackGetStr(p, "local_version", local_version, sizeof(local_version));
 
+	WtLogEx(wt, log_prefix, "Method=%s,support_timeout_param=%u,tunnel_timeout=%u,"
+		"tunnel_keepalive=%u,tunnel_use_aggressive_timeout=%u,"
+		"local_ip=%r,local_hostname=%S,local_version=%s",
+		method, support_timeout_param, tunnel_timeout, tunnel_keepalive, tunnel_use_aggressive_timeout,
+		&local_ip, local_hostname, local_version);
+
 	Debug("method: %s\n", method);
 	if (StrCmpi(method, "new_session") == 0)
 	{
+		WtLogEx(wt, log_prefix, "Accepting new server session.");
+
 		bool request_initial_pack;
 		UINT64 server_mask_64 = 0;
 		// 新しいセッションの確立
@@ -2790,6 +2899,7 @@ void WtgAccept(WT *wt, SOCK *s)
 		if (WtGateConnectParamFromPack(&param, p) == false)
 		{
 			Debug("WtGateConnectParamFromPack failed.\n");
+			WtLogEx(wt, log_prefix, "WtGateConnectParamFromPack Error.");
 			FreePack(p);
 			return;
 		}
@@ -2803,27 +2913,35 @@ void WtgAccept(WT *wt, SOCK *s)
 
 		FreePack(p);
 
+		WtLogEx(wt, log_prefix, "WtGateConnectParamFromPack OK. server_mask_64=%u", server_mask_64);
+
 		// 接続パラメータの電子署名のチェック
 		if (WtGateConnectParamCheckSignature(wt->Wide, &param) == false)
 		{
 			WtgSendError(s, ERR_PROTOCOL_ERROR);
 			Debug("WtGateConnectParamCheckSignature Failed.\n");
+			WtLogEx(wt, log_prefix, "WtGateConnectParamCheckSignature Error.");
 			return;
 		}
+
+		WtLogEx(wt, log_prefix, "WtGateConnectParamCheckSignature OK.");
 
 		// GateID のチェック
 		if (Cmp(wt->GateId, param.GateId, SHA1_SIZE) != 0)
 		{
 			WtgSendError(s, ERR_PROTOCOL_ERROR);
 			Debug("Cmp GateID Failed.\n");
+			WtLogEx(wt, log_prefix, "Cmp GateID Failed.");
 			return;
 		}
+		WtLogEx(wt, log_prefix, "Cmp GateID OK.");
 
 		// 有効期限のチェック
 		if (param.Expires < SystemTime64())
 		{
 			WtgSendError(s, ERR_PROTOCOL_ERROR);
 			Debug("Expires Failed.\n");
+			WtLogEx(wt, log_prefix, "Expires Failed. %I64u < %I64u", param.Expires, SystemTime64());
 			return;
 		}
 
@@ -2868,6 +2986,7 @@ void WtgAccept(WT *wt, SOCK *s)
 				// すでに接続されている
 				code = ERR_MACHINE_ALREADY_CONNECTED;
 				Debug("Error: ERR_MACHINE_ALREADY_CONNECTED.\n");
+				WtLogEx(wt, log_prefix, "Error: ERR_MACHINE_ALREADY_CONNECTED.");
 			}
 		}
 		UnlockList(wt->SessionList);
@@ -2892,8 +3011,13 @@ void WtgAccept(WT *wt, SOCK *s)
 
 		StatManReportInt64(wt->StatMan, "WtgConnnectedServerSessions_Total", 1);
 
+		WtLogEx(wt, log_prefix, "New Server Session Established. SessionID=%s,tunnel_timeout=%u,tunnel_keepalive=%u,tunnel_use_aggressive_timeout=%u",
+			session_id_str, tunnel_timeout, tunnel_keepalive, tunnel_use_aggressive_timeout);
+
 		// セッションメイン
 		WtgSessionMain(session);
+
+		WtLogEx(wt, log_prefix, "Server Session Disconnected. SessionID=%s", session_id_str);
 
 		LockList(wt->SessionList);
 		{
@@ -2906,6 +3030,8 @@ void WtgAccept(WT *wt, SOCK *s)
 	}
 	else if (StrCmpi(method, "connect_session") == 0)
 	{
+		WtLogEx(wt, log_prefix, "Accepting new client session.");
+
 		// 既存のセッションへの接続
 		char session_id[WT_SESSION_ID_SIZE];
 		UCHAR client_id[SHA1_SIZE];
@@ -2931,6 +3057,10 @@ void WtgAccept(WT *wt, SOCK *s)
 		}
 
 		FreePack(p);
+
+		BinToStr(session_id_str, sizeof(session_id_str), session_id, sizeof(session_id));
+
+		WtLogEx(wt, log_prefix, "Accepting new client session. Client Requested Session ID: %s", session_id_str);
 
 		// セッションの検索
 		LockList(wt->SessionList);
@@ -2967,6 +3097,7 @@ void WtgAccept(WT *wt, SOCK *s)
 			// 指定されたセッション ID は存在しない
 			WtgSendError(s, ERR_DEST_MACHINE_NOT_EXISTS);
 			Debug("Error: ERR_DEST_MACHINE_NOT_EXISTS\n");
+			WtLogEx(wt, log_prefix, "Error: No Session ID '%s' found on this gate.", session_id_str);
 			return;
 		}
 
@@ -2976,6 +3107,8 @@ void WtgAccept(WT *wt, SOCK *s)
 			WtReleaseSession(session);
 			WtgSendError(s, ERR_TOO_MANY_CONNECTION);
 			Debug("Error: ERR_TOO_MANY_CONNECTION\n");
+			WtLogEx(wt, log_prefix, "Error: ERR_TOO_MANY_CONNECTION. %u > %u",
+				LIST_NUM(session->TunnelList), WT_MAX_TUNNELS_PER_SESSION);
 			return;
 		}
 
@@ -2997,6 +3130,10 @@ void WtgAccept(WT *wt, SOCK *s)
 		HttpServerSend(s, p);
 		FreePack(p);
 
+		WtLogEx(wt, log_prefix, "Client Session Connect OK."
+			" tunnel_timeout=%u,tunnel_keepalive=%u,tunnel_use_aggressive_timeout=%u,websocket_url=%s",
+			tunnel_timeout, tunnel_keepalive, tunnel_use_aggressive_timeout, websocket_url);
+
 		SetTimeout(s, TIMEOUT_INFINITE);
 
 		StatManReportInt64(wt->StatMan, "WtgConnnectedClientSessions_Total", 1);
@@ -3009,6 +3146,8 @@ void WtgAccept(WT *wt, SOCK *s)
 			TTCP *ttcp;
 
 			Debug("New Tunnel: %u\n", tunnel_id);
+
+			WtLogEx(wt, log_prefix, "New Tunnel ID %u is now joined to the Session ID %s.\n", tunnel_id, session_id_str);
 
 			ttcp = WtNewTTcp(s, use_compress, tunnel_timeout, tunnel_keepalive, tunnel_use_aggressive_timeout);
 
@@ -3464,6 +3603,10 @@ bool WtgDownloadSignature(WT* wt, SOCK* s, bool* check_ssl_ok, char* gate_secret
 		return false;
 	}
 
+	char log_prefix[MAX_PATH] = CLEAN;
+
+	Format(log_prefix, sizeof(log_prefix), "AcceptNewSession(HTTPSvr)/ClientIP=%r/ClientPort=%u/ServerIP=%r/ServerPort=%u", &s->RemoteIP, s->RemotePort, s->LocalIP, s->LocalPort);
+
 	while (true)
 	{
 		num++;
@@ -3478,6 +3621,8 @@ bool WtgDownloadSignature(WT* wt, SOCK* s, bool* check_ssl_ok, char* gate_secret
 		{
 			return false;
 		}
+
+		WtLogEx(wt, log_prefix, "HTTP Target Path: '%s'", h->Target);
 
 		// 解釈する
 		if ((StartWith(h->Target, "/widecontrol/") || StartWith(h->Target, "/thincontrol/")) && wt->IsStandaloneMode == false)

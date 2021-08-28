@@ -353,7 +353,6 @@ struct CERTS_AND_KEY
 	bool (*DetermineUseCallback)(char*, void*);
 };
 
-
 // Lock of the OpenSSL
 extern LOCK **ssl_lock_obj;
 
@@ -385,11 +384,16 @@ USHORT SeedRand16(SEEDRAND *r);
 UINT SeedRand32(SEEDRAND *r);
 UINT64 SeedRand64(SEEDRAND* r);
 
+
 CERTS_AND_KEY* NewCertsAndKeyFromMemory(LIST* cert_buf_list, BUF* key_buf);
+CERTS_AND_KEY* NewCertsAndKeyFromObjects(LIST* cert_list, K* key);
 CERTS_AND_KEY* NewCertsAndKeyFromDir(wchar_t* dir_name);
 CERTS_AND_KEY* CloneCertsAndKey(CERTS_AND_KEY* c);
 bool SaveCertsAndKeyToDir(CERTS_AND_KEY *c, wchar_t* dir);
 void FreeCertsAndKey(CERTS_AND_KEY* c);
+
+LIST* BufToXList(BUF* b);
+void FreeXList(LIST* o);
 
 void CertTest();
 BIO *BufToBio(BUF *b);
@@ -606,6 +610,8 @@ bool Aead_ChaCha20Poly1305_Ietf_IsOpenSSL();
 void Aead_ChaCha20Poly1305_Ietf_Test();
 
 bool OcspVerify(X* cert, X* issuer);
+
+
 
 
 #ifdef	ENCRYPT_C
