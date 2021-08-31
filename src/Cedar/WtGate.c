@@ -96,8 +96,6 @@ void WtgHttpProxyForWebApp(WT* wt, SOCK* s, HTTP_HEADER* first_header)
 		return;
 	}
 
-	WHERE;
-
 	// base url
 	char base_url[MAX_PATH] = CLEAN;
 	StrCpy(base_url, sizeof(base_url), "https://127.0.0.1:7002/");
@@ -262,7 +260,15 @@ void WtgHttpProxyForWebApp(WT* wt, SOCK* s, HTTP_HEADER* first_header)
 			if (s2 == NULL)
 			{
 				// Failed to connect to the destination server
-				HttpSendNotFound(s, h->Target);
+				char* text = "--- Thin Telework System Controller Reverse Proxy for HTML5 Web Gateway ---\r\n\r\n"
+					"Error: Hello! Failed to connect to the Thin Telework HTML5 Web Gateway server running on [%s]:%u.\r\n"
+					"Please make sure that the Thin Telework HTML5 Web Gateway server process is running and its initial configuration is already done correctly.\r\n\r\n"
+					"For details please refer to the manual.\r\n\r\nBye bye!\n";
+
+				char tmp[MAX_SIZE] = CLEAN;
+				Format(tmp, sizeof(tmp), text, url.HostName, url.Port);
+				
+				HttpSendBody(s, tmp, StrLen(tmp), "text/plain");
 			}
 			else
 			{
@@ -4100,23 +4106,31 @@ bool WtgDownloadSignature(WT* wt, SOCK* s, bool* check_ssl_ok, char* gate_secret
 		WtLogEx(wt, log_prefix, "HTTP Target Path: '%s'", h->Target);
 
 		// 解釈する
-		if ((StartWith(h->Target, "/widecontrol/") || StartWith(h->Target, "/thincontrol/")) && wt->IsStandaloneMode == false)
+		if (StartWith(h->Target, "/widecontrol/") || StartWith(h->Target, "/thincontrol/"))
 		{
-			char url[MAX_PATH];
+			if (wt->IsStandaloneMode)
+			{
+				HttpSendNotFound(s, h->Target);
+				FreeHttpHeader(h);
+			}
+			else
+			{
+				char url[MAX_PATH];
 
-			Debug("widecontrol request proxy: '%s'\n", h->Target);
+				Debug("widecontrol request proxy: '%s'\n", h->Target);
 
-			StrCpy(url, sizeof(url), entrance_url_for_proxy);
+				StrCpy(url, sizeof(url), entrance_url_for_proxy);
 
-			ReplaceStrEx(url, sizeof(url), url, "https://", "http://", false);
+				ReplaceStrEx(url, sizeof(url), url, "https://", "http://", false);
 
-			WtgHttpProxy(url, s, s->SecureMode, h, gate_secret_key, entrance_url_list_for_proxy);
+				WtgHttpProxy(url, s, s->SecureMode, h, gate_secret_key, entrance_url_list_for_proxy);
 
-			*check_ssl_ok = true;
+				*check_ssl_ok = true;
 
-			FreeHttpHeader(h);
+				FreeHttpHeader(h);
 
-			return false;
+				return false;
+			}
 		}
 		else if (StartWith(h->Target, "/websocket/"))
 		{
