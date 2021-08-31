@@ -197,7 +197,7 @@ void WtgHttpProxyForWebApp(WT* wt, SOCK* s, HTTP_HEADER* first_header)
 			{
 				HTTP_VALUE* v = LIST_DATA(h->ValueList, i);
 
-				if (StartWith(v->Name, "X-WG-Proxy-") == false)
+				if (StartWith(v->Name, "X-Forwarded-") == false)
 				{
 					if (StrCmpi(v->Name, "HOST") == 0)
 					{
@@ -218,26 +218,19 @@ void WtgHttpProxyForWebApp(WT* wt, SOCK* s, HTTP_HEADER* first_header)
 			if (true)
 			{
 				char tmp[MAX_SIZE];
-				char src_ip_str[128];
-				char src_port[64];
 
-				Format(tmp, sizeof(tmp), "%r:%u", &s->LocalIP, s->LocalPort);
-				AddHttpValue(h2, NewHttpValue("X-WG-Proxy-Server", tmp));
+				if (IsIP6(&s->RemoteIP))
+				{
+					Format(tmp, sizeof(tmp), "[%r]:%u", &s->RemoteIP, s->RemotePort);
+				}
+				else
+				{
+					Format(tmp, sizeof(tmp), "%r:%u", &s->RemoteIP, s->RemotePort);
+				}
+				AddHttpValue(h2, NewHttpValue("X-Forwarded-For", tmp));
 
-				ToStr(tmp, CEDAR_BUILD);
-				AddHttpValue(h2, NewHttpValue("X-WG-Proxy-Build", tmp));
-
-				AddHttpValue(h2, NewHttpValue("X-WG-Proxy-Host", original_host));
-
-				// 現在時刻
-				ToStr64(tmp, SystemTime64());
-				AddHttpValue(h2, NewHttpValue("X-WG-Proxy-Time", tmp));
-
-				IPToStr(src_ip_str, sizeof(src_ip_str), &s->RemoteIP);
-				ToStr(src_port, s->RemotePort);
-
-				AddHttpValue(h2, NewHttpValue("X-WG-Proxy-SrcIP", src_ip_str));
-				AddHttpValue(h2, NewHttpValue("X-WG-Proxy-SrcPort", src_port));
+				AddHttpValue(h2, NewHttpValue("X-Forwarded-Host", original_host));
+				AddHttpValue(h2, NewHttpValue("X-Forwarded-Proto", "https"));
 			}
 
 			// Connect to the destination server
@@ -1432,6 +1425,8 @@ PACK* WtgSamDoProcess(WT* wt, SOCK* s, WPC_PACKET* packet)
 					PackAddInt(ret, "Port", 443);
 					PackAddData(ret, "SessionId", target_session->SessionId, SHA1_SIZE);
 					PackAddInt64(ret, "ServerMask64", target_session->ServerMask64);
+					PackAddStr(ret, "WebSocketWildCardDomainName", wt->Wide->WebSocketWildCardDomainName);
+					PackAddBool(ret, "IsStandaloneMode", true);
 				}
 			}
 		}
@@ -1956,8 +1951,11 @@ bool WtgCheckDisconnect(TSESSION *s)
 				t->ClientTcp->Disconnected = true;
 			}
 
-			WtSessionLog(s, "Client session (Tunnel ID: %u, EndPoint: [%r]:%u)'s Web Socket is disconnected.",
-				t->TunnelId, &t->WebSocket->Sock->RemoteIP, t->WebSocket->Sock->RemotePort);
+			if (disconnect_this_tunnel)
+			{
+				WtSessionLog(s, "Client session (Tunnel ID: %u, EndPoint: [%r]:%u)'s Web Socket is disconnected.",
+					t->TunnelId, &t->WebSocket->Sock->RemoteIP, t->WebSocket->Sock->RemotePort);
+			}
 		}
 
 		if (disconnect_this_tunnel)
@@ -2034,7 +2032,10 @@ bool WtIsTTcpDisconnected(TSESSION* s, TUNNEL* tunnel, TTCP* ttcp)
 
 	if (ttcp->Disconnected)
 	{
-		WtSessionLog(s, "ttcp->Disconnected == true");
+		if (ttcp->Sock != NULL && ttcp->Sock->Connected)
+		{
+			WtSessionLog(s, "ttcp->Disconnected == true");
+		}
 		Disconnect(ttcp->Sock);
 
 		return true;
@@ -3197,11 +3198,18 @@ void WtgAccept(WT *wt, SOCK *s)
 	CERTS_AND_KEY* ssl_additional_certs_array[2] = CLEAN;
 	UINT num_certs_array_items = 0;
 
-	CERTS_AND_KEY* web_socket_certs = WideGetWebSocketCertsAndKey(wt->Wide);
+	CERTS_AND_KEY* web_socket_certs = NULL;
 	CERTS_AND_KEY* web_app_certs = NULL;
+	
 	if (wt->IsStandaloneMode)
 	{
+		// スタンドアロンモードの場合、WebApp 証明書を読み込む
 		web_app_certs = WideGetWebAppCertsAndKey(wt->Wide);
+	}
+	else
+	{
+		// 通常モードの場合、WebSocket 証明書を読み込む
+		web_socket_certs = WideGetWebSocketCertsAndKey(wt->Wide);
 	}
 
 	if (web_socket_certs != NULL)

@@ -269,6 +269,8 @@ struct WIDE
 
 	bool IsStandaloneMode;
 
+	char WebSocketWildCardDomainName[MAX_PATH];
+
 	bool IsWideGateStarted;
 	STATMAN* StatMan;
 
@@ -277,7 +279,7 @@ struct WIDE
 	UINT64 NextRebootTime;
 	LOCK* NextRebootTimeLock;
 
-	CERT_SERVER_CLIENT* Standalone_WebSocketCertDownloader;
+	//CERT_SERVER_CLIENT* Standalone_WebSocketCertDownloader; // 2021.8.31 不要になった
 	CERT_SERVER_CLIENT* Standalone_WebAppCertDownloader;
 
 	// 2020/4/15 追加 アグレッシブタイムアウト機能

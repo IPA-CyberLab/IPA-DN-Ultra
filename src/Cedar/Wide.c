@@ -4074,16 +4074,28 @@ WIDE *WideGateStart()
 
 		GetExeDirW(exe_dir, sizeof(exe_dir));
 
-		// WebSocket 用証明書
-		Zero(&p, sizeof(p));
-		StrCpy(p.CertListSrcUrl, sizeof(p.CertListSrcUrl), IniStrValue(o, "WebSocketCertListSrcUrl"));
-		StrCpy(p.CertKeySrcUrl, sizeof(p.CertKeySrcUrl), IniStrValue(o, "WebSocketCertKeySrcUrl"));
-		StrCpy(p.BasicAuthUsername, sizeof(p.BasicAuthUsername), IniStrValue(o, "WebSocketCertBasicAuthUsername"));
-		StrCpy(p.BasicAuthPassword, sizeof(p.BasicAuthPassword), IniStrValue(o, "WebSocketCertBasicAuthPassword"));
-		StrCpy(p.ManagerLogName, sizeof(p.ManagerLogName), "WebSocket");
-		CombinePathW(p.DestDir, sizeof(p.DestDir), exe_dir, WIDE_WEBSOCKET_CERT_SET_DEST_DIR);
+		//// WebSocket 用証明書
+		// 2021.8.31 不要になった
+		//Zero(&p, sizeof(p));
+		//StrCpy(p.CertListSrcUrl, sizeof(p.CertListSrcUrl), IniStrValue(o, "WebSocketCertListSrcUrl"));
+		//StrCpy(p.CertKeySrcUrl, sizeof(p.CertKeySrcUrl), IniStrValue(o, "WebSocketCertKeySrcUrl"));
+		//StrCpy(p.BasicAuthUsername, sizeof(p.BasicAuthUsername), IniStrValue(o, "WebSocketCertBasicAuthUsername"));
+		//StrCpy(p.BasicAuthPassword, sizeof(p.BasicAuthPassword), IniStrValue(o, "WebSocketCertBasicAuthPassword"));
+		//StrCpy(p.ManagerLogName, sizeof(p.ManagerLogName), "WebSocket");
+		//CombinePathW(p.DestDir, sizeof(p.DestDir), exe_dir, WIDE_WEBSOCKET_CERT_SET_DEST_DIR);
 
-		w->Standalone_WebSocketCertDownloader = NewCertServerClient(w->wt, &p);
+		//w->Standalone_WebSocketCertDownloader = NewCertServerClient(w->wt, &p);
+
+		//StrCpy(w->WebSocketWildCardDomainName, sizeof(w->WebSocketWildCardDomainName), IniStrValue(o, "WebSocketWildCardDomainName"));
+
+		StrCpy(w->WebSocketWildCardDomainName, sizeof(w->WebSocketWildCardDomainName), WT_CONTROLLER_GATE_SAME_HOST);
+
+		StrCpy(w->ControllerGateSecretKey, sizeof(w->ControllerGateSecretKey), IniStrValue(o, "ControllerGateSecretKey"));
+		if (IsEmptyStr(w->ControllerGateSecretKey))
+		{
+			// Default value
+			StrCpy(w->ControllerGateSecretKey, sizeof(w->ControllerGateSecretKey), "JuP4611KJd1dFTqenNpVPU6r");
+		}
 
 		// WebApp 用証明書
 		Zero(&p, sizeof(p));
@@ -4178,10 +4190,10 @@ void WideGateStopEx(WIDE* wide, bool daemon_force_exit)
 
 	FreeStrList(wide->wt->ProxyTargetUrlList);
 
-	if (wide->Standalone_WebSocketCertDownloader != NULL)
-	{
-		FreeCertServerClient(wide->Standalone_WebSocketCertDownloader);
-	}
+	//if (wide->Standalone_WebSocketCertDownloader != NULL)
+	//{
+	//	FreeCertServerClient(wide->Standalone_WebSocketCertDownloader);
+	//}
 
 	if (wide->Standalone_WebAppCertDownloader != NULL)
 	{
