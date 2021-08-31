@@ -228,6 +228,10 @@ struct WG_MACHINE
 // ThinDate Standalone Mode 定数
 #define WTG_SAM_MAX_RECVSTR_SIZE		(64 * 1024)
 
+#define WTG_HTTP_PROXY_FOR_WEBAPP_MAX_HTTP_LINE_SIZE	(256 * 1024)
+
+#define WTG_HTTP_PROXY_INTERNAL_CHUNK_BUFFER_SIZE		65536
+
 
 // 関数プロトタイプ
 bool WtGateConnectParamFromPack(WT_GATE_CONNECT_PARAM *g, PACK *p);
@@ -303,6 +307,8 @@ void CfgSaveThreadProc(THREAD* thread, void* param);
 bool WtgWebSocketGetHandler(WT *wt, SOCK* s, HTTP_HEADER* h, char* url_target);
 bool WtgWebSocketAccept(WT* wt, SOCK* s, char* url_target, TSESSION *session, TUNNEL *tunnel);
 bool WtgSearchSessionAndTunnelByWebSocketUrl(WT* wt, char* url_target, TSESSION** pp_session, TUNNEL** pp_tunnel);
+
+void WtgHttpProxyForWebApp(WT* wt, SOCK* s, HTTP_HEADER* first_header);
 
 
 #endif	// WTGATE_H

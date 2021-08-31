@@ -7112,7 +7112,7 @@ bool ServerDownloadSignature(CONNECTION *c, char **error_detail_str)
 			return false;
 		}
 		// Receive a header
-		h = RecvHttpHeader(s);
+		h = RecvHttpHeader(s, 0, 0);
 		if (h == NULL)
 		{
 			c->Err = ERR_CLIENT_IS_NOT_VPN;
@@ -8068,7 +8068,7 @@ SOCK *ProxyConnectEx2NtlmAuth(CONNECTION *c, char *proxy_host_name, UINT proxy_p
 	}
 
 	// Receive the results
-	h = RecvHttpHeader(s);
+	h = RecvHttpHeader(s, 0, 0);
 	if (h == NULL)
 	{
 		// Failure
@@ -8208,7 +8208,7 @@ SOCK *ProxyConnectEx2NtlmAuth(CONNECTION *c, char *proxy_host_name, UINT proxy_p
 		}
 
 		// Receive the results
-		h = RecvHttpHeader(s);
+		h = RecvHttpHeader(s, 0, 0);
 		if (h == NULL)
 		{
 			// Failure
@@ -8437,7 +8437,7 @@ SOCK *ProxyConnectEx2(CONNECTION *c, char *proxy_host_name, UINT proxy_port,
 	}
 
 	// Receive the results
-	h = RecvHttpHeader(s);
+	h = RecvHttpHeader(s, 0, 0);
 	if (h == NULL)
 	{
 		// Failure
@@ -8978,7 +8978,7 @@ bool MvpnSendReply(SOCK* s, UINT status_code, char* status_string, UCHAR* data, 
 		AddHttpValue(h, NewHttpValue(add_header_name_02, add_header_value_02));
 	}
 
-	ret = PostHttpEx(s, h, data, data_size, data_size == 0 ? true : false);
+	ret = PostHttpEx(s, h, data, data_size, data_size == 0 ? true : false, 0);
 
 	FreeHttpHeader(h);
 

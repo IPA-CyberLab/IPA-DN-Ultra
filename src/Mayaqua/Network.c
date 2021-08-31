@@ -15980,7 +15980,7 @@ bool DetectIsServerSoftEtherVPN(SOCK *s)
 
 
 
-	send_str = HttpHeaderToStr(h);
+	send_str = HttpHeaderToStr(h, 0);
 	FreeHttpHeader(h);
 
 	// Transmission
@@ -15993,7 +15993,7 @@ bool DetectIsServerSoftEtherVPN(SOCK *s)
 	Free(send_str);
 
 	// Receive
-	h = RecvHttpHeader(s);
+	h = RecvHttpHeader(s, 0, 0);
 	if (h == NULL)
 	{
 		return false;
@@ -22755,7 +22755,7 @@ PACK *HttpServerRecvEx(SOCK *s, UINT max_data_size)
 
 START:
 
-	h = RecvHttpHeader(s);
+	h = RecvHttpHeader(s, 0, 0);
 	if (h == NULL)
 	{
 		goto BAD_REQUEST;
@@ -22873,7 +22873,7 @@ PACK *HttpClientRecv(SOCK *s)
 		return NULL;
 	}
 
-	h = RecvHttpHeader(s);
+	h = RecvHttpHeader(s, 0, 0);
 	if (h == NULL)
 	{
 		return NULL;
@@ -23394,9 +23394,9 @@ UINT GetContentLength(HTTP_HEADER *header)
 // Send the data in the HTTP
 bool PostHttp(SOCK* s, HTTP_HEADER* header, void* post_data, UINT post_size)
 {
-	return PostHttpEx(s, header, post_data, post_size, false);
+	return PostHttpEx(s, header, post_data, post_size, false, 0);
 }
-bool PostHttpEx(SOCK* s, HTTP_HEADER* header, void* post_data, UINT post_size, bool no_contents_length) 
+bool PostHttpEx(SOCK* s, HTTP_HEADER* header, void* post_data, UINT post_size, bool no_contents_length, UINT max_line_size)
 {
 	char *header_str;
 	BUF *b;
@@ -23429,7 +23429,7 @@ bool PostHttpEx(SOCK* s, HTTP_HEADER* header, void* post_data, UINT post_size, b
 	}
 
 	// Convert the header to string
-	header_str = HttpHeaderToStr(header);
+	header_str = HttpHeaderToStr(header, max_line_size);
 	if (header_str == NULL)
 	{
 		return false;
@@ -23450,7 +23450,7 @@ bool PostHttpEx(SOCK* s, HTTP_HEADER* header, void* post_data, UINT post_size, b
 }
 
 // Convert a HTTP header to a string
-char *HttpHeaderToStr(HTTP_HEADER *header)
+char* HttpHeaderToStr(HTTP_HEADER* header, UINT max_line_size)
 {
 	BUF *b;
 	char *tmp;
@@ -23462,11 +23462,13 @@ char *HttpHeaderToStr(HTTP_HEADER *header)
 		return NULL;
 	}
 
-	tmp = Malloc(HTTP_HEADER_LINE_MAX_SIZE);
+	if (max_line_size == 0) max_line_size = HTTP_HEADER_LINE_MAX_SIZE;
+
+	tmp = Malloc(max_line_size);
 	b = NewBuf();
 
 	// Header
-	Format(tmp, HTTP_HEADER_LINE_MAX_SIZE,
+	Format(tmp, max_line_size,
 		"%s %s %s\r\n", header->Method, header->Target, header->Version);
 	WriteBuf(b, tmp, StrLen(tmp));
 
@@ -23474,7 +23476,7 @@ char *HttpHeaderToStr(HTTP_HEADER *header)
 	for (i = 0;i < LIST_NUM(header->ValueList);i++)
 	{
 		HTTP_VALUE *v = (HTTP_VALUE *)LIST_DATA(header->ValueList, i);
-		Format(tmp, HTTP_HEADER_LINE_MAX_SIZE,
+		Format(tmp, max_line_size,
 			"%s: %s\r\n", v->Name, v->Data);
 		WriteBuf(b, tmp, StrLen(tmp));
 	}
@@ -23503,7 +23505,7 @@ bool SendHttpHeader(SOCK *s, HTTP_HEADER *header)
 	}
 
 	// Convert to string
-	str = HttpHeaderToStr(header);
+	str = HttpHeaderToStr(header, 0);
 
 	// Transmission
 	ret = SendAll(s, str, StrLen(str), s->SecureMode);
@@ -23513,8 +23515,63 @@ bool SendHttpHeader(SOCK *s, HTTP_HEADER *header)
 	return ret;
 }
 
+// Delete a HTTP header value
+void DeleteHttpHeaderValue(HTTP_HEADER* h, char* name)
+{
+	if (h == NULL || IsEmptyStr(name))
+	{
+		return;
+	}
+
+	LIST* o = NewList(NULL);
+
+	UINT i;
+	for (i = 0;i < LIST_NUM(h->ValueList);i++)
+	{
+		HTTP_VALUE* v = LIST_DATA(h->ValueList, i);
+
+		if (StrCmpi(v->Name, name) == 0)
+		{
+			Add(o, v);
+		}
+	}
+
+	for (i = 0;i < LIST_NUM(o);i++)
+	{
+		HTTP_VALUE* v = LIST_DATA(o, i);
+
+		Delete(h->ValueList, v);
+
+		FreeHttpValue(v);
+	}
+
+	ReleaseList(o);
+}
+
+// Debug print HTTP header
+void DebugHttpHeader(HTTP_HEADER* h)
+{
+	if (h == NULL)
+	{
+		return;
+	}
+
+	Debug("--- Begin HTTP header ---\n");
+
+	Debug("%s %s %s\n", h->Method, h->Target, h->Version);
+
+	UINT i;
+	for (i = 0;i < LIST_NUM(h->ValueList);i++)
+	{
+		HTTP_VALUE* v = LIST_DATA(h->ValueList, i);
+		Debug("%s: %s\n", v->Name, v->Data);
+	}
+
+	Debug("--- End HTTP header ---\n\n");
+}
+
 // Receive an HTTP header
-HTTP_HEADER *RecvHttpHeader(SOCK *s)
+HTTP_HEADER* RecvHttpHeader(SOCK* s, UINT max_size, UINT max_hard_size)
 {
 	TOKEN_LIST *token = NULL;
 	char *str = NULL;
@@ -23524,9 +23581,11 @@ HTTP_HEADER *RecvHttpHeader(SOCK *s)
 	{
 		return NULL;
 	}
+	if (max_size == 0) max_size = HTTP_HEADER_LINE_MAX_SIZE;
+	if (max_hard_size == 0) max_hard_size = HTTP_HEADER_LINE_MAX_SIZE_HARD;
 
 	// Get the first line
-	str = RecvLine(s, HTTP_HEADER_LINE_MAX_SIZE);
+	str = RecvLine(s, max_size);
 	if (str == NULL)
 	{
 		goto LABEL_ERROR;
@@ -23558,7 +23617,7 @@ HTTP_HEADER *RecvHttpHeader(SOCK *s)
 		UINT pos;
 		HTTP_VALUE *v;
 		char *value_name, *value_data;
-		str = RecvLineEx(s, HTTP_HEADER_LINE_MAX_SIZE, HTTP_HEADER_LINE_MAX_SIZE_HARD);
+		str = RecvLineEx(s, max_size, max_hard_size);
 		if (str == NULL)
 		{
 			goto LABEL_ERROR;

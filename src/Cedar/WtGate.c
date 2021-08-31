@@ -88,6 +88,449 @@
 
 #define g_show_debug_protocol	false
 
+// WebApp のためのプロキシ (Standalone mode 用)
+void WtgHttpProxyForWebApp(WT* wt, SOCK* s, HTTP_HEADER* first_header)
+{
+	if (wt == NULL || s == NULL || first_header == NULL)
+	{
+		return;
+	}
+
+	WHERE;
+
+	// base url
+	char base_url[MAX_PATH] = CLEAN;
+	StrCpy(base_url, sizeof(base_url), "https://127.0.0.1:7002/");
+	URL_DATA url = CLEAN;
+	ParseUrl(&url, base_url, false, NULL);
+
+	StrCpy(url.Target, sizeof(url.Target), first_header->Target);
+
+	// ログとる
+	char log_prefix[128] = CLEAN;
+	Format(log_prefix, sizeof(log_prefix), "ProxyForWebApp/ClientIP=%r/ClientPort=%u/ServerIP=%r/ServerPort=%u", &s->RemoteIP, s->RemotePort, s->LocalIP, s->LocalPort);
+
+	SOCK* s2 = NULL;
+
+	UINT num = 0;
+
+	while (true)
+	{
+		HTTP_HEADER* h = NULL;
+		if (num == 0)
+		{
+			h = first_header;
+		}
+		num++;
+
+		if (h == NULL)
+		{
+			h = RecvHttpHeader(s, WTG_HTTP_PROXY_FOR_WEBAPP_MAX_HTTP_LINE_SIZE, WTG_HTTP_PROXY_FOR_WEBAPP_MAX_HTTP_LINE_SIZE);
+		}
+
+		if (h == NULL)
+		{
+			break;
+		}
+
+		//if (StrCmpi(h->Version, "HTTP/1.1") == 0)
+		//{
+		//	//Free(h->Version);
+		//	//h->Version = CopyStr("HTTP/1.0");
+		//}
+
+		DeleteHttpHeaderValue(h, "Accept-Encoding");
+
+		//DebugHttpHeader(h);
+
+		if (StrCmpi(h->Method, "POST") == 0 || StrCmpi(h->Method, "GET") == 0 || StrCmpi(h->Method, "HEAD") == 0)
+		{
+			// Supported method
+			HTTP_HEADER* h2;
+			char* http_version = h->Version;
+			UINT i;
+			bool err = false;
+			BUF* post_buf = NULL;
+			char original_host[64];
+
+			Zero(original_host, sizeof(original_host));
+			Format(original_host, sizeof(original_host), "%r:%u", &s->LocalIP, s->LocalPort);
+
+			if (StrCmpi(h->Method, "POST") == 0)
+			{
+				// Receive POST data also in the case of POST
+				UINT content_len = GetContentLength(h);
+				UINT buf_size = 65536;
+				UCHAR* buf = Malloc(buf_size);
+
+				content_len = MIN(content_len, WG_PROXY_MAX_POST_SIZE);
+
+				post_buf = NewBuf();
+
+				while (true)
+				{
+					UINT recvsize = MIN(buf_size, content_len - post_buf->Size);
+					UINT size;
+
+					if (recvsize == 0)
+					{
+						break;
+					}
+
+					size = Recv(s, buf, buf_size, true);
+					if (size == 0)
+					{
+						// Disconnected
+						break;
+					}
+
+					WriteBuf(post_buf, buf, size);
+				}
+
+				Free(buf);
+			}
+
+			h2 = NewHttpHeaderEx(h->Method, h->Target, h->Version, true);
+
+			// Copy the request header
+			for (i = 0;i < LIST_NUM(h->ValueList);i++)
+			{
+				HTTP_VALUE* v = LIST_DATA(h->ValueList, i);
+
+				if (StartWith(v->Name, "X-WG-Proxy-") == false)
+				{
+					if (StrCmpi(v->Name, "HOST") == 0)
+					{
+						StrCpy(original_host, sizeof(original_host), v->Data);
+						AddHttpValue(h2, NewHttpValue(v->Name, url.HeaderHostName));
+					}
+					else
+					{
+						AddHttpValue(h2, NewHttpValue(v->Name, v->Data));
+					}
+				}
+			}
+
+			WtLogEx(wt, log_prefix, "Proxying: [https://%s%s] --> [https://%s%s]", original_host, h->Target,
+				url.HeaderHostName, h->Target);
+
+			// Add a special header
+			if (true)
+			{
+				char tmp[MAX_SIZE];
+				char src_ip_str[128];
+				char src_port[64];
+
+				Format(tmp, sizeof(tmp), "%r:%u", &s->LocalIP, s->LocalPort);
+				AddHttpValue(h2, NewHttpValue("X-WG-Proxy-Server", tmp));
+
+				ToStr(tmp, CEDAR_BUILD);
+				AddHttpValue(h2, NewHttpValue("X-WG-Proxy-Build", tmp));
+
+				AddHttpValue(h2, NewHttpValue("X-WG-Proxy-Host", original_host));
+
+				// 現在時刻
+				ToStr64(tmp, SystemTime64());
+				AddHttpValue(h2, NewHttpValue("X-WG-Proxy-Time", tmp));
+
+				IPToStr(src_ip_str, sizeof(src_ip_str), &s->RemoteIP);
+				ToStr(src_port, s->RemotePort);
+
+				AddHttpValue(h2, NewHttpValue("X-WG-Proxy-SrcIP", src_ip_str));
+				AddHttpValue(h2, NewHttpValue("X-WG-Proxy-SrcPort", src_port));
+			}
+
+			// Connect to the destination server
+			if (s2 == NULL)
+			{
+				WtLogEx(wt, log_prefix, "Connecting to [%s]:%u ...", url.HostName, url.Port);
+
+				s2 = ConnectEx2(url.HostName, url.Port, 0, NULL);
+
+				if (s2 != NULL)
+				{
+					WtLogEx(wt, log_prefix, "Establishing SSL. StartSSLEx2(): SniString='%s'", url.SniString);
+					if (StartSSLEx(s2, NULL, NULL, true, 0, url.SniString) == false)
+					{
+						WtLogEx(wt, log_prefix, "StartSSLEx2() failed.");
+						Disconnect(s2);
+						ReleaseSock(s2);
+						s2 = NULL;
+					}
+					else
+					{
+						WtLogEx(wt, log_prefix, "SSL Established OK.");
+					}
+
+					SetTimeout(s2, WG_PROXY_TCP_TIMEOUT_SERVER);
+				}
+			}
+
+			if (s2 == NULL)
+			{
+				// Failed to connect to the destination server
+				HttpSendNotFound(s, h->Target);
+			}
+			else
+			{
+				HTTP_HEADER* r2;
+
+				//DebugHttpHeader(h2);
+
+				// Send a request to the destination server
+				WtLogEx(wt, log_prefix, "Sending HTTP request to the server...");
+				PostHttpEx(s2, h2, (post_buf == NULL ? NULL : post_buf->Buf), (post_buf == NULL ? 0 : post_buf->Size), false, WTG_HTTP_PROXY_FOR_WEBAPP_MAX_HTTP_LINE_SIZE);
+
+				// Receive a response from the destination server, and transfers to the client
+				WtLogEx(wt, log_prefix, "Receinging HTTP response from the server...");
+				r2 = RecvHttpHeader(s2, WTG_HTTP_PROXY_FOR_WEBAPP_MAX_HTTP_LINE_SIZE, WTG_HTTP_PROXY_FOR_WEBAPP_MAX_HTTP_LINE_SIZE);
+				if (r2 == NULL)
+				{
+					WtLogEx(wt, log_prefix, "RecvHttpHeader() error.");
+					err = true;
+				}
+				else
+				{
+					WtLogEx(wt, log_prefix, "HTTP Response: %s %s %s (headers: %u)", r2->Method, r2->Target, r2->Version, LIST_NUM(r2->ValueList));
+
+					//DebugHttpHeader(r2);
+					if (PostHttp(s, r2, NULL, 0) == false)
+					{
+						WtLogEx(wt, log_prefix, "PostHttp() to the client error.");
+						err = true;
+					}
+					else
+					{
+						if (StrCmpi(h->Method, "HEAD") != 0)
+						{
+							bool is_chunked = false;
+							UINT i;
+							for (i = 0;i < LIST_NUM(r2->ValueList);i++)
+							{
+								HTTP_VALUE* v = LIST_DATA(r2->ValueList, i);
+								if (StrCmpi(v->Name, "Transfer-Encoding") == 0)
+								{
+									if (InStr(v->Data, "chunked"))
+									{
+										is_chunked = true;
+									}
+								}
+							}
+
+							if (is_chunked == false)
+							{
+								// 非 Chunk
+								UINT content_length = GetContentLength(r2);
+								UINT buf_size = 65536;
+								UCHAR* buf = Malloc(buf_size);
+								UINT pos = 0;
+
+								WtLogEx(wt, log_prefix, "Non-chunked response. content_length = %u", content_length);
+
+								while (pos < content_length)
+								{
+									UINT r;
+									UINT recv_size;
+
+									recv_size = MIN(buf_size, (content_length - pos));
+
+									r = Recv(s2, buf, recv_size, true);
+
+									if (r == 0)
+									{
+										err = true;
+										WtLogEx(wt, log_prefix, "Recv() from the server error.");
+										break;
+									}
+
+									if (SendAll(s, buf, r, true) == false)
+									{
+										WtLogEx(wt, log_prefix, "SendAll() to the client error.");
+										err = true;
+										break;
+									}
+
+									pos += r;
+								}
+
+								Free(buf);
+							}
+							else
+							{
+								WtLogEx(wt, log_prefix, "Chunked response.");
+
+								BUF* chunk_buf = NewBuf();
+								UINT chunk_tmp_size = WTG_HTTP_PROXY_INTERNAL_CHUNK_BUFFER_SIZE;
+								UCHAR *chunk_tmp = Malloc(chunk_tmp_size);
+
+								UINT total_chunk_contents_size = 0;
+
+								// Chunked
+								while (err == false)
+								{
+									char* size_line = NULL;
+
+									// まず、"16 進数の数字 + \r\n" の 1 行を受信する。
+									size_line = RecvLineEx(s2, 64, 64);
+									if (size_line == NULL)
+									{
+										err = true;
+										WtLogEx(wt, log_prefix, "RecvLineEx() [size] from the server error.");
+										break;
+									}
+
+									// 受信したサイズの数字を 16 進数で解釈する
+									UINT size_int = HexToInt(size_line);
+									Free(size_line);
+
+									// サイズデータをクライアントにそのまま送信する
+									char str[64] = CLEAN;
+									Format(str, sizeof(str), "%x\r\n", size_int);
+									if (SendAll(s, str, StrLen(str), true) == false)
+									{
+										err = true;
+										WtLogEx(wt, log_prefix, "SendAll() [size] to the client error.");
+										break;
+									}
+
+									if (size_int == 0)
+									{
+										// すべてのデータが受信完了
+										break;
+									}
+
+									UINT total_recv_size = 0;
+
+									// size_int の長さに達するまで chunk データを受信し、そのままクライアントに転送する
+									while (size_int > total_recv_size)
+									{
+										UINT recv_size = MIN(chunk_tmp_size, size_int - total_recv_size);
+										UINT sz = Recv(s2, chunk_tmp, recv_size, true);
+										if (sz == 0)
+										{
+											// サーバーから切断された
+											WtLogEx(wt, log_prefix, "Recv() [data] from the server error.");
+											err = true;
+											break;
+										}
+
+										// 受信したデータをそのままクライアントに送信する
+										if (SendAll(s, chunk_tmp, sz, true) == false)
+										{
+											WtLogEx(wt, log_prefix, "SendAll() [data] to the client error.");
+											err = true;
+											break;
+										}
+
+										total_recv_size += sz;
+									}
+
+									if (err)
+									{
+										break;
+									}
+
+									total_chunk_contents_size += total_recv_size;
+
+									// size_int の長さ全部をクライアントに送信完了した。
+									// サーバーから 2 バイトを受信する。これは "\r\n" となっているはずである。
+									if (RecvAll(s2, chunk_tmp, 2, true) == false)
+									{
+										err = true;
+										break;
+									}
+
+									if (Cmp(chunk_tmp, "\r\n", 2) != 0)
+									{
+										err = true;
+										break;
+									}
+
+									// この "\r\n" をそのままクライアントに送信する。
+									if (SendAll(s, chunk_tmp, 2, true) == false)
+									{
+										err = true;
+										break;
+									}
+								}
+
+								if (err == false)
+								{
+									// すべてのチャンクの受信が完了したら、一番最後に単なる改行 "\r\n" が届くはずなので、
+									// これをそのままクライアントに送付して完了する。
+									if (RecvAll(s2, chunk_tmp, 2, true) == false)
+									{
+										WtLogEx(wt, log_prefix, "RecvAll() [last_crlf] from the server error.");
+										err = true;
+										break;
+									}
+
+									if (Cmp(chunk_tmp, "\r\n", 2) != 0)
+									{
+										err = true;
+										break;
+									}
+
+									// この "\r\n" をそのままクライアントに送信する。
+									if (SendAll(s, chunk_tmp, 2, true) == false)
+									{
+										WtLogEx(wt, log_prefix, "SendAll() [last_crlf] to the server error.");
+										err = true;
+										break;
+									}
+
+									// 完了ログ
+									WtLogEx(wt, log_prefix, "Tranfer all chunked data to the client OK. total_chunk_contents_size = %u", total_chunk_contents_size);
+								}
+
+								Free(chunk_tmp);
+								FreeBuf(chunk_buf);
+							}
+						}
+					}
+
+					FreeHttpHeader(r2);
+				}
+			}
+
+			FreeHttpHeader(h2);
+
+			if (err)
+			{
+				Disconnect(s);
+
+				// Disconnected the communication with the destination server
+				if (s2 != NULL)
+				{
+					Disconnect(s2);
+					ReleaseSock(s2);
+					s2 = NULL;
+				}
+			}
+
+			FreeBuf(post_buf);
+		}
+		else
+		{
+			// Unsupported method
+			HttpSendNotImplemented(s, h->Method, h->Target, h->Version);
+		}
+
+		if (h != first_header)
+		{
+			FreeHttpHeader(h);
+		}
+	}
+
+	if (s2 != NULL)
+	{
+		Disconnect(s2);
+		ReleaseSock(s2);
+	}
+
+	WtLogEx(wt, log_prefix, "Finished the proxy function.");
+}
+
 // WebSocket Accept
 bool WtgWebSocketAccept(WT* wt, SOCK* s, char* url_target, TSESSION* session, TUNNEL* tunnel)
 {
@@ -3635,7 +4078,12 @@ bool WtgDownloadSignature(WT* wt, SOCK* s, bool* check_ssl_ok, char* gate_secret
 			return false;
 		}
 		// ヘッダを受信する
-		h = RecvHttpHeader(s);
+		UINT max_line_size = 0;
+		if (wt->IsStandaloneMode)
+		{
+			max_line_size = WTG_HTTP_PROXY_FOR_WEBAPP_MAX_HTTP_LINE_SIZE;
+		}
+		h = RecvHttpHeader(s, max_line_size, max_line_size);
 		if (h == NULL)
 		{
 			return false;
@@ -3728,7 +4176,7 @@ bool WtgDownloadSignature(WT* wt, SOCK* s, bool* check_ssl_ok, char* gate_secret
 
 			return false;
 		}
-		else if (StrCmpi(h->Method, "POST") == 0)
+		else if (StrCmpi(h->Target, HTTP_WIDE_TARGET2) == 0 && StrCmpi(h->Method, "POST") == 0)
 		{
 			// POST なのでデータを受信する
 			data_size = GetContentLength(h);
@@ -3756,38 +4204,42 @@ bool WtgDownloadSignature(WT* wt, SOCK* s, bool* check_ssl_ok, char* gate_secret
 				FreeHttpHeader(h);
 				return false;
 			}
-			// Target を確認する
-			if (StrCmpi(h->Target, HTTP_WIDE_TARGET2) != 0)
-			{
-				// ターゲットが不正
-				HttpSendNotFound(s, h->Target);
-				Free(data);
-				FreeHttpHeader(h);
-			}
-			else
-			{
-				Free(data);
-				FreeHttpHeader(h);
 
-				*check_ssl_ok = true;
-				return true;
-			}
+			Free(data);
+			FreeHttpHeader(h);
+
+			*check_ssl_ok = true;
+			return true;
 		}
 		else
 		{
-			// これ以上解釈しても VPN クライアントで無い可能性が高いが
-			// 一応する
-			if (StrCmpi(h->Method, "GET") != 0)
+			if (wt->IsStandaloneMode)
 			{
-				// サポートされていないメソッド呼び出し
-				HttpSendNotImplemented(s, h->Method, h->Target, h->Version);
+				// Standalone Mode の場合、WebApp へのプロキシを動作させる
+				*check_ssl_ok = true;
+
+				WtgHttpProxyForWebApp(wt, s, h);
+
+				FreeHttpHeader(h);
+
+				return false;
 			}
 			else
 			{
-				// Not Found
-				HttpSendNotFound(s, h->Target);
+				// これ以上解釈しても VPN クライアントで無い可能性が高いが
+				// 一応する
+				if (StrCmpi(h->Method, "GET") != 0)
+				{
+					// サポートされていないメソッド呼び出し
+					HttpSendNotImplemented(s, h->Method, h->Target, h->Version);
+				}
+				else
+				{
+					// Not Found
+					HttpSendNotFound(s, h->Target);
+				}
+				FreeHttpHeader(h);
 			}
-			FreeHttpHeader(h);
 		}
 	}
 }
@@ -4112,7 +4564,7 @@ void WtgHttpProxy(char *url_str, SOCK *s, bool ssl, HTTP_HEADER *first_header, c
 
 		if (h == NULL)
 		{
-			h = RecvHttpHeader(s);
+			h = RecvHttpHeader(s, 0, 0);
 		}
 
 		if (h == NULL)
@@ -4206,10 +4658,6 @@ void WtgHttpProxy(char *url_str, SOCK *s, bool ssl, HTTP_HEADER *first_header, c
 				ToStr64(tmp, SystemTime64());
 				AddHttpValue(h2, NewHttpValue("X-WG-Proxy-Time", tmp));
 
-				//// 署名 bugbug
-				//Format(sign_str, sizeof(sign_str), "%I64u:%s", tmp, shared_secret);
-				//AddHttpValue(h2, NewHttpValue("X-WG-Proxy-Sign", sign_str));
-
 				IPToStr(src_ip_str, sizeof(src_ip_str), &s->RemoteIP);
 				ToStr(src_port, s->RemotePort);
 
@@ -4274,7 +4722,7 @@ void WtgHttpProxy(char *url_str, SOCK *s, bool ssl, HTTP_HEADER *first_header, c
 				PostHttp(s2, h2, (post_buf == NULL ? NULL : post_buf->Buf),  (post_buf == NULL ? 0 : post_buf->Size));
 
 				// Receive a response from the destination server, and transfers to the client
-				r2 = RecvHttpHeader(s2);
+				r2 = RecvHttpHeader(s2, 0, 0);
 				if (r2 == NULL)
 				{
 					err = true;

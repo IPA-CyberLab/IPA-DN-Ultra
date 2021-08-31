@@ -128,7 +128,7 @@ void CertServerClientThreadProc(THREAD* thread, void* param)
 			WtLogEx(c->Wt, log_prefix, "Error: Failed to download the SSL certificates from the URL '%s'.", c->Param.CertListSrcUrl);
 		}
 
-		WtLogEx(c->Wt, log_prefix, "Waiting for %u msecs to next download.", next_wait);
+		WtLogEx(c->Wt, log_prefix, "Waiting for %u seconds to next download.", next_wait / 1000);
 
 		Wait(c->HaltEvent, next_wait);
 	}
@@ -184,17 +184,31 @@ CERTS_AND_KEY* DownloadCertsAndKeyFromCertServer(CERT_SERVER_CLIENT_PARAM* param
 	{
 		return NULL;
 	}
-	
-	certs_buf = HttpDownload(param->CertListSrcUrl, param->BasicAuthUsername, param->BasicAuthPassword,
-		NULL, 0, 0, NULL, false, NULL, 0, cancel, MAX_CERT_SERVER_CLIENT_DOWNLOAD_SIZE);
+
+	if (StartWith(param->CertListSrcUrl, "http://") || StartWith(param->CertListSrcUrl, "https://"))
+	{
+		certs_buf = HttpDownload(param->CertListSrcUrl, param->BasicAuthUsername, param->BasicAuthPassword,
+			NULL, 0, 0, NULL, false, NULL, 0, cancel, MAX_CERT_SERVER_CLIENT_DOWNLOAD_SIZE);
+	}
+	else
+	{
+		certs_buf = ReadDump(param->CertListSrcUrl);
+	}
 
 	if (certs_buf == NULL)
 	{
 		goto L_CLEANUP;
 	}
 
-	key_buf = HttpDownload(param->CertKeySrcUrl, param->BasicAuthUsername, param->BasicAuthPassword,
-		NULL, 0, 0, NULL, false, NULL, 0, cancel, MAX_CERT_SERVER_CLIENT_DOWNLOAD_SIZE);
+	if (StartWith(param->CertKeySrcUrl, "http://") || StartWith(param->CertKeySrcUrl, "https://"))
+	{
+		key_buf = HttpDownload(param->CertKeySrcUrl, param->BasicAuthUsername, param->BasicAuthPassword,
+			NULL, 0, 0, NULL, false, NULL, 0, cancel, MAX_CERT_SERVER_CLIENT_DOWNLOAD_SIZE);
+	}
+	else
+	{
+		key_buf = ReadDump(param->CertKeySrcUrl);
+	}
 
 	if (key_buf == NULL)
 	{
@@ -1132,7 +1146,7 @@ BUF *HttpRequestEx5(URL_DATA *data, INTERNET_SETTING *setting,
 		}
 	}
 
-	send_str = HttpHeaderToStr(h);
+	send_str = HttpHeaderToStr(h, 0);
 	FreeHttpHeader(h);
 
 	send_buf = NewBuf();
@@ -1161,7 +1175,7 @@ BUF *HttpRequestEx5(URL_DATA *data, INTERNET_SETTING *setting,
 
 CONT:
 	// Receive
-	h = RecvHttpHeader(s);
+	h = RecvHttpHeader(s, 0, 0);
 	if (h == NULL)
 	{
 		Disconnect(s);
