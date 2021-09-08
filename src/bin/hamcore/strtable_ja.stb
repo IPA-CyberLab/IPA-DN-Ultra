@@ -762,7 +762,7 @@ CONNECTDLG_CANCELING	接続をキャンセルしています。しばらくお�
 
 
 # About ダイアログ関係
-ABOUT_COPYRIGHT_INFO	Copyright (c) %u 東日本電信電話株式会社. All Rights Reserved.\r\nCopyright (c) %u 独立行政法人情報処理推進機構. All Rights Reserved.\r\n\r\n%S
+ABOUT_COPYRIGHT_INFO	Copyright (c) 2020-%u 東日本電信電話株式会社. All Rights Reserved.\r\nCopyright (c) 2020-%u 独立行政法人情報処理推進機構. All Rights Reserved.\r\n\r\n%S
 
 # NIC 情報ダイアログ関係
 NICINFO_1				VPN サーバーに接続しました。
