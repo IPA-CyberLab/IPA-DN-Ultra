@@ -155,6 +155,12 @@
     <ClInclude Include="Win32.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="zlib\zconf.h">
+      <Filter>Header Files\zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="zlib\zlib.h">
+      <Filter>Header Files\zlib</Filter>
+    </ClInclude>
     <ClInclude Include="openssl\aes.h">
       <Filter>Header Files\openssl</Filter>
     </ClInclude>
@@ -206,6 +212,15 @@
     <ClInclude Include="openssl\cmac.h">
       <Filter>Header Files\openssl</Filter>
     </ClInclude>
+    <ClInclude Include="openssl\cmp.h">
+      <Filter>Header Files\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="openssl\cmp_util.h">
+      <Filter>Header Files\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="openssl\cmperr.h">
+      <Filter>Header Files\openssl</Filter>
+    </ClInclude>
     <ClInclude Include="openssl\cms.h">
       <Filter>Header Files\openssl</Filter>
     </ClInclude>
@@ -227,16 +242,49 @@
     <ClInclude Include="openssl\conferr.h">
       <Filter>Header Files\openssl</Filter>
     </ClInclude>
+    <ClInclude Include="openssl\configuration.h">
+      <Filter>Header Files\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="openssl\conftypes.h">
+      <Filter>Header Files\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="openssl\core.h">
+      <Filter>Header Files\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="openssl\core_dispatch.h">
+      <Filter>Header Files\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="openssl\core_names.h">
+      <Filter>Header Files\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="openssl\core_object.h">
+      <Filter>Header Files\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="openssl\crmf.h">
+      <Filter>Header Files\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="openssl\crmferr.h">
+      <Filter>Header Files\openssl</Filter>
+    </ClInclude>
     <ClInclude Include="openssl\crypto.h">
       <Filter>Header Files\openssl</Filter>
     </ClInclude>
     <ClInclude Include="openssl\cryptoerr.h">
       <Filter>Header Files\openssl</Filter>
     </ClInclude>
+    <ClInclude Include="openssl\cryptoerr_legacy.h">
+      <Filter>Header Files\openssl</Filter>
+    </ClInclude>
     <ClInclude Include="openssl\ct.h">
       <Filter>Header Files\openssl</Filter>
     </ClInclude>
     <ClInclude Include="openssl\cterr.h">
+      <Filter>Header Files\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="openssl\decoder.h">
+      <Filter>Header Files\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="openssl\decodererr.h">
       <Filter>Header Files\openssl</Filter>
     </ClInclude>
     <ClInclude Include="openssl\des.h">
@@ -275,6 +323,12 @@
     <ClInclude Include="openssl\ecerr.h">
       <Filter>Header Files\openssl</Filter>
     </ClInclude>
+    <ClInclude Include="openssl\encoder.h">
+      <Filter>Header Files\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="openssl\encodererr.h">
+      <Filter>Header Files\openssl</Filter>
+    </ClInclude>
     <ClInclude Include="openssl\engine.h">
       <Filter>Header Files\openssl</Filter>
     </ClInclude>
@@ -284,13 +338,31 @@
     <ClInclude Include="openssl\err.h">
       <Filter>Header Files\openssl</Filter>
     </ClInclude>
+    <ClInclude Include="openssl\ess.h">
+      <Filter>Header Files\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="openssl\esserr.h">
+      <Filter>Header Files\openssl</Filter>
+    </ClInclude>
     <ClInclude Include="openssl\evp.h">
       <Filter>Header Files\openssl</Filter>
     </ClInclude>
     <ClInclude Include="openssl\evperr.h">
       <Filter>Header Files\openssl</Filter>
     </ClInclude>
+    <ClInclude Include="openssl\fips_names.h">
+      <Filter>Header Files\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="openssl\fipskey.h">
+      <Filter>Header Files\openssl</Filter>
+    </ClInclude>
     <ClInclude Include="openssl\hmac.h">
+      <Filter>Header Files\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="openssl\http.h">
+      <Filter>Header Files\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="openssl\httperr.h">
       <Filter>Header Files\openssl</Filter>
     </ClInclude>
     <ClInclude Include="openssl\idea.h">
@@ -303,6 +375,9 @@
       <Filter>Header Files\openssl</Filter>
     </ClInclude>
     <ClInclude Include="openssl\lhash.h">
+      <Filter>Header Files\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="openssl\macros.h">
       <Filter>Header Files\openssl</Filter>
     </ClInclude>
     <ClInclude Include="openssl\md2.h">
@@ -344,6 +419,12 @@
     <ClInclude Include="openssl\ossl_typ.h">
       <Filter>Header Files\openssl</Filter>
     </ClInclude>
+    <ClInclude Include="openssl\param_build.h">
+      <Filter>Header Files\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="openssl\params.h">
+      <Filter>Header Files\openssl</Filter>
+    </ClInclude>
     <ClInclude Include="openssl\pem.h">
       <Filter>Header Files\openssl</Filter>
     </ClInclude>
@@ -365,10 +446,16 @@
     <ClInclude Include="openssl\pkcs12err.h">
       <Filter>Header Files\openssl</Filter>
     </ClInclude>
-    <ClInclude Include="openssl\rand.h">
+    <ClInclude Include="openssl\prov_ssl.h">
       <Filter>Header Files\openssl</Filter>
     </ClInclude>
-    <ClInclude Include="openssl\rand_drbg.h">
+    <ClInclude Include="openssl\proverr.h">
+      <Filter>Header Files\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="openssl\provider.h">
+      <Filter>Header Files\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="openssl\rand.h">
       <Filter>Header Files\openssl</Filter>
     </ClInclude>
     <ClInclude Include="openssl\randerr.h">
@@ -398,6 +485,9 @@
     <ClInclude Include="openssl\seed.h">
       <Filter>Header Files\openssl</Filter>
     </ClInclude>
+    <ClInclude Include="openssl\self_test.h">
+      <Filter>Header Files\openssl</Filter>
+    </ClInclude>
     <ClInclude Include="openssl\sha.h">
       <Filter>Header Files\openssl</Filter>
     </ClInclude>
@@ -419,6 +509,9 @@
     <ClInclude Include="openssl\sslerr.h">
       <Filter>Header Files\openssl</Filter>
     </ClInclude>
+    <ClInclude Include="openssl\sslerr_legacy.h">
+      <Filter>Header Files\openssl</Filter>
+    </ClInclude>
     <ClInclude Include="openssl\stack.h">
       <Filter>Header Files\openssl</Filter>
     </ClInclude>
@@ -434,6 +527,9 @@
     <ClInclude Include="openssl\tls1.h">
       <Filter>Header Files\openssl</Filter>
     </ClInclude>
+    <ClInclude Include="openssl\trace.h">
+      <Filter>Header Files\openssl</Filter>
+    </ClInclude>
     <ClInclude Include="openssl\ts.h">
       <Filter>Header Files\openssl</Filter>
     </ClInclude>
@@ -441,6 +537,9 @@
       <Filter>Header Files\openssl</Filter>
     </ClInclude>
     <ClInclude Include="openssl\txt_db.h">
+      <Filter>Header Files\openssl</Filter>
+    </ClInclude>
+    <ClInclude Include="openssl\types.h">
       <Filter>Header Files\openssl</Filter>
     </ClInclude>
     <ClInclude Include="openssl\ui.h">
@@ -467,16 +566,5 @@
     <ClInclude Include="openssl\x509v3err.h">
       <Filter>Header Files\openssl</Filter>
     </ClInclude>
-    <ClInclude Include="zlib\zconf.h">
-      <Filter>Header Files\zlib</Filter>
-    </ClInclude>
-    <ClInclude Include="zlib\zlib.h">
-      <Filter>Header Files\zlib</Filter>
-    </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="openssl\opensslconf.h.in">
-      <Filter>Header Files\openssl</Filter>
-    </None>
   </ItemGroup>
 </Project>
