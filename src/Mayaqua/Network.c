@@ -13578,6 +13578,17 @@ void SetWantToUseCipher(SOCK *sock, char *name)
 	StrCat(tmp, sizeof(tmp), " ");
 	StrCat(tmp, sizeof(tmp), cipher_list);
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	// OpenSSL 3.x has a bug. https://github.com/openssl/openssl/issues/13363 https://github.com/openssl/openssl/pull/13378
+	// At 2021-09-08 this bug is reported as fixed on Github, but actually still exists on RC4-MD5.
+	// So, with OpenSSL 3.0 we manually disable RC4-MD5 by default on both SSL server and SSL client.
+
+	// If the user specify "RC4-MD5", then "RC4-SHA" will be used manually.
+
+	// Note: We can remove this code after OpenSSL 3.x will be fixed on this bug.
+	ReplaceStrEx(tmp, sizeof(tmp), tmp, "RC4-MD5", "RC4-SHA", true);
+#endif
+
 	sock->WaitToUseCipher = CopyStr(tmp);
 }
 
@@ -13995,22 +14006,7 @@ bool StartSSLEx2(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, c
 		// Set the cipher algorithm name to want to use
 		Lock(openssl_lock);
 		{
-			char cipher_name[MAX_PATH] = { 0 };
-
-			StrCpy(cipher_name, sizeof(cipher_name), sock->WaitToUseCipher);
-
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-			// OpenSSL 3.x has a bug. https://github.com/openssl/openssl/issues/13363 https://github.com/openssl/openssl/pull/13378
-			// At 2021-09-08 this bug is reported as fixed on Github, but actually still exists on RC4-MD5.
-			// So, with OpenSSL 3.0 we manually disable RC4-MD5 by default on both SSL server and SSL client.
-
-			// If the user specify "RC4-MD5", then "RC4-SHA" will be used manually.
-
-			// Note: We can remove this code after OpenSSL 3.x will be fixed on this bug.
-			ReplaceStrEx(cipher_name, sizeof(cipher_name), cipher_name, "RC4-MD5", "RC4-SHA", true);
-#endif
-
-			SSL_set_cipher_list(sock->ssl, cipher_name);
+			SSL_set_cipher_list(sock->ssl, sock->WaitToUseCipher);
 		}
 		Unlock(openssl_lock);
 	}
@@ -14019,9 +14015,7 @@ bool StartSSLEx2(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, c
 		// Set the OpenSSL default cipher algorithms
 		Lock(openssl_lock);
 		{
-			char cipher_name[MAX_PATH] = { 0 };
-
-			StrCpy(cipher_name, sizeof(cipher_name), OPENSSL_DEFAULT_CIPHER_LIST);
+			char* set_value = OPENSSL_DEFAULT_CIPHER_LIST;
 
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 			// OpenSSL 3.x has a bug. https://github.com/openssl/openssl/issues/13363 https://github.com/openssl/openssl/pull/13378
@@ -14029,10 +14023,10 @@ bool StartSSLEx2(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, c
 			// So, with OpenSSL 3.0 we manually disable RC4-MD5 by default on both SSL server and SSL client.
 
 			// Note: We can remove this code after OpenSSL 3.x will be fixed on this bug.
-			StrCpy(cipher_name, sizeof(cipher_name), OPENSSL_DEFAULT_CIPHER_LIST_NO_RC4_MD5);
+			set_value = OPENSSL_DEFAULT_CIPHER_LIST_NO_RC4_MD5;
 #endif
 
-			SSL_set_cipher_list(sock->ssl, cipher_name);
+			SSL_set_cipher_list(sock->ssl, set_value);
 		}
 		Unlock(openssl_lock);
 	}
