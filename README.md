@@ -9,7 +9,10 @@
 
 このライブラリは未完成です。まだ使用することはできません。2021/08/04 登
 
-## [Current Version] beta7fix1
+## [Current Version] beta8preview1
+
+## beta8preview1
+1. 内部的に使用する暗号ライブラリを OpenSSL 3.0.0 にアップグレードしました。
 
 ## beta7fix1
 1. IPv6 の DNS 名前解決が有効であるが IPv6 通信ができない環境で、クライアントアプリで RDP 接続エラーが発生する問題を修正しました。
