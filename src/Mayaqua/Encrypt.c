@@ -1213,7 +1213,7 @@ BUF *RsaPublicToBuf(K *k)
 	}
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-	rsa = EVP_PKEY_get0_RSA(k->pkey);
+	rsa = (RSA*)EVP_PKEY_get0_RSA(k->pkey);
 	if (rsa == NULL)
 	{
 		return NULL;
@@ -2974,7 +2974,7 @@ bool RsaVerifyEx(void *data, UINT data_size, void *sign, K *k, UINT bits)
 		bits = 1024;
 	}
 
-	rsa = EVP_PKEY_get0_RSA(k->pkey);
+	rsa = (RSA*)EVP_PKEY_get0_RSA(k->pkey);
 	if (rsa == NULL)
 	{
 		return false;
@@ -3035,7 +3035,7 @@ bool RsaSignEx(void *dst, void *src, UINT size, K *k, UINT bits)
 	}
 
 	// Signature
-	if (RSA_private_encrypt(sizeof(hash), hash, dst, EVP_PKEY_get0_RSA(k->pkey), RSA_PKCS1_PADDING) <= 0)
+	if (RSA_private_encrypt(sizeof(hash), hash, dst, (RSA*)EVP_PKEY_get0_RSA(k->pkey), RSA_PKCS1_PADDING) <= 0)
 	{
 		return false;
 	}
@@ -3081,7 +3081,7 @@ bool RsaPublicDecrypt(void *dst, void *src, UINT size, K *k)
 	tmp = ZeroMalloc(size);
 	Lock(openssl_lock);
 	{
-		ret = RSA_public_decrypt(size, src, tmp, EVP_PKEY_get0_RSA(k->pkey), RSA_NO_PADDING);
+		ret = RSA_public_decrypt(size, src, tmp, (RSA *)EVP_PKEY_get0_RSA(k->pkey), RSA_NO_PADDING);
 	}
 	Unlock(openssl_lock);
 	if (ret <= 0)
@@ -3112,7 +3112,7 @@ bool RsaPrivateEncrypt(void *dst, void *src, UINT size, K *k)
 	tmp = ZeroMalloc(size);
 	Lock(openssl_lock);
 	{
-		ret = RSA_private_encrypt(size, src, tmp, EVP_PKEY_get0_RSA(k->pkey), RSA_NO_PADDING);
+		ret = RSA_private_encrypt(size, src, tmp, (RSA *)EVP_PKEY_get0_RSA(k->pkey), RSA_NO_PADDING);
 	}
 	Unlock(openssl_lock);
 	if (ret <= 0)
@@ -3143,7 +3143,7 @@ bool RsaPrivateDecrypt(void *dst, void *src, UINT size, K *k)
 	tmp = ZeroMalloc(size);
 	Lock(openssl_lock);
 	{
-		ret = RSA_private_decrypt(size, src, tmp, EVP_PKEY_get0_RSA(k->pkey), RSA_NO_PADDING);
+		ret = RSA_private_decrypt(size, src, tmp, (RSA *)EVP_PKEY_get0_RSA(k->pkey), RSA_NO_PADDING);
 	}
 	Unlock(openssl_lock);
 	if (ret <= 0)
@@ -3172,7 +3172,7 @@ bool RsaPublicEncrypt(void *dst, void *src, UINT size, K *k)
 	tmp = ZeroMalloc(size);
 	Lock(openssl_lock);
 	{
-		ret = RSA_public_encrypt(size, src, tmp, EVP_PKEY_get0_RSA(k->pkey), RSA_NO_PADDING);
+		ret = RSA_public_encrypt(size, src, tmp, (RSA*)EVP_PKEY_get0_RSA(k->pkey), RSA_NO_PADDING);
 	}
 	Unlock(openssl_lock);
 	if (ret <= 0)
