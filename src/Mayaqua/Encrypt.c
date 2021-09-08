@@ -122,6 +122,10 @@
 #include <openssl/x509v3.h>
 #include <openssl/ocsp.h>
 #include <openssl/ocsperr.h>
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#include <openssl/provider.h>
+#endif // OPENSSL_VERSION_NUMBER
+
 #include <Mayaqua/Mayaqua.h>
 #ifdef	UNIX_MACOS
 #include <sys/event.h>
@@ -135,6 +139,11 @@ LOCK **ssl_lock_obj = NULL;
 UINT ssl_lock_num;
 static bool openssl_inited = false;
 static bool is_intel_aes_supported = false;
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+static OSSL_PROVIDER* ossl_provider_legacy = NULL;
+static OSSL_PROVIDER* ossl_provider_default = NULL;
+#endif
 
 static unsigned char *Internal_SHA0(const unsigned char *d, size_t n, unsigned char *md);
 
@@ -4692,6 +4701,20 @@ void FreeCryptLibrary()
 {
 	openssl_inited = false;
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	if (ossl_provider_default != NULL)
+	{
+		OSSL_PROVIDER_unload(ossl_provider_default);
+		ossl_provider_default = NULL;
+	}
+
+	if (ossl_provider_legacy != NULL)
+	{
+		OSSL_PROVIDER_unload(ossl_provider_legacy);
+		ossl_provider_legacy = NULL;
+	}
+#endif
+
 	DeleteLock(openssl_lock);
 	openssl_lock = NULL;
 //	RAND_Free_For_SoftEther();
@@ -4710,6 +4733,12 @@ void InitCryptLibrary()
 	//OpenSSL_add_all_algorithms();
 	OpenSSL_add_all_ciphers();
 	OpenSSL_add_all_digests();
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	ossl_provider_legacy = OSSL_PROVIDER_load(NULL, "legacy");
+	ossl_provider_default = OSSL_PROVIDER_load(NULL, "default");
+#endif
+
 	ERR_load_crypto_strings();
 	SSL_load_error_strings();
 
