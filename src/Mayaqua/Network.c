@@ -14525,7 +14525,11 @@ UINT SecureSend(SOCK *sock, void *data, UINT size)
 		}
 
 		ret = SSL_write(ssl, data, size);
-		if (ret < 0)
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+		if (ret < 0) // OpenSSL version < 3.0.0
+#else
+		if (ret <= 0) // OpenSSL version >= 3.0.0
+#endif
 		{
 			e = SSL_get_error(ssl, ret);
 		}
