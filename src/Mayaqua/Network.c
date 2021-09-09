@@ -14428,7 +14428,11 @@ UINT SecureRecv(SOCK *sock, void *data, UINT size)
 		}
 #endif	// OS_UNIX
 
-		if (ret < 0)
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+		if (ret < 0) // OpenSSL version < 3.0.0
+#else
+		if (ret <= 0) // OpenSSL version >= 3.0.0
+#endif
 		{
 			e = SSL_get_error(ssl, ret);
 		}
