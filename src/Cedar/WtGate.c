@@ -3165,7 +3165,7 @@ void WtgAccept(WT *wt, SOCK *s)
 
 	char log_prefix[MAX_PATH] = CLEAN;
 
-	Format(log_prefix, sizeof(log_prefix), "AcceptNewSession/ClientIP=%r/ClientPort=%u/ServerIP=%r/ServerPort=%u", &s->RemoteIP, s->RemotePort, s->LocalIP, s->LocalPort);
+	Format(log_prefix, sizeof(log_prefix), "AcceptNewSession/ClientIP=%r/ClientPort=%u/ServerIP=%r/ServerPort=%u", &s->RemoteIP, s->RemotePort, &s->LocalIP, s->LocalPort);
 
 	StatManReportInt64(wt->StatMan, "WtgConnectedTcp_Total", 1);
 
