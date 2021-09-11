@@ -106,7 +106,7 @@ void WtgHttpProxyForWebApp(WT* wt, SOCK* s, HTTP_HEADER* first_header)
 
 	// ログとる
 	char log_prefix[128] = CLEAN;
-	Format(log_prefix, sizeof(log_prefix), "ProxyForWebApp/ClientIP=%r/ClientPort=%u/ServerIP=%r/ServerPort=%u", &s->RemoteIP, s->RemotePort, s->LocalIP, s->LocalPort);
+	Format(log_prefix, sizeof(log_prefix), "ProxyForWebApp/ClientIP=%r/ClientPort=%u/ServerIP=%r/ServerPort=%u", &s->RemoteIP, s->RemotePort, &s->LocalIP, s->LocalPort);
 
 	SOCK* s2 = NULL;
 
@@ -717,7 +717,7 @@ bool WtgWebSocketGetHandler(WT* wt, SOCK* s, HTTP_HEADER* h, char* url_target)
 
 	char log_prefix[MAX_PATH] = CLEAN;
 
-	Format(log_prefix, sizeof(log_prefix), "AcceptNewSession(WebSocket)/ClientIP=%r/ClientPort=%u/ServerIP=%r/ServerPort=%u", &s->RemoteIP, s->RemotePort, s->LocalIP, s->LocalPort);
+	Format(log_prefix, sizeof(log_prefix), "AcceptNewSession(WebSocket)/ClientIP=%r/ClientPort=%u/ServerIP=%r/ServerPort=%u", &s->RemoteIP, s->RemotePort, &s->LocalIP, s->LocalPort);
 
 	req_upgrade = GetHttpValue(h, "Upgrade");
 	if (req_upgrade == NULL || StrCmpi(req_upgrade->Data, "websocket") != 0)
@@ -1139,7 +1139,7 @@ PACK* WtgSamDoProcess(WT* wt, SOCK* s, WPC_PACKET* packet)
 
 	char log_prefix[MAX_PATH] = CLEAN;
 
-	Format(log_prefix, sizeof(log_prefix), "RPC Request Processor/Anonymouse/ClientIP=%r/ClientPort=%u/ServerIP=%r/ServerPort=%u", &s->RemoteIP, s->RemotePort, s->LocalIP, s->LocalPort);
+	Format(log_prefix, sizeof(log_prefix), "RPC Request Processor/Anonymouse/ClientIP=%r/ClientPort=%u/ServerIP=%r/ServerPort=%u", &s->RemoteIP, s->RemotePort, &s->LocalIP, s->LocalPort);
 
 	req = packet->Pack;
 
@@ -1170,7 +1170,7 @@ PACK* WtgSamDoProcess(WT* wt, SOCK* s, WPC_PACKET* packet)
 		{
 			Format(log_prefix, sizeof(log_prefix), "RPC Request Processor/Authed_Server/PCID=%s/MSID=%s/ClientIP=%r/ClientPort=%u/ServerIP=%r/ServerPort=%u",
 				authed->Pcid, authed->Msid,
-				&s->RemoteIP, s->RemotePort, s->LocalIP, s->LocalPort);
+				&s->RemoteIP, s->RemotePort, &s->LocalIP, s->LocalPort);
 		}
 	}
 
@@ -4081,7 +4081,7 @@ bool WtgDownloadSignature(WT* wt, SOCK* s, bool* check_ssl_ok, char* gate_secret
 
 	char log_prefix[MAX_PATH] = CLEAN;
 
-	Format(log_prefix, sizeof(log_prefix), "AcceptNewSession(HTTPSvr)/ClientIP=%r/ClientPort=%u/ServerIP=%r/ServerPort=%u", &s->RemoteIP, s->RemotePort, s->LocalIP, s->LocalPort);
+	Format(log_prefix, sizeof(log_prefix), "AcceptNewSession(HTTPSvr)/ClientIP=%r/ClientPort=%u/ServerIP=%r/ServerPort=%u", &s->RemoteIP, s->RemotePort, &s->LocalIP, s->LocalPort);
 
 	while (true)
 	{
