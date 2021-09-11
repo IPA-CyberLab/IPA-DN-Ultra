@@ -249,6 +249,8 @@ CERTS_AND_KEY* NewCertsAndKeyFromDir(wchar_t* dir_name)
 
 	ret = ZeroMalloc(sizeof(CERTS_AND_KEY));
 
+	ret->Ref = NewRef();
+
 	ret->CertList = NewListFast(NULL);
 
 	wchar_t key_fn[MAX_PATH] = CLEAN;
@@ -295,7 +297,7 @@ CERTS_AND_KEY* NewCertsAndKeyFromDir(wchar_t* dir_name)
 	return ret;
 
 L_ERROR:
-	FreeCertsAndKey(ret);
+	ReleaseCertsAndKey(ret);
 	FreeBuf(key_buf);
 	return NULL;
 }
@@ -400,6 +402,8 @@ CERTS_AND_KEY* NewCertsAndKeyFromObjects(LIST* cert_list, K* key)
 
 	ret = ZeroMalloc(sizeof(CERTS_AND_KEY));
 
+	ret->Ref = NewRef();
+
 	ret->CertList = NewListFast(NULL);
 
 	ret->Key = CloneK(key);
@@ -417,7 +421,7 @@ CERTS_AND_KEY* NewCertsAndKeyFromObjects(LIST* cert_list, K* key)
 	return ret;
 
 L_ERROR:
-	FreeCertsAndKey(ret);
+	ReleaseCertsAndKey(ret);
 	return NULL;
 }
 
@@ -430,6 +434,8 @@ CERTS_AND_KEY* NewCertsAndKeyFromMemory(LIST* cert_buf_list, BUF* key_buf)
 	}
 
 	ret = ZeroMalloc(sizeof(CERTS_AND_KEY));
+
+	ret->Ref = NewRef();
 
 	ret->CertList = NewListFast(NULL);
 
@@ -450,39 +456,24 @@ CERTS_AND_KEY* NewCertsAndKeyFromMemory(LIST* cert_buf_list, BUF* key_buf)
 	return ret;
 
 L_ERROR:
-	FreeCertsAndKey(ret);
+	ReleaseCertsAndKey(ret);
 	return NULL;
 }
 
-CERTS_AND_KEY* CloneCertsAndKey(CERTS_AND_KEY* c)
+void ReleaseCertsAndKey(CERTS_AND_KEY* c)
 {
-	CERTS_AND_KEY* ret;
 	if (c == NULL)
 	{
-		return NULL;
+		return;
 	}
 
-	ret = ZeroMalloc(sizeof(CERTS_AND_KEY));
-
-	ret->Key = CloneK(c->Key);
-
-	ret->CertList = NewListFast(NULL);
-
-	UINT i;
-
-	for (i = 0;i < LIST_NUM(c->CertList);i++)
+	if (Release(c->Ref) == 0)
 	{
-		X* x = LIST_DATA(c->CertList, i);
-
-		X* x2 = CloneX(x);
-
-		Add(ret->CertList, x2);
+		CleanupCertsAndKey(c);
 	}
-
-	return ret;
 }
 
-void FreeCertsAndKey(CERTS_AND_KEY* c)
+void CleanupCertsAndKey(CERTS_AND_KEY* c)
 {
 	UINT i;
 	if (c == NULL)

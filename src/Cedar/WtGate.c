@@ -3241,8 +3241,8 @@ void WtgAccept(WT *wt, SOCK *s)
 
 		AddNoSsl(wt->Cedar, &s->RemoteIP);
 
-		FreeCertsAndKey(web_socket_certs);
-		FreeCertsAndKey(web_app_certs);
+		ReleaseCertsAndKey(web_socket_certs);
+		ReleaseCertsAndKey(web_app_certs);
 
 		return;
 	}
@@ -3257,8 +3257,8 @@ void WtgAccept(WT *wt, SOCK *s)
 		WtLogEx(wt, log_prefix, "Selected Server Certificate: %S\n", x_names);
 	}
 
-	FreeCertsAndKey(web_socket_certs);
-	FreeCertsAndKey(web_app_certs);
+	ReleaseCertsAndKey(web_socket_certs);
+	ReleaseCertsAndKey(web_app_certs);
 
 	// シグネチャのダウンロード
 	continue_ok = WtgDownloadSignature(wt, s, &check_ssl_ok, wt->Wide->GateKeyStr, wt->EntranceUrlForProxy, wt->ProxyTargetUrlList);

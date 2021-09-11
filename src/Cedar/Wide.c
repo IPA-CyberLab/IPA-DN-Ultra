@@ -3282,14 +3282,15 @@ CERTS_AND_KEY* WideGetWebSocketCertsAndKey(WIDE* wide)
 
 			if (new_certs_and_key != NULL)
 			{
-				FreeCertsAndKey(wide->WebSocketCertsAndKey);
+				ReleaseCertsAndKey(wide->WebSocketCertsAndKey);
 				wide->WebSocketCertsAndKey = new_certs_and_key;
 			}
 		}
 
 		if (wide->WebSocketCertsAndKey != NULL)
 		{
-			ret = CloneCertsAndKey(wide->WebSocketCertsAndKey);
+			ret = wide->WebSocketCertsAndKey;
+			AddRef(ret->Ref);
 		}
 	}
 	Unlock(wide->WebSocketCertsAndKeyLock);
@@ -3319,14 +3320,15 @@ CERTS_AND_KEY* WideGetWebAppCertsAndKey(WIDE* wide)
 
 			if (new_certs_and_key != NULL)
 			{
-				FreeCertsAndKey(wide->WebAppCertsAndKey);
+				ReleaseCertsAndKey(wide->WebAppCertsAndKey);
 				wide->WebAppCertsAndKey = new_certs_and_key;
 			}
 		}
 
 		if (wide->WebAppCertsAndKey != NULL)
 		{
-			ret = CloneCertsAndKey(wide->WebAppCertsAndKey);
+			ret = wide->WebAppCertsAndKey;
+			AddRef(ret->Ref);
 		}
 	}
 	Unlock(wide->WebAppCertsAndKeyLock);
@@ -3413,7 +3415,7 @@ void WideGateReadGateSettingsFromPack(WIDE *wide, PACK *p)
 					{
 						if (wide->WebSocketCertsAndKey != NULL)
 						{
-							FreeCertsAndKey(wide->WebSocketCertsAndKey);
+							ReleaseCertsAndKey(wide->WebSocketCertsAndKey);
 						}
 
 						wide->WebSocketCertsAndKey = c;
@@ -4207,8 +4209,8 @@ void WideGateStopEx(WIDE* wide, bool daemon_force_exit)
 		FreeStatMan(wide->StatMan);
 	}
 
-	FreeCertsAndKey(wide->WebSocketCertsAndKey);
-	FreeCertsAndKey(wide->WebAppCertsAndKey);
+	ReleaseCertsAndKey(wide->WebSocketCertsAndKey);
+	ReleaseCertsAndKey(wide->WebAppCertsAndKey);
 
 	DeleteLock(wide->WebSocketCertsAndKeyLock);
 	DeleteLock(wide->WebAppCertsAndKeyLock);

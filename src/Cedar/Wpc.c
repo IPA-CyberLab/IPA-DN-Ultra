@@ -118,7 +118,7 @@ void CertServerClientThreadProc(THREAD* thread, void* param)
 				WtLogEx(c->Wt, log_prefix, "Error: Download SSL certificates OK from the URL '%s', but saving these certificate files are saved to the local directory '%S' failed.", c->Param.CertListSrcUrl, c->Param.DestDir);
 			}
 
-			FreeCertsAndKey(ck);
+			ReleaseCertsAndKey(ck);
 			num_retry = 0;
 		}
 		else

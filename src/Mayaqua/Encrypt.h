@@ -353,6 +353,7 @@ struct SEEDRAND
 // X.509 cert list and key
 struct CERTS_AND_KEY
 {
+	REF* Ref;
 	LIST* CertList;
 	K* Key;
 	bool (*DetermineUseCallback)(char*, void*);
@@ -393,9 +394,9 @@ UINT64 SeedRand64(SEEDRAND* r);
 CERTS_AND_KEY* NewCertsAndKeyFromMemory(LIST* cert_buf_list, BUF* key_buf);
 CERTS_AND_KEY* NewCertsAndKeyFromObjects(LIST* cert_list, K* key);
 CERTS_AND_KEY* NewCertsAndKeyFromDir(wchar_t* dir_name);
-CERTS_AND_KEY* CloneCertsAndKey(CERTS_AND_KEY* c);
 bool SaveCertsAndKeyToDir(CERTS_AND_KEY *c, wchar_t* dir);
-void FreeCertsAndKey(CERTS_AND_KEY* c);
+void ReleaseCertsAndKey(CERTS_AND_KEY* c);
+void CleanupCertsAndKey(CERTS_AND_KEY* c);
 
 LIST* BufToXList(BUF* b);
 void FreeXList(LIST* o);
