@@ -1175,11 +1175,11 @@ K *RsaBinToPublic(void *data, UINT size)
 #endif
 
 	bio = NewBio();
-	Lock(openssl_lock);
+	LockOpenSSL();
 	{
 		i2d_RSA_PUBKEY_bio(bio, rsa);
 	}
-	Unlock(openssl_lock);
+	UnlockOpenSSL();
 	BIO_seek(bio, 0);
 	k = BioToK(bio, false, false, NULL);
 	FreeBio(bio);
@@ -1742,16 +1742,16 @@ P12 *NewP12(X *x, K *k, char *password)
 		password = NULL;
 	}
 
-	Lock(openssl_lock);
+	LockOpenSSL();
 	{
 		pkcs12 = PKCS12_create(password, NULL, k->pkey, x->x509, NULL, 0, 0, 0, 0, 0);
 		if (pkcs12 == NULL)
 		{
-			Unlock(openssl_lock);
+			UnlockOpenSSL();
 			return NULL;
 		}
 	}
-	Unlock(openssl_lock);
+	UnlockOpenSSL();
 
 	p12 = PKCS12ToP12(pkcs12);
 
@@ -1799,30 +1799,30 @@ bool ParseP12(P12 *p12, X **x, K **k, char *password)
 	}
 
 	// Password confirmation
-	Lock(openssl_lock);
+	LockOpenSSL();
 	{
 		if (PKCS12_verify_mac(p12->pkcs12, password, -1) == false &&
 			PKCS12_verify_mac(p12->pkcs12, NULL, -1) == false)
 		{
-			Unlock(openssl_lock);
+			UnlockOpenSSL();
 			return false;
 		}
 	}
-	Unlock(openssl_lock);
+	UnlockOpenSSL();
 
 	// Extraction
-	Lock(openssl_lock);
+	LockOpenSSL();
 	{
 		if (PKCS12_parse(p12->pkcs12, password, &pkey, &x509, NULL) == false)
 		{
 			if (PKCS12_parse(p12->pkcs12, NULL, &pkey, &x509, NULL) == false)
 			{
-				Unlock(openssl_lock);
+				UnlockOpenSSL();
 				return false;
 			}
 		}
 	}
-	Unlock(openssl_lock);
+	UnlockOpenSSL();
 
 	// Conversion
 	*x = X509ToX(x509);
@@ -1967,11 +1967,11 @@ BIO *P12ToBio(P12 *p12)
 	}
 
 	bio = NewBio();
-	Lock(openssl_lock);
+	LockOpenSSL();
 	{
 		i2d_PKCS12_bio(bio, p12->pkcs12);
 	}
-	Unlock(openssl_lock);
+	UnlockOpenSSL();
 
 	return bio;
 }
@@ -2010,11 +2010,11 @@ P12 *BioToP12(BIO *bio)
 	}
 
 	// Conversion
-	Lock(openssl_lock);
+	LockOpenSSL();
 	{
 		pkcs12 = d2i_PKCS12_bio(bio, NULL);
 	}
-	Unlock(openssl_lock);
+	UnlockOpenSSL();
 	if (pkcs12 == NULL)
 	{
 		// Failure
@@ -2483,7 +2483,7 @@ X509 *NewX509Ex(K *pub, K *priv, X *ca, NAME *name, UINT days, X_SERIAL *serial,
 		X509_EXTENSION_free(ex);
 	}
 
-	Lock(openssl_lock);
+	LockOpenSSL();
 	{
 		// Set the public key
 		X509_set_pubkey(x509, pub->pkey);
@@ -2492,7 +2492,7 @@ X509 *NewX509Ex(K *pub, K *priv, X *ca, NAME *name, UINT days, X_SERIAL *serial,
 		// 2014.3.19 set the initial digest algorithm to SHA-256
 		X509_sign(x509, priv->pkey, EVP_sha256());
 	}
-	Unlock(openssl_lock);
+	UnlockOpenSSL();
 
 	return x509;
 }
@@ -2612,7 +2612,7 @@ X509 *NewRootX509(K *pub, K *priv, NAME *name, UINT days, X_SERIAL *serial)
 		X509_EXTENSION_free(eku);
 	}
 
-	Lock(openssl_lock);
+	LockOpenSSL();
 	{
 		// Set the public key
 		X509_set_pubkey(x509, pub->pkey);
@@ -2621,7 +2621,7 @@ X509 *NewRootX509(K *pub, K *priv, NAME *name, UINT days, X_SERIAL *serial)
 		// 2014.3.19 set the initial digest algorithm to SHA-256
 		X509_sign(x509, priv->pkey, EVP_sha256());
 	}
-	Unlock(openssl_lock);
+	UnlockOpenSSL();
 
 	return x509;
 }
@@ -2683,11 +2683,11 @@ bool AddX509Name(void *xn, int nid, wchar_t *str)
 
 	// Adding
 	x509_name = (X509_NAME *)xn;
-	Lock(openssl_lock);
+	LockOpenSSL();
 	{
 		X509_NAME_add_entry_by_NID(x509_name, nid, encoding_type, utf8, utf8_size, -1, 0);
 	}
-	Unlock(openssl_lock);
+	UnlockOpenSSL();
 	Free(utf8);
 
 	return true;
@@ -3070,11 +3070,11 @@ bool RsaPublicDecrypt(void *dst, void *src, UINT size, K *k)
 	}
 
 	tmp = ZeroMalloc(size);
-	Lock(openssl_lock);
+	LockOpenSSL();
 	{
 		ret = RSA_public_decrypt(size, src, tmp, (RSA *)EVP_PKEY_get0_RSA(k->pkey), RSA_NO_PADDING);
 	}
-	Unlock(openssl_lock);
+	UnlockOpenSSL();
 	if (ret <= 0)
 	{
 /*		Debug("RSA Error: 0x%x\n",
@@ -3101,11 +3101,11 @@ bool RsaPrivateEncrypt(void *dst, void *src, UINT size, K *k)
 	}
 
 	tmp = ZeroMalloc(size);
-	Lock(openssl_lock);
+	LockOpenSSL();
 	{
 		ret = RSA_private_encrypt(size, src, tmp, (RSA *)EVP_PKEY_get0_RSA(k->pkey), RSA_NO_PADDING);
 	}
-	Unlock(openssl_lock);
+	UnlockOpenSSL();
 	if (ret <= 0)
 	{
 		Debug("RSA Error: %u\n",
@@ -3132,11 +3132,11 @@ bool RsaPrivateDecrypt(void *dst, void *src, UINT size, K *k)
 	}
 
 	tmp = ZeroMalloc(size);
-	Lock(openssl_lock);
+	LockOpenSSL();
 	{
 		ret = RSA_private_decrypt(size, src, tmp, (RSA *)EVP_PKEY_get0_RSA(k->pkey), RSA_NO_PADDING);
 	}
-	Unlock(openssl_lock);
+	UnlockOpenSSL();
 	if (ret <= 0)
 	{
 		Free(tmp);
@@ -3161,11 +3161,11 @@ bool RsaPublicEncrypt(void *dst, void *src, UINT size, K *k)
 	}
 
 	tmp = ZeroMalloc(size);
-	Lock(openssl_lock);
+	LockOpenSSL();
 	{
 		ret = RSA_public_encrypt(size, src, tmp, (RSA*)EVP_PKEY_get0_RSA(k->pkey), RSA_NO_PADDING);
 	}
-	Unlock(openssl_lock);
+	UnlockOpenSSL();
 	if (ret <= 0)
 	{
 		return false;
@@ -3206,11 +3206,11 @@ bool RsaCheck()
 	// Validate arguments
 
 	// Key generation
-	Lock(openssl_lock);
+	LockOpenSSL();
 	{
 		rsa = RSA_generate_key(bit, RSA_F4, NULL, NULL);
 	}
-	Unlock(openssl_lock);
+	UnlockOpenSSL();
 	if (rsa == NULL)
 	{
 		Debug("RSA_generate_key: err=%s\n", ERR_error_string(ERR_get_error(), errbuf));
@@ -3219,22 +3219,22 @@ bool RsaCheck()
 
 	// Secret key
 	bio = NewBio();
-	Lock(openssl_lock);
+	LockOpenSSL();
 	{
 		i2d_RSAPrivateKey_bio(bio, rsa);
 	}
-	Unlock(openssl_lock);
+	UnlockOpenSSL();
 	BIO_seek(bio, 0);
 	priv_key = BioToK(bio, true, false, NULL);
 	FreeBio(bio);
 
 	// Public key
 	bio = NewBio();
-	Lock(openssl_lock);
+	LockOpenSSL();
 	{
 		i2d_RSA_PUBKEY_bio(bio, rsa);
 	}
-	Unlock(openssl_lock);
+	UnlockOpenSSL();
 	BIO_seek(bio, 0);
 	pub_key = BioToK(bio, false, false, NULL);
 	FreeBio(bio);
@@ -3276,11 +3276,11 @@ bool RsaGen(K **priv, K **pub, UINT bit)
 	}
 
 	// Key generation
-	Lock(openssl_lock);
+	LockOpenSSL();
 	{
 		rsa = RSA_generate_key(bit, RSA_F4, NULL, NULL);
 	}
-	Unlock(openssl_lock);
+	UnlockOpenSSL();
 	if (rsa == NULL)
 	{
 		Debug("RSA_generate_key: err=%s\n", ERR_error_string(ERR_get_error(), errbuf));
@@ -3289,22 +3289,22 @@ bool RsaGen(K **priv, K **pub, UINT bit)
 
 	// Secret key
 	bio = NewBio();
-	Lock(openssl_lock);
+	LockOpenSSL();
 	{
 		i2d_RSAPrivateKey_bio(bio, rsa);
 	}
-	Unlock(openssl_lock);
+	UnlockOpenSSL();
 	BIO_seek(bio, 0);
 	priv_key = BioToK(bio, true, false, NULL);
 	FreeBio(bio);
 
 	// Public key
 	bio = NewBio();
-	Lock(openssl_lock);
+	LockOpenSSL();
 	{
 		i2d_RSA_PUBKEY_bio(bio, rsa);
 	}
-	Unlock(openssl_lock);
+	UnlockOpenSSL();
 	BIO_seek(bio, 0);
 	pub_key = BioToK(bio, false, false, NULL);
 	FreeBio(bio);
@@ -3383,15 +3383,15 @@ bool CheckSignature(X *x, K *k)
 		return false;
 	}
 
-	Lock(openssl_lock);
+	LockOpenSSL();
 	{
 		if (X509_verify(x->x509, k->pkey) == 0)
 		{
-			Unlock(openssl_lock);
+			UnlockOpenSSL();
 			return false;
 		}
 	}
-	Unlock(openssl_lock);
+	UnlockOpenSSL();
 	return true;
 }
 
@@ -3406,11 +3406,11 @@ K *GetKFromX(X *x)
 		return NULL;
 	}
 
-	Lock(openssl_lock);
+	LockOpenSSL();
 	{
 		pkey = X509_get_pubkey(x->x509);
 	}
-	Unlock(openssl_lock);
+	UnlockOpenSSL();
 	if (pkey == NULL)
 	{
 		return NULL;
@@ -3612,15 +3612,15 @@ bool CompareX(X *x1, X *x2)
 		return false;
 	}
 
-	Lock(openssl_lock);
+	LockOpenSSL();
 	if (X509_cmp(x1->x509, x2->x509) == 0)
 	{
-		Unlock(openssl_lock);
+		UnlockOpenSSL();
 		return true;
 	}
 	else
 	{
-		Unlock(openssl_lock);
+		UnlockOpenSSL();
 		return false;
 	}
 }
@@ -3634,15 +3634,15 @@ bool CheckXandK(X *x, K *k)
 		return false;
 	}
 
-	Lock(openssl_lock);
+	LockOpenSSL();
 	if (X509_check_private_key(x->x509, k->pkey) != 0)
 	{
-		Unlock(openssl_lock);
+		UnlockOpenSSL();
 		return true;
 	}
 	else
 	{
-		Unlock(openssl_lock);
+		UnlockOpenSSL();
 		return false;
 	}
 }
@@ -3832,11 +3832,11 @@ BIO *KToBio(K *k, bool text, char *password)
 		if (text == false)
 		{
 			// Binary format
-			Lock(openssl_lock);
+			LockOpenSSL();
 			{
 				i2d_PrivateKey_bio(bio, k->pkey);
 			}
-			Unlock(openssl_lock);
+			UnlockOpenSSL();
 		}
 		else
 		{
@@ -3844,23 +3844,23 @@ BIO *KToBio(K *k, bool text, char *password)
 			if (password == 0 || StrLen(password) == 0)
 			{
 				// No encryption
-				Lock(openssl_lock);
+				LockOpenSSL();
 				{
 					PEM_write_bio_PrivateKey(bio, k->pkey, NULL, NULL, 0, NULL, NULL);
 				}
-				Unlock(openssl_lock);
+				UnlockOpenSSL();
 			}
 			else
 			{
 				// Encrypt
 				CB_PARAM cb;
 				cb.password = password;
-				Lock(openssl_lock);
+				LockOpenSSL();
 				{
 					PEM_write_bio_PrivateKey(bio, k->pkey, EVP_des_ede3_cbc(),
 						NULL, 0, (pem_password_cb *)PKeyPasswordCallbackFunction, &cb);
 				}
-				Unlock(openssl_lock);
+				UnlockOpenSSL();
 			}
 		}
 	}
@@ -3870,20 +3870,20 @@ BIO *KToBio(K *k, bool text, char *password)
 		if (text == false)
 		{
 			// Binary format
-			Lock(openssl_lock);
+			LockOpenSSL();
 			{
 				i2d_PUBKEY_bio(bio, k->pkey);
 			}
-			Unlock(openssl_lock);
+			UnlockOpenSSL();
 		}
 		else
 		{
 			// Text format
-			Lock(openssl_lock);
+			LockOpenSSL();
 			{
 				PEM_write_bio_PUBKEY(bio, k->pkey);
 			}
-			Unlock(openssl_lock);
+			UnlockOpenSSL();
 		}
 	}
 
@@ -4049,11 +4049,11 @@ K *BioToK(BIO *bio, bool private_key, bool text, char *password)
 			// Text format
 			CB_PARAM cb;
 			cb.password = password;
-			Lock(openssl_lock);
+			LockOpenSSL();
 			{
 				pkey = PEM_read_bio_PUBKEY(bio, NULL, (pem_password_cb *)PKeyPasswordCallbackFunction, &cb);
 			}
-			Unlock(openssl_lock);
+			UnlockOpenSSL();
 			if (pkey == NULL)
 			{
 				return NULL;
@@ -4065,11 +4065,11 @@ K *BioToK(BIO *bio, bool private_key, bool text, char *password)
 		if (text == false)
 		{
 			// Binary format
-			Lock(openssl_lock);
+			LockOpenSSL();
 			{
 				pkey = d2i_PrivateKey_bio(bio, NULL);
 			}
-			Unlock(openssl_lock);
+			UnlockOpenSSL();
 			if (pkey == NULL)
 			{
 				return NULL;
@@ -4080,11 +4080,11 @@ K *BioToK(BIO *bio, bool private_key, bool text, char *password)
 			// Text format
 			CB_PARAM cb;
 			cb.password = password;
-			Lock(openssl_lock);
+			LockOpenSSL();
 			{
 				pkey = PEM_read_bio_PrivateKey(bio, NULL, (pem_password_cb *)PKeyPasswordCallbackFunction, &cb);
 			}
-			Unlock(openssl_lock);
+			UnlockOpenSSL();
 			if (pkey == NULL)
 			{
 				return NULL;
@@ -4155,7 +4155,7 @@ BIO *XToBio(X *x, bool text)
 
 	bio = NewBio();
 
-	Lock(openssl_lock);
+	LockOpenSSL();
 	{
 		if (text == false)
 		{
@@ -4168,7 +4168,7 @@ BIO *XToBio(X *x, bool text)
 			PEM_write_bio_X509(bio, x->x509);
 		}
 	}
-	Unlock(openssl_lock);
+	UnlockOpenSSL();
 
 	return bio;
 }
@@ -4205,11 +4205,11 @@ void FreeX509(X509 *x509)
 		return;
 	}
 
-	Lock(openssl_lock);
+	LockOpenSSL();
 	{
 		X509_free(x509);
 	}
-	Unlock(openssl_lock);
+	UnlockOpenSSL();
 }
 
 // Convert the BUF to a X
@@ -4302,7 +4302,7 @@ X *BioToX(BIO *bio, bool text)
 		return NULL;
 	}
 
-	Lock(openssl_lock);
+	LockOpenSSL();
 	{
 		// Reading x509
 		if (text == false)
@@ -4316,7 +4316,7 @@ X *BioToX(BIO *bio, bool text)
 			x509 = PEM_read_bio_X509(bio, NULL, NULL, NULL);
 		}
 	}
-	Unlock(openssl_lock);
+	UnlockOpenSSL();
 
 	if (x509 == NULL)
 	{
@@ -4532,18 +4532,18 @@ BIO *BufToBio(BUF *b)
 		return NULL;
 	}
 
-	Lock(openssl_lock);
+	LockOpenSSL();
 	{
 		bio = BIO_new(BIO_s_mem());
 		if (bio == NULL)
 		{
-			Unlock(openssl_lock);
+			UnlockOpenSSL();
 			return NULL;
 		}
 		BIO_write(bio, b->Buf, b->Size);
 		BIO_seek(bio, 0);
 	}
-	Unlock(openssl_lock);
+	UnlockOpenSSL();
 
 	return bio;
 }

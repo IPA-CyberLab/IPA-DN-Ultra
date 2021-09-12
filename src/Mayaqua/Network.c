@@ -6398,7 +6398,7 @@ SSL_PIPE *NewSslPipeEx(bool server_mode, X *x, K *k, DH_CTX *dh, bool verify_pee
 	SSL *ssl;
 	SSL_CTX *ssl_ctx = NewSSLCtx(server_mode);
 
-	Lock(openssl_lock);
+	LockOpenSSL();
 	{
 		if (server_mode)
 		{
@@ -6439,7 +6439,7 @@ SSL_PIPE *NewSslPipeEx(bool server_mode, X *x, K *k, DH_CTX *dh, bool verify_pee
 
 		SSL_set_ex_data(ssl, GetSslClientCertIndex(), clientcert);
 	}
-	Unlock(openssl_lock);
+	UnlockOpenSSL();
 
 	s = ZeroMalloc(sizeof(SSL_PIPE));
 
@@ -6453,12 +6453,12 @@ SSL_PIPE *NewSslPipeEx(bool server_mode, X *x, K *k, DH_CTX *dh, bool verify_pee
 
 	if (x != NULL && k != NULL)
 	{
-		Lock(openssl_lock);
+		LockOpenSSL();
 		{
 			SSL_use_certificate(s->ssl, x->x509);
 			SSL_use_PrivateKey(s->ssl, k->pkey);
 		}
-		Unlock(openssl_lock);
+		UnlockOpenSSL();
 	}
 
 	if (s->ServerMode == false)
@@ -12677,13 +12677,17 @@ UINT RecvFrom6(SOCK *sock, IP *src_addr, UINT *src_port, void *data, UINT size)
 // Lock the OpenSSL
 void LockOpenSSL()
 {
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	Lock(openssl_lock);
+#endif
 }
 
 // Unlock the OpenSSL
 void UnlockOpenSSL()
 {
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	Unlock(openssl_lock);
+#endif
 }
 
 // UDP transmission
@@ -13780,12 +13784,12 @@ int Sni_Callback_ForTlsServerCertSelection(SSL* s, int* al, void* arg)
 
 	if (x != NULL && k != NULL)
 	{
-		Lock(openssl_lock);
+		LockOpenSSL();
 		{
 			SSL_use_certificate(sock->ssl, x->x509);
 			SSL_use_PrivateKey(sock->ssl, k->pkey);
 		}
-		Unlock(openssl_lock);
+		UnlockOpenSSL();
 	}
 
 	return SSL_CLIENT_HELLO_SUCCESS;
@@ -13879,7 +13883,7 @@ bool StartSSLEx2(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, c
 
 	hello_cb_data.SslCtx = ssl_ctx;
 
-	Lock(openssl_lock);
+	LockOpenSSL();
 	{
 		if (sock->ServerMode)
 		{
@@ -13924,12 +13928,12 @@ bool StartSSLEx2(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, c
 #endif	// SSL_OP_NO_TLSv1_3
 			}
 
-			Unlock(openssl_lock);
+			UnlockOpenSSL();
 			if (use_sni_based_cert_selection == false)
 			{
 				AddChainSslCertOnDirectory(ssl_ctx);
 			}
-			Lock(openssl_lock);
+			LockOpenSSL();
 		}
 		else
 		{
@@ -13978,7 +13982,7 @@ bool StartSSLEx2(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, c
 #endif	// SSL_CTRL_SET_TLSEXT_HOSTNAME
 
 	}
-	Unlock(openssl_lock);
+	UnlockOpenSSL();
 
 	if (x != NULL)
 	{
@@ -13991,12 +13995,12 @@ bool StartSSLEx2(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, c
 				x509 = x->x509;
 				key = priv->pkey;
 
-				Lock(openssl_lock);
+				LockOpenSSL();
 				{
 					SSL_use_certificate(sock->ssl, x509);
 					SSL_use_PrivateKey(sock->ssl, key);
 				}
-				Unlock(openssl_lock);
+				UnlockOpenSSL();
 			}
 		}
 	}
@@ -14004,16 +14008,16 @@ bool StartSSLEx2(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, c
 	if (sock->WaitToUseCipher != NULL)
 	{
 		// Set the cipher algorithm name to want to use
-		Lock(openssl_lock);
+		LockOpenSSL();
 		{
 			SSL_set_cipher_list(sock->ssl, sock->WaitToUseCipher);
 		}
-		Unlock(openssl_lock);
+		UnlockOpenSSL();
 	}
 	else
 	{
 		// Set the OpenSSL default cipher algorithms
-		Lock(openssl_lock);
+		LockOpenSSL();
 		{
 			char* set_value = OPENSSL_DEFAULT_CIPHER_LIST;
 
@@ -14028,7 +14032,7 @@ bool StartSSLEx2(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, c
 
 			SSL_set_cipher_list(sock->ssl, set_value);
 		}
-		Unlock(openssl_lock);
+		UnlockOpenSSL();
 	}
 
 	if (sock->ServerMode)
@@ -14052,12 +14056,12 @@ bool StartSSLEx2(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, c
 
 			//			Unlock(ssl_connect_lock);
 			// SSL-Accept failure
-			Lock(openssl_lock);
+			LockOpenSSL();
 			{
 				SSL_free(sock->ssl);
 				sock->ssl = NULL;
 			}
-			Unlock(openssl_lock);
+			UnlockOpenSSL();
 
 			Unlock(sock->ssl_lock);
 			Debug("StartSSL Error: #5\n");
@@ -14098,12 +14102,12 @@ bool StartSSLEx2(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, c
 		{
 			Unlock(ssl_connect_lock);
 			// SSL-connect failure
-			Lock(openssl_lock);
+			LockOpenSSL();
 			{
 				SSL_free(sock->ssl);
 				sock->ssl = NULL;
 			}
-			Unlock(openssl_lock);
+			UnlockOpenSSL();
 
 			Unlock(sock->ssl_lock);
 			Debug("StartSSL Error: #5\n");
@@ -14120,13 +14124,13 @@ bool StartSSLEx2(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, c
 	sock->SecureMode = true;
 
 	// Get the certificate of the remote host
-	Lock(openssl_lock);
+	LockOpenSSL();
 	{
 		x509 = SSL_get_peer_certificate(sock->ssl);
 
 		sock->SslVersion = SSL_get_version(sock->ssl);
 	}
-	Unlock(openssl_lock);
+	UnlockOpenSSL();
 
 	if (x509 == NULL)
 	{
@@ -14140,11 +14144,11 @@ bool StartSSLEx2(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, c
 	}
 
 	// Get the certificate of local host
-	Lock(openssl_lock);
+	LockOpenSSL();
 	{
 		x509 = SSL_get_certificate(sock->ssl);
 	}
-	Unlock(openssl_lock);
+	UnlockOpenSSL();
 
 	if (x509 == NULL)
 	{
@@ -14170,11 +14174,11 @@ bool StartSSLEx2(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, c
 	sock->ssl_ctx = ssl_ctx;
 
 	// Get the algorithm name used to encrypt
-	Lock(openssl_lock);
+	LockOpenSSL();
 	{
 		sock->CipherName = CopyStr((char *)SSL_get_cipher(sock->ssl));
 	}
-	Unlock(openssl_lock);
+	UnlockOpenSSL();
 	StrCpy(sock->TlsVersion, sizeof(sock->TlsVersion), (char *)SSL_get_version(sock->ssl));
 	Debug("SSL connected with %s\n", sock->TlsVersion);
 
@@ -15542,12 +15546,12 @@ void Disconnect(SOCK *sock)
 				{
 					if (sock->ssl != NULL)
 					{
-						Lock(openssl_lock);
+						LockOpenSSL();
 						{
 							SSL_free(sock->ssl);
 							FreeSSLCtx(sock->ssl_ctx);
 						}
-						Unlock(openssl_lock);
+						UnlockOpenSSL();
 						sock->ssl = NULL;
 						sock->ssl_ctx = NULL;
 					}

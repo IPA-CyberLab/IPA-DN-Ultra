@@ -1459,6 +1459,9 @@ void AddProtocolDetailsKeyValueStr(char *dst, UINT dst_size, char *key, char *va
 void AddProtocolDetailsKeyValueInt(char *dst, UINT dst_size, char *key, UINT value);
 void TryGetCurrentAcceptingIPv4Address(IP *ip);
 
+void LockOpenSSL();
+void UnlockOpenSSL();
+
 #ifdef	ENABLE_SSL_LOGGING
 void SockEnableSslLogging(SOCK *s);
 void SockWriteSslLog(SOCK *s, void *send_data, UINT send_size, void *recv_data, UINT recv_size);
