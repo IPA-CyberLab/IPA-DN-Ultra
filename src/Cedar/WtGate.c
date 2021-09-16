@@ -98,7 +98,7 @@ void WtgHttpProxyForWebApp(WT* wt, SOCK* s, HTTP_HEADER* first_header)
 
 	// base url
 	char base_url[MAX_PATH] = CLEAN;
-	StrCpy(base_url, sizeof(base_url), "https://127.0.0.1:7002/");
+	StrCpy(base_url, sizeof(base_url), wt->WebAppProxyBaseUrl);
 	URL_DATA url = CLEAN;
 	ParseUrl(&url, base_url, false, NULL);
 

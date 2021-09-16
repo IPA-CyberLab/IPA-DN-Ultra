@@ -210,6 +210,9 @@
 // スタンドアロン版 データベース保存間隔
 #define WT_SAM_DATABASE_AUTO_SAVE_INTERVAL	(60 * 1000)
 
+// WebAppProxyBaseUrl のデフォルト値
+#define WT_WEBAPP_PROXY_BASE_URL_DEFAULT	"https://127.0.0.1:7002/"
+
 
 //////////////////////////////////////////////////////////////////////
 // 
@@ -285,6 +288,7 @@ struct WT
 	LIST* ProxyTargetUrlList;
 	LIST* ErrorControllersList;
 	LOCK* ErrorControllersListLock;
+	char WebAppProxyBaseUrl[MAX_PATH];
 
 	// Client / Server / Gate 共通
 	char EntranceUrl[MAX_PATH];			// エントランス URL

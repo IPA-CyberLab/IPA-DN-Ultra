@@ -4109,6 +4109,12 @@ WIDE *WideGateStart()
 		CombinePathW(p.DestDir, sizeof(p.DestDir), exe_dir, WIDE_WEBAPP_CERT_SET_DEST_DIR);
 
 		w->Standalone_WebAppCertDownloader = NewCertServerClient(w->wt, &p);
+
+		StrCpy(w->wt->WebAppProxyBaseUrl, sizeof(w->wt->WebAppProxyBaseUrl), IniStrValue(o, "WebAppProxyBaseUrl"));
+		if (IsEmptyStr(w->wt->WebAppProxyBaseUrl))
+		{
+			StrCpy(w->wt->WebAppProxyBaseUrl, sizeof(w->wt->WebAppProxyBaseUrl), WT_WEBAPP_PROXY_BASE_URL_DEFAULT);
+		}
 	}
 
 	// DoS 攻撃検知無効
