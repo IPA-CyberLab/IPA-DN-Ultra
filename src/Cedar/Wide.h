@@ -88,8 +88,8 @@
 // WebSocket 用証明書を応答すべき SNI ホスト名の最初の文字列
 #define	WIDE_WEBSOCKET_SNI_NAME_STARTWITH1	"websocket-"
 #define	WIDE_WEBSOCKET_SNI_NAME_STARTWITH2	"ws-"
-#define	WIDE_WEBSOCKET_SNI_NAME_INSTR1	"--ws."
-#define	WIDE_WEBSOCKET_SNI_NAME_INSTR2	"--websocket."
+#define	WIDE_WEBSOCKET_SNI_NAME_ENDWITH1	"-ws"
+#define	WIDE_WEBSOCKET_SNI_NAME_ENDWITH2	"-websocket"
 
 
 // スタンドアロンモードの WebApp (HTML5) 証明書セット書き出し先ディレクトリ名
@@ -100,10 +100,10 @@
 #define	WIDE_WEBAPP_SNI_NAME_STARTWITH2	"app-"
 #define	WIDE_WEBAPP_SNI_NAME_STARTWITH3	"web-"
 #define	WIDE_WEBAPP_SNI_NAME_STARTWITH4	"login-"
-#define	WIDE_WEBAPP_SNI_NAME_INSTR1	"--webapp."
-#define	WIDE_WEBAPP_SNI_NAME_INSTR2	"--app."
-#define	WIDE_WEBAPP_SNI_NAME_INSTR3	"--web."
-#define	WIDE_WEBAPP_SNI_NAME_INSTR4	"--login."
+#define	WIDE_WEBAPP_SNI_NAME_ENDWITH1	"-webapp"
+#define	WIDE_WEBAPP_SNI_NAME_ENDWITH2	"-app"
+#define	WIDE_WEBAPP_SNI_NAME_ENDWITH3	"-web"
+#define	WIDE_WEBAPP_SNI_NAME_ENDWITH4	"-login"
 
 
 

@@ -3120,10 +3120,31 @@ bool WtgDetermineWebSocketSslCertUseCallback(char* sni_name, void* param)
 		return false;
 	}
 
-	return StartWith(sni_name, WIDE_WEBSOCKET_SNI_NAME_STARTWITH1) ||
-		StartWith(sni_name, WIDE_WEBSOCKET_SNI_NAME_STARTWITH2) ||
-		InStr(sni_name, WIDE_WEBSOCKET_SNI_NAME_INSTR1) ||
-		InStr(sni_name, WIDE_WEBSOCKET_SNI_NAME_INSTR2);
+	TOKEN_LIST* t = ParseTokenWithoutNullStr(sni_name, ".");
+	if (t == NULL)
+	{
+		return false;
+	}
+
+	bool ret = false;
+
+	if (t->NumTokens >= 1)
+	{
+		char* first_label = t->Token[0];
+
+		if (IsFilledStr(first_label))
+		{
+			ret =
+				StartWith(first_label, WIDE_WEBSOCKET_SNI_NAME_STARTWITH1) ||
+				StartWith(first_label, WIDE_WEBSOCKET_SNI_NAME_STARTWITH2) ||
+				EndWith(first_label, WIDE_WEBSOCKET_SNI_NAME_ENDWITH1) ||
+				EndWith(first_label, WIDE_WEBSOCKET_SNI_NAME_ENDWITH2);
+		}
+	}
+
+	FreeToken(t);
+
+	return ret;
 }
 
 // SNI 名を見て WebApp 用証明書を利用するかどうか判断するコールバック関数
@@ -3134,14 +3155,35 @@ bool WtgDetermineWebAppSslCertUseCallback(char* sni_name, void* param)
 		return false;
 	}
 
-	return StartWith(sni_name, WIDE_WEBAPP_SNI_NAME_STARTWITH1) ||
-		StartWith(sni_name, WIDE_WEBAPP_SNI_NAME_STARTWITH2) ||
-		StartWith(sni_name, WIDE_WEBAPP_SNI_NAME_STARTWITH3) ||
-		StartWith(sni_name, WIDE_WEBAPP_SNI_NAME_STARTWITH4) ||
-		InStr(sni_name, WIDE_WEBAPP_SNI_NAME_INSTR1) ||
-		InStr(sni_name, WIDE_WEBAPP_SNI_NAME_INSTR2) ||
-		InStr(sni_name, WIDE_WEBAPP_SNI_NAME_INSTR3) ||
-		InStr(sni_name, WIDE_WEBAPP_SNI_NAME_INSTR4);
+	TOKEN_LIST* t = ParseTokenWithoutNullStr(sni_name, ".");
+	if (t == NULL)
+	{
+		return false;
+	}
+
+	bool ret = false;
+
+	if (t->NumTokens >= 1)
+	{
+		char* first_label = t->Token[0];
+
+		if (IsFilledStr(first_label))
+		{
+			ret =
+				StartWith(first_label, WIDE_WEBAPP_SNI_NAME_STARTWITH1) ||
+				StartWith(first_label, WIDE_WEBAPP_SNI_NAME_STARTWITH2) ||
+				StartWith(first_label, WIDE_WEBAPP_SNI_NAME_STARTWITH3) ||
+				StartWith(first_label, WIDE_WEBAPP_SNI_NAME_STARTWITH4) ||
+				EndWith(first_label, WIDE_WEBAPP_SNI_NAME_ENDWITH1) ||
+				EndWith(first_label, WIDE_WEBAPP_SNI_NAME_ENDWITH2) ||
+				EndWith(first_label, WIDE_WEBAPP_SNI_NAME_ENDWITH3) ||
+				EndWith(first_label, WIDE_WEBAPP_SNI_NAME_ENDWITH4);
+		}
+	}
+
+	FreeToken(t);
+
+	return ret;
 }
 
 // Gate による接続受付
