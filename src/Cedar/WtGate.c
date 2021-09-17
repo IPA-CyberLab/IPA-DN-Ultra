@@ -533,6 +533,8 @@ bool WtgHttpProxyForWebApp(WT* wt, SOCK* s, HTTP_HEADER* first_header)
 	WtLogEx(wt, log_prefix, "Finished the proxy function.");
 
 	ret = s->Connected;
+
+	return ret;
 }
 
 // WebSocket Accept
