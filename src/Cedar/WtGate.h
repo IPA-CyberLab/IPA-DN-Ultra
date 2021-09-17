@@ -308,7 +308,7 @@ bool WtgWebSocketGetHandler(WT *wt, SOCK* s, HTTP_HEADER* h, char* url_target);
 bool WtgWebSocketAccept(WT* wt, SOCK* s, char* url_target, TSESSION *session, TUNNEL *tunnel);
 bool WtgSearchSessionAndTunnelByWebSocketUrl(WT* wt, char* url_target, TSESSION** pp_session, TUNNEL** pp_tunnel);
 
-void WtgHttpProxyForWebApp(WT* wt, SOCK* s, HTTP_HEADER* first_header);
+bool WtgHttpProxyForWebApp(WT* wt, SOCK* s, HTTP_HEADER* first_header);
 
 
 #endif	// WTGATE_H

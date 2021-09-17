@@ -89,11 +89,11 @@
 #define g_show_debug_protocol	false
 
 // WebApp のためのプロキシ (Standalone mode 用)
-void WtgHttpProxyForWebApp(WT* wt, SOCK* s, HTTP_HEADER* first_header)
+bool WtgHttpProxyForWebApp(WT* wt, SOCK* s, HTTP_HEADER* first_header)
 {
 	if (wt == NULL || s == NULL || first_header == NULL)
 	{
-		return;
+		return false;
 	}
 
 	// base url
@@ -112,7 +112,9 @@ void WtgHttpProxyForWebApp(WT* wt, SOCK* s, HTTP_HEADER* first_header)
 
 	UINT num = 0;
 
-	while (true)
+	bool ret = false;
+
+	do
 	{
 		HTTP_HEADER* h = NULL;
 		if (num == 0)
@@ -520,6 +522,7 @@ void WtgHttpProxyForWebApp(WT* wt, SOCK* s, HTTP_HEADER* first_header)
 			FreeHttpHeader(h);
 		}
 	}
+	while (false);
 
 	if (s2 != NULL)
 	{
@@ -528,6 +531,8 @@ void WtgHttpProxyForWebApp(WT* wt, SOCK* s, HTTP_HEADER* first_header)
 	}
 
 	WtLogEx(wt, log_prefix, "Finished the proxy function.");
+
+	ret = s->Connected;
 }
 
 // WebSocket Accept
@@ -4240,11 +4245,14 @@ bool WtgDownloadSignature(WT* wt, SOCK* s, bool* check_ssl_ok, char* gate_secret
 				// Standalone Mode の場合、WebApp へのプロキシを動作させる
 				*check_ssl_ok = true;
 
-				WtgHttpProxyForWebApp(wt, s, h);
+				bool proxy_ret = WtgHttpProxyForWebApp(wt, s, h);
 
 				FreeHttpHeader(h);
 
-				return false;
+				if (proxy_ret == false)
+				{
+					return false;
+				}
 			}
 			else
 			{
