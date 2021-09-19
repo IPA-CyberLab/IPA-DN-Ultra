@@ -3174,10 +3174,13 @@ bool WtgDetermineWebAppSslCertUseCallback(char* sni_name, void* param)
 				StartWith(first_label, WIDE_WEBAPP_SNI_NAME_STARTWITH2) ||
 				StartWith(first_label, WIDE_WEBAPP_SNI_NAME_STARTWITH3) ||
 				StartWith(first_label, WIDE_WEBAPP_SNI_NAME_STARTWITH4) ||
+				StartWith(first_label, WIDE_WEBAPP_SNI_NAME_STARTWITH5) ||
+				StartWith(first_label, WIDE_WEBAPP_SNI_NAME_STARTWITH6) ||
 				EndWith(first_label, WIDE_WEBAPP_SNI_NAME_ENDWITH1) ||
 				EndWith(first_label, WIDE_WEBAPP_SNI_NAME_ENDWITH2) ||
 				EndWith(first_label, WIDE_WEBAPP_SNI_NAME_ENDWITH3) ||
-				EndWith(first_label, WIDE_WEBAPP_SNI_NAME_ENDWITH4);
+				EndWith(first_label, WIDE_WEBAPP_SNI_NAME_ENDWITH4) ||
+				EndWith(first_label, WIDE_WEBAPP_SNI_NAME_ENDWITH5);
 		}
 	}
 
