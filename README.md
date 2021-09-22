@@ -9,10 +9,10 @@
 
 このライブラリは未完成です。まだ使用することはできません。2021/08/04 登
 
-## [Current Version] beta8preview2
+## [Current Version] beta8preview3
 
-## beta8preview2
-1. <memo>
+## beta8preview3
+1. HTML5 版 Web クライアントにおいて、証明書認証を行なう際に、認証に失敗した場合にその詳細な原因とともにエラーメッセージを表示するようにしました。
 
 ## beta8preview1
 1. 内部的に使用する暗号ライブラリを OpenSSL 3.0.0 にアップグレードしました。
