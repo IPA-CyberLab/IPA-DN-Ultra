@@ -304,7 +304,7 @@ UINT DcDownloadMstsc(DC *dc, WPC_RECV_CALLBACK *callback, void *callback_param);
 bool DcGetMstscPath(DC *dc, wchar_t *name, UINT size, bool *download_required);
 UINT DcGetMstscArguments(DC_SESSION *s, wchar_t *mstsc_exe, char *arg, UINT arg_size);
 UINT DcGetUrdpClientArguments(DC_SESSION *s, char *arg, UINT arg_size, bool disable_share, UINT version);
-void *DcRunMstsc(DC *dc, wchar_t *mstsc_exe, char *arg, char *target, bool disable_share, UINT *process_id, bool *rdp_file_write_failed);
+void *DcRunMstsc(DC *dc, wchar_t *mstsc_exe, char *arg, bool disable_share, UINT *process_id, bool *rdp_file_write_failed);
 void *DcRunUrdpClient(char *arg, UINT *process_id, UINT version);
 bool DcWaitForProcessExit(void *h, UINT timeout, bool watch_gov_fw_exit, UINT64 idle_timeout, UINT *exit_code);
 void DcInitMstscRdpFile();
