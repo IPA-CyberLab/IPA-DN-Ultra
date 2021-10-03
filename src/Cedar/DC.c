@@ -1029,7 +1029,7 @@ void *DcRunUrdpClient(char *arg, UINT *process_id, UINT version)
 }
 
 // mstsc を起動する
-void *DcRunMstsc(DC *dc, wchar_t *mstsc_exe, char *arg, char *target, bool disable_share, UINT *process_id, bool *rdp_file_write_failed)
+void *DcRunMstsc(DC *dc, wchar_t *mstsc_exe, char *arg, bool disable_share, UINT *process_id, bool *rdp_file_write_failed)
 {
 #ifdef	OS_WIN32
 	wchar_t *arg_w;
@@ -1040,7 +1040,7 @@ void *DcRunMstsc(DC *dc, wchar_t *mstsc_exe, char *arg, char *target, bool disab
 	{
 		*rdp_file_write_failed = false;
 	}
-	if (dc == NULL || mstsc_exe == NULL || arg == NULL || target == NULL)
+	if (dc == NULL || mstsc_exe == NULL || arg == NULL)
 	{
 		return NULL;
 	}

@@ -2116,12 +2116,7 @@ void DuConnectMain(HWND hWnd, DU_MAIN *t, char *pcid)
 
 				if (ret == ERR_NO_ERROR)
 				{
-					char* hostname = s->HostnameIPv4;
-					if (IsFilledStr(s->HostnameIPv6) && StrCmpi(s->HostnameIPv6, "[::1]") != 0)
-					{
-						hostname = s->HostnameIPv6;
-					}
-					process = DcRunMstsc(dc, exe, arg, hostname, s->IsShareDisabled, &process_id, &rdp_file_write_failed);
+					process = DcRunMstsc(dc, exe, arg, s->IsShareDisabled, &process_id, &rdp_file_write_failed);
 				}
 			}
 			else

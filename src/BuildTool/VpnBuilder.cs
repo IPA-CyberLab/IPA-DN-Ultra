@@ -205,7 +205,7 @@ namespace BuildTool
             foreach (string file in files)
             {
                 string fn = Path.GetFileName(file);
-                if (Str.InStr(fn, "IPA-DN-Ultra", false) && fn.EndsWith(".sln", StringComparison.OrdinalIgnoreCase))
+                if (Str.InStr(fn, "IPA-DN-Ultra", false) && Str.InStr(fn, "IPA-DN-Ultra-NativeUtilApp", false) == false && fn.EndsWith(".sln", StringComparison.OrdinalIgnoreCase))
                 {
                     IsIpaDnUltraSolution = true;
                 }
