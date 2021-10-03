@@ -2089,7 +2089,7 @@ void UnixGetSystemTime(SYSTEMTIME *system_time)
 // Get the system timer (64bit)
 UINT64 UnixGetTick64()
 {
-#if	defined(OS_WIN32) || defined(CLOCK_REALTIME) || defined(CLOCK_MONOTONIC) || defined(CLOCK_MONOTONIC_COARSE) || defined(CLOCK_HIGHRES)
+#if	defined(OS_WIN32) || defined(CLOCK_REALTIME) || defined(CLOCK_MONOTONIC) || defined(CLOCK_HIGHRES)
 
 	struct timespec t;
 	UINT64 ret;
@@ -2107,15 +2107,11 @@ UINT64 UnixGetTick64()
 #ifdef	CLOCK_HIGHRES
 	clock_gettime(CLOCK_HIGHRES, &t);
 #else	// CLOCK_HIGHRES
-#ifdef  CLOCK_MONOTONIC_COARSE
-	clock_gettime(CLOCK_MONOTONIC_COARSE, &t);
-#else	// CLOCK_MONOTONIC_COARSE
 #ifdef	CLOCK_MONOTONIC
 	clock_gettime(CLOCK_MONOTONIC, &t);
 #else	// CLOCK_MONOTONIC
 	clock_gettime(CLOCK_REALTIME, &t);
 #endif	// CLOCK_MONOTONIC
-#endif	// CLOCK_MONOTONIC_COARSE
 #endif	// CLOCK_HIGHRES
 
 	ret = ((UINT64)((UINT32)t.tv_sec)) * 1000LL + (UINT64)t.tv_nsec / 1000000LL;
