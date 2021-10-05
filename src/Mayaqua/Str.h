@@ -227,6 +227,7 @@ bool CheckPasswordComplexity(char *str);
 
 TOKEN_LIST* StrToLinesList(char* str);
 char* GetFirstFilledStrFromStr(char* str);
+char* GetFirstFilledStrFromBuf(BUF* buf);
 void RemoveBomFromStr(char* str);
 
 

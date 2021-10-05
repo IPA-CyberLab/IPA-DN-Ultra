@@ -4105,6 +4105,21 @@ UINT ReadBufRemainSize(BUF *b)
 	return b->Size - b->Current;
 }
 
+UINT SizeOfBuf(BUF* b)
+{
+	// Validate arguments
+	if (b == NULL)
+	{
+		return 0;
+	}
+
+	return b->Size;
+}
+UINT GetBufSize(BUF* b)
+{
+	return SizeOfBuf(b);
+}
+
 // Clone the buffer
 BUF *CloneBuf(BUF *b)
 {

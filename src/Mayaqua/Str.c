@@ -122,6 +122,24 @@ void RemoveBomFromStr(char* str)
 	}
 }
 
+char* GetFirstFilledStrFromBuf(BUF* buf)
+{
+	if (buf == NULL)
+	{
+		return CopyStr("");
+	}
+
+	UINT size = buf->Size + 8;
+	char* tmp = ZeroMalloc(size);
+	Copy(tmp, buf->Buf, buf->Size);
+
+	char* ret = GetFirstFilledStrFromStr(tmp);
+
+	Free(tmp);
+
+	return ret;
+}
+
 char* GetFirstFilledStrFromStr(char* str)
 {
 	TOKEN_LIST* t = StrToLinesList(str);

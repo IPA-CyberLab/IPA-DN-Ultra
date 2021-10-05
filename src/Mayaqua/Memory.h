@@ -351,6 +351,8 @@ BUF *RandBuf(UINT size);
 BUF *ReadRemainBuf(BUF *b);
 UINT ReadBufRemainSize(BUF *b);
 bool CompareBuf(BUF *b1, BUF *b2);
+UINT SizeOfBuf(BUF* b);
+UINT GetBufSize(BUF* b);
 
 UINT PeekFifo(FIFO *f, void *p, UINT size);
 UINT ReadFifo(FIFO *f, void *p, UINT size);
