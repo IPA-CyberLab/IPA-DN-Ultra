@@ -118,7 +118,7 @@ void RAND_Free_For_SoftEther();
 // OpenSSL 3.x has a bug. https://github.com/openssl/openssl/issues/13363 https://github.com/openssl/openssl/pull/13378
 // At 2021-09-08 this bug is reported as fixed on Github, but actually still exists on RC4-MD5.
 // So, with OpenSSL 3.0 we manually disable RC4-MD5 by default on both SSL server and SSL client.
-#define	OPENSSL_DEFAULT_CIPHER_LIST_NO_RC4_MD5 "ALL:!EXPORT:!LOW:!aNULL:!eNULL:!SSLv2:!RC4-MD5"
+#define	OPENSSL_DEFAULT_CIPHER_LIST_NO_RC4_MD5  (OPENSSL_DEFAULT_CIPHER_LIST ":!RC4-MD5")
 
 // IANA definitions taken from IKEv1 Phase 1
 #define SHA1_160						2
@@ -356,6 +356,8 @@ struct CERTS_AND_KEY
 	REF* Ref;
 	LIST* CertList;
 	K* Key;
+	UINT64 HashCache;
+
 	bool (*DetermineUseCallback)(char*, void*);
 };
 
@@ -393,10 +395,18 @@ UINT64 SeedRand64(SEEDRAND* r);
 
 CERTS_AND_KEY* NewCertsAndKeyFromMemory(LIST* cert_buf_list, BUF* key_buf);
 CERTS_AND_KEY* NewCertsAndKeyFromObjects(LIST* cert_list, K* key);
+CERTS_AND_KEY* NewCertsAndKeyFromObjectSingle(X *cert, K* key);
 CERTS_AND_KEY* NewCertsAndKeyFromDir(wchar_t* dir_name);
 bool SaveCertsAndKeyToDir(CERTS_AND_KEY *c, wchar_t* dir);
 void ReleaseCertsAndKey(CERTS_AND_KEY* c);
 void CleanupCertsAndKey(CERTS_AND_KEY* c);
+CERTS_AND_KEY* CloneCertsAndKey(CERTS_AND_KEY* c);
+void FreeCertsAndKeyList(LIST* o);
+LIST* CloneCertsAndKeyList(LIST* o);
+void UpdateCertsAndKeyHashCache(CERTS_AND_KEY* c);
+UINT64 CalcCertsAndKeyHashCache(CERTS_AND_KEY* c);
+UINT64 GetCertsAndKeyHash(CERTS_AND_KEY* c);
+UINT64 GetCertsAndKeyListHash(LIST* o);
 
 LIST* BufToXList(BUF* b);
 void FreeXList(LIST* o);

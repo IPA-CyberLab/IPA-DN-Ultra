@@ -238,6 +238,154 @@ void FreeXList(LIST* o)
 	ReleaseList(o);
 }
 
+CERTS_AND_KEY* CloneCertsAndKey(CERTS_AND_KEY* c)
+{
+	if (c == NULL)
+	{
+		return NULL;
+	}
+
+	CERTS_AND_KEY* ret = NewCertsAndKeyFromObjects(c->CertList, c->Key);
+
+	return ret;
+}
+
+UINT64 GetCertsAndKeyListHash(LIST* o)
+{
+	UINT64 ret = 0;
+	if (o == NULL)
+	{
+		return 0;
+	}
+
+	UINT i;
+	for (i = 0;i < LIST_NUM(o);i++)
+	{
+		CERTS_AND_KEY* c = LIST_DATA(o, i);
+
+		UINT64 hash = CalcCertsAndKeyHashCache(c);
+		
+		ret += hash;
+
+		ret *= 0x61C8864680B583EBULL; // From https://github.com/torvalds/linux/blob/88c5083442454e5e8a505b11fa16f32d2879651e/include/linux/hash.h
+	}
+
+	if (ret == 0) ret = 1;
+
+	return ret;
+}
+
+void FreeCertsAndKeyList(LIST* o)
+{
+	if (o == NULL)
+	{
+		return;
+	}
+
+	UINT i;
+
+	for (i = 0;i < LIST_NUM(o);i++)
+	{
+		CERTS_AND_KEY* s = LIST_DATA(o, i);
+
+		ReleaseCertsAndKey(s);
+	}
+
+	ReleaseList(o);
+}
+
+LIST* CloneCertsAndKeyList(LIST* o)
+{
+	if (o == NULL)
+	{
+		return NULL;
+	}
+
+	LIST* ret = NewList(NULL);
+
+	UINT i;
+	for (i = 0;i < LIST_NUM(o);i++)
+	{
+		CERTS_AND_KEY* s = LIST_DATA(o, i);
+
+		if (s != NULL)
+		{
+			CERTS_AND_KEY* d = s;
+
+			AddRef(d->Ref);
+
+			Add(ret, d);
+		}
+	}
+
+	return ret;
+}
+
+UINT64 GetCertsAndKeyHash(CERTS_AND_KEY* c)
+{
+	if (c == NULL)
+	{
+		return 0;
+	}
+
+	UINT64 ret = c->HashCache;
+
+	ret += (UINT64)c->DetermineUseCallback;
+
+	if (ret == 0) ret = 1;
+
+	return ret;
+}
+
+UINT64 CalcCertsAndKeyHashCache(CERTS_AND_KEY* c)
+{
+	if (c == NULL)
+	{
+		return 0;
+	}
+
+	BUF* buf = NewBuf();
+
+	UINT i;
+	for (i = 0;i < LIST_NUM(c->CertList);i++)
+	{
+		X* x = LIST_DATA(c->CertList, i);
+		UCHAR sha1[SHA1_SIZE] = CLEAN;
+
+		GetXDigest(x, sha1, true);
+
+		WriteBuf(buf, sha1, SHA1_SIZE);
+	}
+
+	BUF *key_buf = KToBuf(c->Key, true, NULL);
+
+	WriteBufBuf(buf, key_buf);
+
+	FreeBuf(key_buf);
+
+	UCHAR hash[SHA1_SIZE] = CLEAN;
+
+	HashSha1(hash, buf->Buf, buf->Size);
+
+	FreeBuf(buf);
+
+	UINT64 ret = READ_UINT64(hash);
+
+	if (ret == 0) ret = 1;
+
+	return ret;
+}
+
+void UpdateCertsAndKeyHashCache(CERTS_AND_KEY* c)
+{
+	if (c == NULL)
+	{
+		return;
+	}
+
+	c->HashCache = CalcCertsAndKeyHashCache(c);
+}
+
 CERTS_AND_KEY* NewCertsAndKeyFromDir(wchar_t* dir_name)
 {
 	CERTS_AND_KEY* ret = NULL;
@@ -293,6 +441,8 @@ CERTS_AND_KEY* NewCertsAndKeyFromDir(wchar_t* dir_name)
 	}
 
 	FreeBuf(key_buf);
+
+	UpdateCertsAndKeyHashCache(ret);
 
 	return ret;
 
@@ -392,6 +542,23 @@ bool SaveCertsAndKeyToDir(CERTS_AND_KEY* c, wchar_t* dir)
 	return ret;
 }
 
+CERTS_AND_KEY* NewCertsAndKeyFromObjectSingle(X* cert, K* key)
+{
+	if (cert == NULL || key == NULL)
+	{
+		return NULL;
+	}
+
+	LIST* cert_list = NewList(NULL);
+	Add(cert_list, cert);
+
+	CERTS_AND_KEY* ret = NewCertsAndKeyFromObjects(cert_list, key);
+
+	ReleaseList(cert_list);
+
+	return ret;
+}
+
 CERTS_AND_KEY* NewCertsAndKeyFromObjects(LIST* cert_list, K* key)
 {
 	CERTS_AND_KEY* ret = NULL;
@@ -417,6 +584,8 @@ CERTS_AND_KEY* NewCertsAndKeyFromObjects(LIST* cert_list, K* key)
 
 		Add(ret->CertList, CloneX(x));
 	}
+
+	UpdateCertsAndKeyHashCache(ret);
 
 	return ret;
 
@@ -452,6 +621,8 @@ CERTS_AND_KEY* NewCertsAndKeyFromMemory(LIST* cert_buf_list, BUF* key_buf)
 
 		Add(ret->CertList, x);
 	}
+
+	UpdateCertsAndKeyHashCache(ret);
 
 	return ret;
 
