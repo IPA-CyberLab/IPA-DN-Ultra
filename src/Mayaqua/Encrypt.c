@@ -267,7 +267,7 @@ CERTS_AND_KEY* CloneCertsAndKey(CERTS_AND_KEY* c)
 		return NULL;
 	}
 
-	CERTS_AND_KEY* ret = NewCertsAndKeyFromObjects(c->CertList, c->Key);
+	CERTS_AND_KEY* ret = NewCertsAndKeyFromObjects(c->CertList, c->Key, false);
 
 	return ret;
 }
@@ -565,7 +565,7 @@ bool SaveCertsAndKeyToDir(CERTS_AND_KEY* c, wchar_t* dir)
 	return ret;
 }
 
-CERTS_AND_KEY* NewCertsAndKeyFromObjectSingle(X* cert, K* key)
+CERTS_AND_KEY* NewCertsAndKeyFromObjectSingle(X* cert, K* key, bool fast)
 {
 	if (cert == NULL || key == NULL)
 	{
@@ -575,14 +575,14 @@ CERTS_AND_KEY* NewCertsAndKeyFromObjectSingle(X* cert, K* key)
 	LIST* cert_list = NewList(NULL);
 	Add(cert_list, cert);
 
-	CERTS_AND_KEY* ret = NewCertsAndKeyFromObjects(cert_list, key);
+	CERTS_AND_KEY* ret = NewCertsAndKeyFromObjects(cert_list, key, fast);
 
 	ReleaseList(cert_list);
 
 	return ret;
 }
 
-CERTS_AND_KEY* NewCertsAndKeyFromObjects(LIST* cert_list, K* key)
+CERTS_AND_KEY* NewCertsAndKeyFromObjects(LIST* cert_list, K* key, bool fast)
 {
 	CERTS_AND_KEY* ret = NULL;
 	if (cert_list == NULL || LIST_NUM(cert_list) == 0 || key == NULL)
@@ -596,7 +596,15 @@ CERTS_AND_KEY* NewCertsAndKeyFromObjects(LIST* cert_list, K* key)
 
 	ret->CertList = NewListFast(NULL);
 
-	ret->Key = CloneK(key);
+	if (fast == false)
+	{
+		ret->Key = CloneK(key);
+	}
+	else
+	{
+		ret->Key = CloneKFast(key);
+	}
+
 	if (ret->Key == NULL) goto L_ERROR;
 
 	UINT i;
@@ -605,7 +613,18 @@ CERTS_AND_KEY* NewCertsAndKeyFromObjects(LIST* cert_list, K* key)
 		X* x = LIST_DATA(cert_list, i);
 		if (x == NULL) goto L_ERROR;
 
-		Add(ret->CertList, CloneX(x));
+		X* clone_x;
+
+		if (fast == false)
+		{
+			clone_x = CloneX(x);
+		}
+		else
+		{
+			clone_x = CloneXFast(x);
+		}
+
+		Add(ret->CertList, clone_x);
 	}
 
 	UpdateCertsAndKeyHashCacheAndCheckedState(ret);
@@ -1875,6 +1894,27 @@ void GetAllNameFromNameEx(wchar_t *str, UINT size, NAME *name)
 	}
 }
 
+K* CloneKFast(K* k)
+{
+	// Validate arguments
+	if (k == NULL)
+	{
+		return NULL;
+	}
+
+	K* ret = ZeroMalloc(sizeof(K));
+
+	ret->private_key = k->private_key;
+	ret->pkey = k->pkey;
+
+	if (ret->pkey != NULL)
+	{
+		EVP_PKEY_up_ref(ret->pkey);
+	}
+
+	return ret;
+}
+
 // Clone of the key
 K *CloneK(K *k)
 {
@@ -1894,6 +1934,38 @@ K *CloneK(K *k)
 
 	ret = BufToK(b, k->private_key, false, NULL);
 	FreeBuf(b);
+
+	return ret;
+}
+
+X* CloneXFast(X* x)
+{
+	// Validate arguments
+	if (x == NULL)
+	{
+		return NULL;
+	}
+
+	X* ret = ZeroMalloc(sizeof(X));
+
+	ret->issuer_name = CopyName(x->issuer_name);
+	ret->subject_name = CopyName(x->subject_name);
+	ret->root_cert = x->root_cert;
+	ret->notBefore = x->notBefore;
+	ret->notAfter = x->notAfter;
+	ret->serial = CloneXSerial(x->serial);
+	ret->do_not_free = false;
+	ret->is_compatible_bit = x->is_compatible_bit;
+	ret->bits = x->bits;
+	ret->has_basic_constraints = x->has_basic_constraints;
+	StrCpy(ret->issuer_url, sizeof(ret->issuer_url), x->issuer_url);
+
+	ret->x509 = x->x509;
+
+	if (ret->x509 != NULL)
+	{
+		X509_up_ref(ret->x509);
+	}
 
 	return ret;
 }

@@ -14210,10 +14210,11 @@ bool StartSSL(SOCK *sock, X *x, K *priv)
 }
 bool StartSSLEx(SOCK* sock, X* x, K* priv, bool client_tls, UINT ssl_timeout, char* sni_hostname)
 {
-	return StartSSLEx2(sock, x, priv, client_tls, ssl_timeout, sni_hostname, NULL, 0, NULL);
+	return StartSSLEx2(sock, x, priv, client_tls, ssl_timeout, sni_hostname, NULL, 0, NULL, false);
 }
 bool StartSSLEx2(SOCK* sock, X* x, K* priv, bool client_tls, UINT ssl_timeout, char* sni_hostname,
-	CERTS_AND_KEY** certs_and_key_lists, UINT num_certs_and_key_lists, void* certs_and_key_cb_param)
+	CERTS_AND_KEY** certs_and_key_lists, UINT num_certs_and_key_lists, void* certs_and_key_cb_param,
+	bool save_local_x)
 {
 	if (sock == NULL)
 	{
@@ -14258,6 +14259,8 @@ bool StartSSLEx2(SOCK* sock, X* x, K* priv, bool client_tls, UINT ssl_timeout, c
 		settings2.AddChainSslCertOnDirectory = true;
 	}
 
+	settings2.SaveLocalX = save_local_x;
+
 	LIST* o = NewList(NULL);
 
 	if (settings2.IsClient == false && certs_and_key_lists != NULL && num_certs_and_key_lists >= 1)
@@ -14278,7 +14281,7 @@ bool StartSSLEx2(SOCK* sock, X* x, K* priv, bool client_tls, UINT ssl_timeout, c
 	{
 		if (x != NULL && priv != NULL)
 		{
-			CERTS_AND_KEY* ck = NewCertsAndKeyFromObjectSingle(x, priv);
+			CERTS_AND_KEY* ck = NewCertsAndKeyFromObjectSingle(x, priv, true);
 			ck->DetermineUseCallback = CertsAndKeyAlwaysUseCallback;
 			Add(o, ck);
 		}
@@ -14288,13 +14291,13 @@ bool StartSSLEx2(SOCK* sock, X* x, K* priv, bool client_tls, UINT ssl_timeout, c
 
 	FreeCertsAndKeyList(o);
 
-	bool ret = StartSSLEx3(sock, ssl_timeout, sni_hostname, settings);
+	bool ret = StartSSLWithSettings(sock, ssl_timeout, sni_hostname, settings);
 
 	FreeSslCtxSharedSettings(settings);
 
 	return ret;
 }
-bool StartSSLEx3(SOCK* sock, UINT ssl_timeout, char* sni_hostname, SSL_CTX_SHARED_SETTINGS* settings)
+bool StartSSLWithSettings(SOCK* sock, UINT ssl_timeout, char* sni_hostname, SSL_CTX_SHARED_SETTINGS* settings)
 {
 	X509 *x509;
 	UINT prev_timeout = 1024;
@@ -14520,7 +14523,7 @@ bool StartSSLEx3(SOCK* sock, UINT ssl_timeout, char* sni_hostname, SSL_CTX_SHARE
 	}
 	UnlockOpenSSL();
 
-	if (x509 == NULL)
+	if (x509 == NULL || settings->Settings2.SaveLocalX == false)
 	{
 		// The certificate does not exist on the remote host
 		sock->LocalX = NULL;

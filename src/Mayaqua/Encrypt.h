@@ -395,8 +395,8 @@ UINT64 SeedRand64(SEEDRAND* r);
 
 
 CERTS_AND_KEY* NewCertsAndKeyFromMemory(LIST* cert_buf_list, BUF* key_buf);
-CERTS_AND_KEY* NewCertsAndKeyFromObjects(LIST* cert_list, K* key);
-CERTS_AND_KEY* NewCertsAndKeyFromObjectSingle(X *cert, K* key);
+CERTS_AND_KEY* NewCertsAndKeyFromObjects(LIST* cert_list, K* key, bool fast);
+CERTS_AND_KEY* NewCertsAndKeyFromObjectSingle(X *cert, K* key, bool fast);
 CERTS_AND_KEY* NewCertsAndKeyFromDir(wchar_t* dir_name);
 bool SaveCertsAndKeyToDir(CERTS_AND_KEY *c, wchar_t* dir);
 void ReleaseCertsAndKey(CERTS_AND_KEY* c);
@@ -497,6 +497,8 @@ bool IsEncryptedP12(P12 *p12);
 P12 *NewP12(X *x, K *k, char *password);
 X *CloneX(X *x);
 K *CloneK(K *k);
+X* CloneXFast(X* x);
+K* CloneKFast(K* k);
 void FreeCryptLibrary();
 void GetPrintNameFromX(wchar_t *str, UINT size, X *x);
 void GetPrintNameFromXA(char *str, UINT size, X *x);

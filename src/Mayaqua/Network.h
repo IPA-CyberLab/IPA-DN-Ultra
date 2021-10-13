@@ -1021,6 +1021,7 @@ struct SSL_CTX_SHARED_SETTINGS2
 	bool Client_NoSSLv3;
 	bool AddChainSslCertOnDirectory;
 	UINT LifeTime;
+	bool SaveLocalX;
 };
 
 struct SSL_CTX_SHARED_SETTINGS
@@ -1365,8 +1366,9 @@ UINT SecureRecv(SOCK *sock, void *data, UINT size);
 bool StartSSL(SOCK *sock, X *x, K *priv);
 bool StartSSLEx(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, char *sni_hostname);
 bool StartSSLEx2(SOCK* sock, X* x, K* priv, bool client_tls, UINT ssl_timeout, char* sni_hostname,
-	CERTS_AND_KEY** certs_and_key_lists, UINT num_certs_and_key_lists, void* certs_and_key_cb_param);
-bool StartSSLEx3(SOCK* sock, UINT ssl_timeout, char* sni_hostname, SSL_CTX_SHARED_SETTINGS* settings);
+	CERTS_AND_KEY** certs_and_key_lists, UINT num_certs_and_key_lists, void* certs_and_key_cb_param,
+	bool save_local_x);
+bool StartSSLWithSettings(SOCK* sock, UINT ssl_timeout, char* sni_hostname, SSL_CTX_SHARED_SETTINGS* settings);
 bool AddChainSslCert(struct ssl_st *ssl, X *x);
 bool AddChainSslCtxCert(struct ssl_ctx_st* ctx, X* x);
 void AddChainSslCertOnDirectory(struct ssl_ctx_st *ctx);

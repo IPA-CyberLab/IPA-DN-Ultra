@@ -3286,7 +3286,7 @@ void WtgAccept(WT *wt, SOCK *s)
 
 	WtLogEx(wt, log_prefix, "Trying StartSSLEx2()...");
 
-	if (StartSSLEx2(s, wt->GateCert, wt->GateKey, true, 0, NULL, ssl_additional_certs_array, num_certs_array_items, NULL) == false)
+	if (StartSSLEx2(s, wt->GateCert, wt->GateKey, true, 0, NULL, ssl_additional_certs_array, num_certs_array_items, NULL, false) == false)
 	{
 		WtLogEx(wt, log_prefix, "StartSSLEx2() error. Connection will be disconnected.");
 		Debug("StartSSL Failed.\n");

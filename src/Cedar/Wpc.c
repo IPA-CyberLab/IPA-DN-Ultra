@@ -218,7 +218,7 @@ CERTS_AND_KEY* DownloadCertsAndKeyFromCertServer(CERT_SERVER_CLIENT_PARAM* param
 	certs_list = BufToXList(certs_buf);
 	key = BufToK(key_buf, true, true, NULL);
 
-	ret = NewCertsAndKeyFromObjects(certs_list, key);
+	ret = NewCertsAndKeyFromObjects(certs_list, key, false);
 
 L_CLEANUP:
 	FreeBuf(certs_buf);
