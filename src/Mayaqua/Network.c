@@ -13711,7 +13711,7 @@ bool AddChainSslCert(struct ssl_st *ssl, X *x)
 		return false;
 	}
 
-	SSL_add1_chain_cert(ssl, x);
+	SSL_add1_chain_cert(ssl, x->x509);
 
 	return true;
 }
@@ -13767,17 +13767,23 @@ int Sni_Callback_ForTlsServerCertSelection(SSL* ssl, int* al, void* arg)
 
 	char *sni_recv_hostname = (char* )SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
 	if (sni_recv_hostname == NULL) sni_recv_hostname = "";
-	//Print("*** SNI: %s\n", sni_recv_hostname);
+	Debug("*** SNI: %s\n", sni_recv_hostname);
 
 	CERTS_AND_KEY* use_me = NULL;
+	CERTS_AND_KEY* use_me_default = NULL;
 
 	UINT i;
 	for (i = 0;i < LIST_NUM(settings->CertsAndKeyList);i++)
 	{
 		CERTS_AND_KEY* c = LIST_DATA(settings->CertsAndKeyList, i);
 
-		if (c != NULL && c->DetermineUseCallback != NULL)
+		if (c != NULL && c->HasValidPrivateKey && c->DetermineUseCallback != NULL)
 		{
+			if (use_me_default == NULL)
+			{
+				use_me_default = c;
+			}
+
 			if (c->DetermineUseCallback(sni_recv_hostname, settings->CertsAndKeyCbParam))
 			{
 				use_me = c;
@@ -13788,10 +13794,7 @@ int Sni_Callback_ForTlsServerCertSelection(SSL* ssl, int* al, void* arg)
 
 	if (use_me == NULL)
 	{
-		if (LIST_NUM(settings->CertsAndKeyList) >= 1)
-		{
-			use_me = LIST_DATA(settings->CertsAndKeyList, 0);
-		}
+		use_me = use_me_default;
 	}
 
 	X* x = NULL;
@@ -13943,6 +13946,8 @@ SSL_CTX_SHARED* NewSslCtxSharedInternal(SSL_CTX_SHARED_SETTINGS* settings)
 	ret->SettingsHash = CalcSslCtlSharedSettingsHash(ret->Settings);
 	ret->SslCtx = ssl_ctx;
 
+	Debug("SSL_CTX New: %p\n", ret);
+
 	return ret;
 }
 
@@ -14028,7 +14033,7 @@ void ReleaseSslCtxShared(SSL_CTX_SHARED* s)
 		return;
 	}
 
-	if (Release(s->Ref))
+	if (Release(s->Ref) == 0)
 	{
 		CleanupSslCtxShared(s);
 	}
@@ -14040,6 +14045,8 @@ void CleanupSslCtxShared(SSL_CTX_SHARED* s)
 	{
 		return;
 	}
+
+	Debug("SSL_CTX Free: %p\n", s);
 
 	FreeSSLCtx(s->SslCtx);
 
@@ -14160,32 +14167,35 @@ bool StartSSLEx2(SOCK* sock, X* x, K* priv, bool client_tls, UINT ssl_timeout, c
 		}
 	}
 
+	LIST* o = NewList(NULL);
+
 	if (settings2.IsClient == false && certs_and_key_lists != NULL && num_certs_and_key_lists >= 1)
 	{
-		LIST* o = NewList(NULL);
 		UINT i;
 		for (i = 0;i < num_certs_and_key_lists;i++)
 		{
-			Add(o, certs_and_key_lists[i]);
+			CERTS_AND_KEY* ck = certs_and_key_lists[i];
+			if (ck != NULL)
+			{
+				AddRef(ck->Ref);
+				Add(o, ck);
+			}
 		}
-
-		settings = NewSslCtxSharedSettings(o, certs_and_key_cb_param, &settings2);
-
-		FreeCertsAndKeyList(o);
 	}
-	else
+
+	if (settings2.IsClient == false)
 	{
-		LIST* o = NewList(NULL);
-		if (settings2.IsClient == false)
+		if (x != NULL && priv != NULL)
 		{
 			CERTS_AND_KEY* ck = NewCertsAndKeyFromObjectSingle(x, priv);
+			ck->DetermineUseCallback = CertsAndKeyAlwaysUseCallback;
 			Add(o, ck);
 		}
-
-		settings = NewSslCtxSharedSettings(o, NULL, &settings2);
-
-		FreeCertsAndKeyList(o);
 	}
+
+	settings = NewSslCtxSharedSettings(o, certs_and_key_cb_param, &settings2);
+
+	FreeCertsAndKeyList(o);
 
 	bool ret = StartSSLEx3(sock, ssl_timeout, sni_hostname, settings);
 

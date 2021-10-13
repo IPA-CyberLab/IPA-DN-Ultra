@@ -238,6 +238,28 @@ void FreeXList(LIST* o)
 	ReleaseList(o);
 }
 
+bool CheckCertsAndKey(CERTS_AND_KEY* c)
+{
+	if (c == NULL)
+	{
+		return false;
+	}
+	if (LIST_NUM(c->CertList) == 0)
+	{
+		return false;
+	}
+
+	X* x = LIST_DATA(c->CertList, 0);
+	K* k = c->Key;
+
+	return CheckXandK(x, k);
+}
+
+bool CertsAndKeyAlwaysUseCallback(char* sni_name, void* param)
+{
+	return true;
+}
+
 CERTS_AND_KEY* CloneCertsAndKey(CERTS_AND_KEY* c)
 {
 	if (c == NULL)
@@ -376,7 +398,7 @@ UINT64 CalcCertsAndKeyHashCache(CERTS_AND_KEY* c)
 	return ret;
 }
 
-void UpdateCertsAndKeyHashCache(CERTS_AND_KEY* c)
+void UpdateCertsAndKeyHashCacheAndCheckedState(CERTS_AND_KEY* c)
 {
 	if (c == NULL)
 	{
@@ -384,6 +406,7 @@ void UpdateCertsAndKeyHashCache(CERTS_AND_KEY* c)
 	}
 
 	c->HashCache = CalcCertsAndKeyHashCache(c);
+	c->HasValidPrivateKey = CheckCertsAndKey(c);
 }
 
 CERTS_AND_KEY* NewCertsAndKeyFromDir(wchar_t* dir_name)
@@ -442,7 +465,7 @@ CERTS_AND_KEY* NewCertsAndKeyFromDir(wchar_t* dir_name)
 
 	FreeBuf(key_buf);
 
-	UpdateCertsAndKeyHashCache(ret);
+	UpdateCertsAndKeyHashCacheAndCheckedState(ret);
 
 	return ret;
 
@@ -585,7 +608,7 @@ CERTS_AND_KEY* NewCertsAndKeyFromObjects(LIST* cert_list, K* key)
 		Add(ret->CertList, CloneX(x));
 	}
 
-	UpdateCertsAndKeyHashCache(ret);
+	UpdateCertsAndKeyHashCacheAndCheckedState(ret);
 
 	return ret;
 
@@ -622,7 +645,7 @@ CERTS_AND_KEY* NewCertsAndKeyFromMemory(LIST* cert_buf_list, BUF* key_buf)
 		Add(ret->CertList, x);
 	}
 
-	UpdateCertsAndKeyHashCache(ret);
+	UpdateCertsAndKeyHashCacheAndCheckedState(ret);
 
 	return ret;
 

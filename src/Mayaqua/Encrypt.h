@@ -357,6 +357,7 @@ struct CERTS_AND_KEY
 	LIST* CertList;
 	K* Key;
 	UINT64 HashCache;
+	bool HasValidPrivateKey;
 
 	bool (*DetermineUseCallback)(char*, void*);
 };
@@ -403,10 +404,12 @@ void CleanupCertsAndKey(CERTS_AND_KEY* c);
 CERTS_AND_KEY* CloneCertsAndKey(CERTS_AND_KEY* c);
 void FreeCertsAndKeyList(LIST* o);
 LIST* CloneCertsAndKeyList(LIST* o);
-void UpdateCertsAndKeyHashCache(CERTS_AND_KEY* c);
+void UpdateCertsAndKeyHashCacheAndCheckedState(CERTS_AND_KEY* c);
 UINT64 CalcCertsAndKeyHashCache(CERTS_AND_KEY* c);
 UINT64 GetCertsAndKeyHash(CERTS_AND_KEY* c);
 UINT64 GetCertsAndKeyListHash(LIST* o);
+bool CheckCertsAndKey(CERTS_AND_KEY* c);
+bool CertsAndKeyAlwaysUseCallback(char* sni_name, void* param);
 
 LIST* BufToXList(BUF* b);
 void FreeXList(LIST* o);
