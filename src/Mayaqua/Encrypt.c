@@ -285,11 +285,11 @@ UINT64 GetCertsAndKeyListHash(LIST* o)
 	{
 		CERTS_AND_KEY* c = LIST_DATA(o, i);
 
-		UINT64 hash = CalcCertsAndKeyHashCache(c);
+		UINT64 hash = GetCertsAndKeyHash(c);
 		
 		ret += hash;
 
-		ret *= 0x61C8864680B583EBULL; // From https://github.com/torvalds/linux/blob/88c5083442454e5e8a505b11fa16f32d2879651e/include/linux/hash.h
+		ret *= GOLDEN_PRIME_NUMBER;
 	}
 
 	if (ret == 0) ret = 1;
@@ -584,6 +584,7 @@ CERTS_AND_KEY* NewCertsAndKeyFromObjectSingle(X* cert, K* key, bool fast)
 
 CERTS_AND_KEY* NewCertsAndKeyFromObjects(LIST* cert_list, K* key, bool fast)
 {
+	UINT64 fast_hash = 1;
 	CERTS_AND_KEY* ret = NULL;
 	if (cert_list == NULL || LIST_NUM(cert_list) == 0 || key == NULL)
 	{
@@ -603,6 +604,9 @@ CERTS_AND_KEY* NewCertsAndKeyFromObjects(LIST* cert_list, K* key, bool fast)
 	else
 	{
 		ret->Key = CloneKFast(key);
+
+		fast_hash += (UINT64)key;
+		fast_hash *= GOLDEN_PRIME_NUMBER;
 	}
 
 	if (ret->Key == NULL) goto L_ERROR;
@@ -622,12 +626,22 @@ CERTS_AND_KEY* NewCertsAndKeyFromObjects(LIST* cert_list, K* key, bool fast)
 		else
 		{
 			clone_x = CloneXFast(x);
+			fast_hash += (UINT64)x;
+			fast_hash *= GOLDEN_PRIME_NUMBER;
 		}
 
 		Add(ret->CertList, clone_x);
 	}
 
-	UpdateCertsAndKeyHashCacheAndCheckedState(ret);
+	if (fast == false)
+	{
+		UpdateCertsAndKeyHashCacheAndCheckedState(ret);
+	}
+	else
+	{
+		ret->HashCache = fast_hash;
+		ret->HasValidPrivateKey = true;
+	}
 
 	return ret;
 

@@ -204,6 +204,8 @@ typedef int (COMPARE)(void *p1, void *p2);
 // Zero clear
 #define CLEAN		{ 0 }
 
+#define GOLDEN_PRIME_NUMBER		(0x61C8864680B583EBULL) // From https://github.com/torvalds/linux/blob/88c5083442454e5e8a505b11fa16f32d2879651e/include/linux/hash.h
+
 // 
 // Type declaration
 // 

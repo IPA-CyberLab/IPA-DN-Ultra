@@ -14161,7 +14161,7 @@ SSL_CTX_SHARED_SETTINGS* CloneSslCtxSharedSettings(SSL_CTX_SHARED_SETTINGS* s)
 	{
 		return NULL;
 	}
-
+	
 	return NewSslCtxSharedSettings(s->CertsAndKeyList, s->CertsAndKeyCbParam, &s->Settings2);
 }
 
