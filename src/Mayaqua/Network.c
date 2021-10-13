@@ -13611,23 +13611,19 @@ void SetWantToUseCipher(SOCK *sock, char *name)
 	sock->WaitToUseCipher = CopyStr(tmp);
 }
 
-// Add all the chain certificates in the chain_certs directory
-void AddChainSslCertOnDirectory(struct ssl_ctx_st *ctx)
+LIST* GetChainSslCertListOnDirectory()
 {
 	wchar_t dirname[MAX_SIZE];
 	wchar_t exedir[MAX_SIZE];
 	wchar_t txtname[MAX_SIZE];
-	DIRLIST *dir;
-	LIST *o;
+	DIRLIST* dir;
+	LIST* o;
 	UINT i;
-
-	// Validate arguments
-	if (ctx == NULL)
-	{
-		return;
-	}
+	LIST* ret;
 
 	o = NewListFast(NULL);
+
+	ret = NewListFast(NULL);
 
 	GetExeDirW(exedir, sizeof(exedir));
 
@@ -13648,12 +13644,12 @@ void AddChainSslCertOnDirectory(struct ssl_ctx_st *ctx)
 	{
 		for (i = 0;i < dir->NumFiles;i++)
 		{
-			DIRENT *e = dir->File[i];
+			DIRENT* e = dir->File[i];
 
 			if (e->Folder == false)
 			{
 				wchar_t tmp[MAX_SIZE];
-				X *x;
+				X* x;
 
 				CombinePathW(tmp, sizeof(tmp), dirname, e->FileNameW);
 
@@ -13669,7 +13665,7 @@ void AddChainSslCertOnDirectory(struct ssl_ctx_st *ctx)
 
 					for (j = 0;j < LIST_NUM(o);j++)
 					{
-						UCHAR *hash2 = LIST_DATA(o, j);
+						UCHAR* hash2 = LIST_DATA(o, j);
 
 						if (Cmp(hash, hash2, SHA1_SIZE) == 0)
 						{
@@ -13679,12 +13675,14 @@ void AddChainSslCertOnDirectory(struct ssl_ctx_st *ctx)
 
 					if (exists == false)
 					{
-						AddChainSslCtxCert(ctx, x);
+						Add(ret, x);
 
 						Add(o, Clone(hash, SHA1_SIZE));
 					}
-
-					FreeX(x);
+					else
+					{
+						FreeX(x);
+					}
 				}
 			}
 		}
@@ -13694,12 +13692,38 @@ void AddChainSslCertOnDirectory(struct ssl_ctx_st *ctx)
 
 	for (i = 0;i < LIST_NUM(o);i++)
 	{
-		UCHAR *hash = LIST_DATA(o, i);
+		UCHAR* hash = LIST_DATA(o, i);
 
 		Free(hash);
 	}
 
 	ReleaseList(o);
+
+	return ret;
+}
+
+// Add all the chain certificates in the chain_certs directory
+void AddChainSslCertOnDirectory(struct ssl_ctx_st *ctx)
+{
+	LIST* cert_list = NULL;
+
+	// Validate arguments
+	if (ctx == NULL)
+	{
+		return;
+	}
+
+	cert_list = GetChainSslCertListOnDirectory();
+
+	UINT i;
+	for (i = 0;i < LIST_NUM(cert_list);i++)
+	{
+		X* x = LIST_DATA(cert_list, i);
+
+		AddChainSslCtxCert(ctx, x);
+	}
+
+	FreeXList(cert_list);
 }
 
 // Add the chain certificate
@@ -13816,6 +13840,19 @@ int Sni_Callback_ForTlsServerCertSelection(SSL* ssl, int* al, void* arg)
 
 		x = LIST_DATA(use_me->CertList, 0);
 		k = use_me->Key;
+	}
+
+	if (ssl_ctx_shared->AdditionalCertificateList != NULL)
+	{
+		UINT i;
+		for (i = 0;i < LIST_NUM(ssl_ctx_shared->AdditionalCertificateList);i++)
+		{
+			X* additional_x = LIST_DATA(ssl_ctx_shared->AdditionalCertificateList, i);
+			if (ssl_ctx_shared != NULL)
+			{
+				AddChainSslCert(ssl, additional_x);
+			}
+		}
 	}
 
 	if (x != NULL && k != NULL)
@@ -13946,6 +13983,23 @@ SSL_CTX_SHARED* NewSslCtxSharedInternal(SSL_CTX_SHARED_SETTINGS* settings)
 	ret->SettingsHash = CalcSslCtlSharedSettingsHash(ret->Settings);
 	ret->SslCtx = ssl_ctx;
 
+	if (ret->Settings->Settings2.AddChainSslCertOnDirectory)
+	{
+		ret->AdditionalCertificateList = GetChainSslCertListOnDirectory();
+	}
+
+	UINT lifetime = ret->Settings->Settings2.LifeTime;
+
+	if (lifetime == 0)
+	{
+		lifetime = SSL_CTX_SHARED_LIFETIME_DEFAULT_MSECS;
+	}
+
+	if (lifetime != INFINITE)
+	{
+		ret->Expires = Tick64() + lifetime;
+	}
+
 	Debug("SSL_CTX New: %p\n", ret);
 
 	return ret;
@@ -13966,9 +14020,42 @@ SSL_CTX_SHARED* GetOrCreateSslCtxShared(LIST* o, SSL_CTX_SHARED_SETTINGS* settin
 
 	UINT64 settings_hash = CalcSslCtlSharedSettingsHash(settings);
 
+	UINT64 now = Tick64();
+
 	LockList(o);
 	{
 		UINT i;
+
+		LIST* delete_list = NULL;
+
+		for (i = 0; i < LIST_NUM(o);i++)
+		{
+			SSL_CTX_SHARED* s = LIST_DATA(o, i);
+
+			if (s->Expires != 0 && now > s->Expires)
+			{
+				if (delete_list == NULL)
+				{
+					delete_list = NewListFast(NULL);
+				}
+
+				Add(delete_list, s);
+			}
+		}
+
+		if (delete_list != NULL)
+		{
+			for (i = 0;i < LIST_NUM(delete_list);i++)
+			{
+				SSL_CTX_SHARED* s = LIST_DATA(delete_list, i);
+
+				ReleaseSslCtxShared(s);
+
+				Delete(o, s);
+			}
+
+			ReleaseList(delete_list);
+		}
 
 		for (i = 0; i < LIST_NUM(o);i++)
 		{
@@ -14051,6 +14138,8 @@ void CleanupSslCtxShared(SSL_CTX_SHARED* s)
 	FreeSSLCtx(s->SslCtx);
 
 	FreeSslCtxSharedSettings(s->Settings);
+
+	FreeXList(s->AdditionalCertificateList);
 
 	Free(s);
 }
@@ -14165,6 +14254,8 @@ bool StartSSLEx2(SOCK* sock, X* x, K* priv, bool client_tls, UINT ssl_timeout, c
 		{
 			settings2.Server_NoTLSv1_3;
 		}
+
+		settings2.AddChainSslCertOnDirectory = true;
 	}
 
 	LIST* o = NewList(NULL);

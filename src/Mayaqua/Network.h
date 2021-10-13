@@ -998,11 +998,14 @@ struct HTTP_HEADER
 #define	HTTP_PACK_MAX_SIZE			65536
 
 
+#define SSL_CTX_SHARED_LIFETIME_DEFAULT_MSECS	(3 * 1000)
+
 struct SSL_CTX_SHARED
 {
 	REF* Ref;
 	SSL_CTX* SslCtx;
 	SSL_CTX_SHARED_SETTINGS* Settings;
+	LIST* AdditionalCertificateList;
 	UINT64 Expires;
 	UINT64 SettingsHash;
 };
@@ -1017,6 +1020,7 @@ struct SSL_CTX_SHARED_SETTINGS2
 	bool Server_NoTLSv1_3;
 	bool Client_NoSSLv3;
 	bool AddChainSslCertOnDirectory;
+	UINT LifeTime;
 };
 
 struct SSL_CTX_SHARED_SETTINGS
@@ -1366,6 +1370,7 @@ bool StartSSLEx3(SOCK* sock, UINT ssl_timeout, char* sni_hostname, SSL_CTX_SHARE
 bool AddChainSslCert(struct ssl_st *ssl, X *x);
 bool AddChainSslCtxCert(struct ssl_ctx_st* ctx, X* x);
 void AddChainSslCertOnDirectory(struct ssl_ctx_st *ctx);
+LIST* GetChainSslCertListOnDirectory();
 bool SendAll(SOCK *sock, void *data, UINT size, bool secure);
 void SendAdd(SOCK *sock, void *data, UINT size);
 bool SendNow(SOCK *sock, int secure);
