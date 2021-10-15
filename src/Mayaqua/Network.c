@@ -13957,7 +13957,7 @@ SSL_CTX_SHARED* NewSslCtxSharedInternal(SSL_CTX_SHARED_SETTINGS* settings)
 			SSL_CTX_set_options(ssl_ctx, SSL_OP_NO_TLSv1_2);
 #endif	// SSL_OP_NO_TLSv1_2
 		}
-
+		
 		if (settings->Settings2.Server_NoTLSv1_3)
 		{
 #ifdef	SSL_OP_NO_TLSv1_3
