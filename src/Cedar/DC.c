@@ -1156,12 +1156,21 @@ UINT DcGetMstscArguments(DC_SESSION *s, wchar_t *mstsc_exe, char *arg, UINT arg_
 		return ERR_DESK_FILE_IS_NOT_MSTSC;
 	}
 
-	if (IsFilledStr(s->HostnameIPv6) && StrCmpi(s->HostnameIPv6, "[::1]") != 0)
+	if (IsFilledStr(s->HostnameIPv4) && StrCmpi(s->HostnameIPv4, "127.0.0.1") != 0)
 	{
+		// 普通の ISP (IPv4 が普通に利用できる環境)
+		Format(tmp, sizeof(tmp), "/v:%s:%u", s->HostnameIPv4, s->ListenerIPv4->LocalPort);
+	}
+	else if (IsFilledStr(s->HostnameIPv6) && StrCmpi(s->HostnameIPv6, "[::1]") != 0)
+	{
+		// DNS64, NAT64 配下の IPv6 SS 環境 (ドコモの IPv6 SS サービス等)
+		// 注: Nuro 光の v6 ルータの DNS にバグがあるものがあり IPv6 only の FQDN のアドレス解決が
+		//     できない場合があるので、IPv4 を優先する。
 		Format(tmp, sizeof(tmp), "/v:%s:%u", s->HostnameIPv6, s->ListenerIPv6->LocalPort);
 	}
 	else
 	{
+		// DNS が利用できない場合は最終手段として 127.0.0.1 を利用 (127.0.0.1 は必ず s->HostnameIPv4 に入っているはず)
 		Format(tmp, sizeof(tmp), "/v:%s:%u", s->HostnameIPv4, s->ListenerIPv4->LocalPort);
 	}
 
