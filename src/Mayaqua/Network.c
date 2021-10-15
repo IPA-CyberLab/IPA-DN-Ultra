@@ -13791,7 +13791,7 @@ int Sni_Callback_ForTlsServerCertSelection(SSL* ssl, int* al, void* arg)
 
 	char *sni_recv_hostname = (char* )SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
 	if (sni_recv_hostname == NULL) sni_recv_hostname = "";
-	Debug("*** SNI: %s\n", sni_recv_hostname);
+	//Debug("*** SNI: %s\n", sni_recv_hostname);
 
 	CERTS_AND_KEY* use_me = NULL;
 	CERTS_AND_KEY* use_me_default = NULL;
@@ -13866,6 +13866,19 @@ int Sni_Callback_ForTlsServerCertSelection(SSL* ssl, int* al, void* arg)
 	}
 
 	return SSL_CLIENT_HELLO_SUCCESS;
+}
+int Sni_Callback_ForTlsServerCertSelection_ServerNameCallback(SSL* ssl, int* al, void* arg)
+{
+	int ret = Sni_Callback_ForTlsServerCertSelection(ssl, al, arg);
+
+	if (ret == SSL_CLIENT_HELLO_ERROR)
+	{
+		return SSL_TLSEXT_ERR_ALERT_FATAL;
+	}
+	else
+	{
+		return SSL_TLSEXT_ERR_OK;
+	}
 }
 
 SSL_CTX_SHARED* NewSslCtxSharedInternal(SSL_CTX_SHARED_SETTINGS* settings)
@@ -13953,7 +13966,7 @@ SSL_CTX_SHARED* NewSslCtxSharedInternal(SSL_CTX_SHARED_SETTINGS* settings)
 		}
 
 		SSL_CTX_set_client_hello_cb(ssl_ctx, Sni_Callback_ForTlsServerCertSelection, ret);
-		SSL_CTX_set_tlsext_servername_callback(ssl_ctx, Sni_Callback_ForTlsServerCertSelection);
+		SSL_CTX_set_tlsext_servername_callback(ssl_ctx, Sni_Callback_ForTlsServerCertSelection_ServerNameCallback);
 		SSL_CTX_set_tlsext_servername_arg(ssl_ctx, ret);
 	}
 	else
