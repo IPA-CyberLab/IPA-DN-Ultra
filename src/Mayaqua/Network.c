@@ -14027,7 +14027,7 @@ SSL_CTX_SHARED* GetOrCreateSslCtxShared(LIST* o, SSL_CTX_SHARED_SETTINGS* settin
 		UINT i;
 
 		LIST* delete_list = NULL;
-
+		
 		for (i = 0; i < LIST_NUM(o);i++)
 		{
 			SSL_CTX_SHARED* s = LIST_DATA(o, i);
