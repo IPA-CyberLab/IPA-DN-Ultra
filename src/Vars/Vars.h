@@ -4,6 +4,7 @@
 // https://www.apache.org/licenses/LICENSE-2.0
 // 
 // Copyright (c) IPA CyberLab of Industrial Cyber Security Center.
+// Copyright (c) NTT-East Impossible Telecom Mission Group.
 // Copyright (c) Daiyuu Nobori.
 // Copyright (c) SoftEther VPN Project, University of Tsukuba, Japan.
 // Copyright (c) SoftEther Corporation.
