@@ -1,4 +1,4 @@
-#include <Windows.Foundation.h>
+﻿#include <Windows.Foundation.h>
 #include <Windows.System.Threading.h>
 #include <Windows.ApplicationModel.DataTransfer.h>
 #include <wrl/event.h>
