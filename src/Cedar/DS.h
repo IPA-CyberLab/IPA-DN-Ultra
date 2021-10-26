@@ -139,6 +139,7 @@
 #define DS_CAPS_RUDP_VERY_LIMITED	4			// URDP かつ大変制限が厳しい
 #define DS_CAPS_WIN_RDP_ENABLED		8			// Windows RDP も一応有効である
 #define DS_CAPS_GUACD_SUPPORTED		16			// Guacd がサポートされている
+#define DS_CAPS_AUDIN_SUPPORTED		32			// マイクの共有がサポートされている
 
 // Guacd 関係
 #define DS_GUACD_STARTUP_TIMEOUT	(60 * 1000)		// Guacd プロセスの起動タイムアウト

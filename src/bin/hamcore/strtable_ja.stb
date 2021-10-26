@@ -618,10 +618,10 @@ TCPOPT_NOT_ADMIN		TCP/IP 通信設定最適化ユーティリティは、管理�
 
 
 # Windows Vista / Windows 7 / Windows 8 用最適化関係
-VISTA_MMCSS_MSG			Windows Vista / Windows 7 / Windows 8 / Windows 10 で VPN 通信を経由してマルチメディアファイル (ビデオやオーディオ、ストリーミングなど) を再生するための最適化をしますか?
-VISTA_MMCSS_MSG_2		すでに Windows Vista / Windows 7 / Windows 8 / Windows 10 で VPN 通信を経由してマルチメディアファイル (ビデオやオーディオ、ストリーミングなど) を再生するための最適化の設定が行われています。\r\n最適化設定を削除して、元に戻しますか?
+VISTA_MMCSS_MSG			Windows Vista / Windows 7 / Windows 8 / Windows 10 / Windows 11 で VPN 通信を経由してマルチメディアファイル (ビデオやオーディオ、ストリーミングなど) を再生するための最適化をしますか?
+VISTA_MMCSS_MSG_2		すでに Windows Vista / Windows 7 / Windows 8 / Windows 10 / Windows 11 で VPN 通信を経由してマルチメディアファイル (ビデオやオーディオ、ストリーミングなど) を再生するための最適化の設定が行われています。\r\n最適化設定を削除して、元に戻しますか?
 VISTA_MMCSS_MSG_3		現在の環境では、最適化の機能は使用できません。
-VISTA_MMCSS_MSG_4		この機能は、Administrators 権限でプログラムを起動している際にのみ使用できます。\r\nWindows Vista / Windows 7 / Windows 8 / Windows 10 の場合は、[管理者として実行] 機能を使用してプログラムを実行してください。
+VISTA_MMCSS_MSG_4		この機能は、Administrators 権限でプログラムを起動している際にのみ使用できます。\r\nWindows Vista / Windows 7 / Windows 8 / Windows 10 / Windows 11 の場合は、[管理者として実行] 機能を使用してプログラムを実行してください。
 VISTA_MMCSS_MSG_5		最適化設定が完了しました。
 VISTA_MMCSS_MSG_6		最適化設定は削除されました。
 

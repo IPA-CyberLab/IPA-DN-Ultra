@@ -2080,6 +2080,9 @@ void DsServerMain(DS *ds, SOCKIO *sock)
 	// Guacd Supported ver
 	ds_caps |= DS_CAPS_GUACD_SUPPORTED;
 
+	// Mic sharing supported ver
+	ds_caps |= DS_CAPS_AUDIN_SUPPORTED;
+
 	if (has_urdp2_client)
 	{
 		ds_caps |= DS_CAPS_SUPPORT_URDP2;
