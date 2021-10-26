@@ -7,9 +7,12 @@
 この更新履歴ファイルの最新版は、[https://github.com/IPA-CyberLab/IPA-DN-Ultra/](https://github.com/IPA-CyberLab/IPA-DN-Ultra/) を参照してください。
 
 
-このライブラリは未完成です。まだ使用することはできません。2021/08/04 登
+このライブラリは未完成です。2021/10/27 登
 
-## [Current Version] beta8preview5
+## [Current Version] beta8preview6
+
+## beta8preview6
+1. HTML5 版 Web クライアントにおいて、日本語キーボードで日本語かな入力を行なう際に、ひながなキーの「を」文字が入力できない問題を解決しました。なお、ひらがなキーの「ろ」文字を入力する場合は、Shift + 「ろ」を押す必要があります。
 
 ## beta8preview5
 1. HTML5 版 Web クライアントから、クライアントのマイクの共有が可能になりました。これにより、サーバー側 PC 上で動作している Teams や Zoom, Skype, WebEx 等のテレビ会議システムに、クライアント PC のマイクを接続することが可能になります。この機能を有効にするには、サーバーアプリケーションのバージョンを beta8preview5 以降にする必要があります。また、Web ブラウザにおけるマイクの共有機能を有効にする必要があります。Web ブラウザによっては、この機能は正常に使用できない場合があります。Google Chrome の利用を推奨します。
