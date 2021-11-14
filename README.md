@@ -7,12 +7,14 @@
 この更新履歴ファイルの最新版は、[https://github.com/IPA-CyberLab/IPA-DN-Ultra/](https://github.com/IPA-CyberLab/IPA-DN-Ultra/) を参照してください。
 
 
-このライブラリは未完成です。2021/10/27 登
+** BETA VERSION UNDER DEVELOPMENT, INCOMPLETE AND BUGGY. USE AT YOUR OWN RISK. Ver 1.0 is scheduled to be released during November 2021. We strongly recommend that you wait until Ver 1.0 is released. ** - This Git repository contains the source code and documentation for the open source version of the Thin Telework System which is under development. 2021-10-31 by Daiyuu Nobori.
+
 
 ## [Current Version] beta8preview6
 
 ## beta8preview6
 1. HTML5 版 Web クライアントにおいて、日本語キーボードで日本語かな入力を行なう際に、ひながなキーの「を」文字が入力できない問題を解決しました。なお、ひらがなキーの「ろ」文字を入力する場合は、Shift + 「ろ」を押す必要があります。
+1. 「ユーザーモード リモートデスクトップ」モードにおける重要な制限事項について: 一部のキー入力や特権を伴うキー操作ができない場合があります。日本語入力においてかな入力で一部の文字 (「を」、「ろ」等) が入力できない場合があります。「ユーザーモード リモートデスクトップ」モードでは、ローマ字入力をお使いください。
 
 ## beta8preview5
 1. HTML5 版 Web クライアントから、クライアントのマイクの共有が可能になりました。これにより、サーバー側 PC 上で動作している Teams や Zoom, Skype, WebEx 等のテレビ会議システムに、クライアント PC のマイクを接続することが可能になります。この機能を有効にするには、サーバーアプリケーションのバージョンを beta8preview5 以降にする必要があります。また、Web ブラウザにおけるマイクの共有機能を有効にする必要があります。Web ブラウザによっては、この機能は正常に使用できない場合があります。Google Chrome の利用を推奨します。
