@@ -3104,7 +3104,17 @@ bool SystemToAsn1Time(void *asn1_time, SYSTEMTIME *s)
 	}
 	StrCpy((char *)t->data, t->length, tmp);
 	t->length = StrLen(tmp);
-	t->type = V_ASN1_UTCTIME;
+
+	if (t->length == 15)
+	{
+		// YYYYMMDDHHMMSSZ
+		t->type = V_ASN1_GENERALIZEDTIME;
+	}
+	else
+	{
+		// YYMMDDHHMMSSZ
+		t->type = V_ASN1_UTCTIME;
+	}
 
 	return true;
 }
@@ -3118,9 +3128,20 @@ bool SystemToStr(char *str, UINT size, SYSTEMTIME *s)
 		return false;
 	}
 
-	Format(str, size, "%02u%02u%02u%02u%02u%02uZ",
-		s->wYear % 100, s->wMonth, s->wDay,
-		s->wHour, s->wMinute, s->wSecond);
+	if (s->wYear <= 2049)
+	{
+		// 2000 to 2049: Use YYMMDDHHMMSSZ
+		Format(str, size, "%02u%02u%02u%02u%02u%02uZ",
+			s->wYear % 100, s->wMonth, s->wDay,
+			s->wHour, s->wMinute, s->wSecond);
+	}
+	else
+	{
+		// 2050 to 9999: Use YYYYMMDDHHMMSSZ
+		Format(str, size, "%04u%02u%02u%02u%02u%02uZ",
+			s->wYear, s->wMonth, s->wDay,
+			s->wHour, s->wMinute, s->wSecond);
+	}
 
 	return true;
 }
@@ -3156,11 +3177,6 @@ bool Asn1TimeToSystem(SYSTEMTIME *s, void *asn1_time)
 	if (StrToSystem(s, (char *)t->data) == false)
 	{
 		return false;
-	}
-
-	if (t->type == V_ASN1_GENERALIZEDTIME)
-	{
-		LocalToSystem(s, s);
 	}
 
 	return true;
