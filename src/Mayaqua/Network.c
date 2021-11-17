@@ -13916,10 +13916,6 @@ SSL_CTX_SHARED* NewSslCtxSharedInternal(SSL_CTX_SHARED_SETTINGS* settings)
 	SSL_CTX_set_options(ssl_ctx, SSL_OP_NO_RENEGOTIATION);
 #endif // SSL_OP_NO_RENEGOTIATION
 
-#ifdef SSL_OP_NO_TICKET
-	SSL_CTX_set_options(ssl_ctx, SSL_OP_NO_TICKET);
-#endif // SSL_OP_NO_TICKET
-
 	SSL_CTX_set_tmp_dh_callback(ssl_ctx, TmpDhCallback);
 
 #ifdef	SSL_CTX_set_ecdh_auto
