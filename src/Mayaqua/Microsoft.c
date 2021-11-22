@@ -307,6 +307,15 @@ void MsTestFunc1(HWND hWnd)
 	}
 }
 
+// 「高速スタートアップ」が有効になっているかどうか検査
+bool MsIsFastStartupEnabled()
+{
+	return INT_TO_BOOL(MsRegReadIntEx2(REG_LOCAL_MACHINE, "SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Power",
+		"HiberbootEnabled",
+		false,
+		true));
+}
+
 // プロセスウォッチャーを常時動作させるかどうかの設定
 void MsSetProcessWatcherAlwaysFlag(MS_PROCESS_WATCHER* w, bool flag)
 {

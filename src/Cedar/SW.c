@@ -795,18 +795,21 @@ bool SwSfxExtractProcess(HWND hWnd, bool* hide_error_msg)
 			UniTrim(params);
 
 			// Language selection
-			if (UniInStrEx(current_params, L"/auto:1", false) == false)
+			if (Vars_ActivePatch_GetBool("ThinSetupShowLanguageSelectionDialog"))
 			{
-				UINT selected_language = SwSfwLanguageSelection(hWnd);
-				if (selected_language != SW_SFX_LANGUAGE_NONE)
+				if (UniInStrEx(current_params, L"/auto:1", false) == false)
 				{
-					char* save_lang_id = "en";
-					if (selected_language == SW_SFX_LANGUAGE_JAPANESE)
+					UINT selected_language = SwSfwLanguageSelection(hWnd);
+					if (selected_language != SW_SFX_LANGUAGE_NONE)
 					{
-						save_lang_id = "ja";
-					}
+						char* save_lang_id = "en";
+						if (selected_language == SW_SFX_LANGUAGE_JAPANESE)
+						{
+							save_lang_id = "ja";
+						}
 
-					MsRegWriteStrEx2(REG_CURRENT_USER, SW_REG_KEY, "Last User Language", save_lang_id, false, true);
+						MsRegWriteStrEx2(REG_CURRENT_USER, SW_REG_KEY, "Last User Language", save_lang_id, false, true);
+					}
 				}
 			}
 

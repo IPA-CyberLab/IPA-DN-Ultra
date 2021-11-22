@@ -1358,6 +1358,8 @@ void MsFreeProcessDiff(MS_PROCESS_DIFF* d);
 void MsTestFunc1(HWND hWnd);
 void MsTestFunc2();
 
+bool MsIsFastStartupEnabled();
+
 
 // Inner functions
 #ifdef	MICROSOFT_C
