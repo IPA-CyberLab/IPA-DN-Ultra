@@ -8043,6 +8043,8 @@ SW_NIC_UNINSTALL							SoftEther VPN Client の仮想 LAN カードが作成さ�
 SW_RUN_TEXT_THINSVR							$APPFULL_SERVER$ の初期設定を行ないます。
 SW_RUN_TEXT_THINCLIENT						$APPFULL_CLIENT$ を起動します。
 
+SW_WARN_FAST_STARTUP						Windows の「高速スタートアップ」機能が有効に設定されています。\r\n\r\n「高速スタートアップ」機能が有効な場合、副作用として、インストーラで本ソフトウェアをインストールしても、その後に Windows を再起動すると突然インストール済みソフトウェアが消えてしまう不具合が発生する場合があります。\r\n\r\nこれは Windows の不具合ですが、この現象が発生する場合、問題を解決するためには、Windows の「高速スタートアップ」機能を無効にする必要があります。\r\n\r\nWindows の「高速スタートアップ」機能は、コントロールパネルの電源設定から簡単に無効にできます。\r\n\r\nもし、本ソフトウェアをインストールした後に Windows を再起動すると本ソフトウェアが消えてしまう場合は、上記の方法をお試しください。\r\n\r\n
+
 # Do not translate this section !!!
 SW_TAG_USERNAME_ENGLISH						\ (User-Mode)
 SW_LINK_NAME_VPNSERVER_SVC					SoftEther VPN Server User-mode Service

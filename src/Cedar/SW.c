@@ -602,6 +602,7 @@ bool CALLBACK SfxModeLangDialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM l
 		{
 		case IDOK:
 		case IDCANCEL:
+		{
 			UINT ret = SW_SFX_LANGUAGE_ENGLISH;
 			if (IsChecked(hWnd, 1002))
 			{
@@ -609,6 +610,7 @@ bool CALLBACK SfxModeLangDialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM l
 			}
 			EndDialog(hWnd, ret);
 			break;
+		}
 		}
 		break;
 
@@ -5754,6 +5756,18 @@ UINT SwDir(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam, WIZARD* wizard, WI
 		sw->InstallLimitedMode = is_limited_mode;
 
 		sw->OnlyAutoSettingMode = skip_ver_check;
+
+		if (sw->IsSystemMode == false)
+		{
+			if (MsIsFastStartupEnabled())
+			{
+				// ユーザーモードの場合で Windows の高速スタートアップが ON の場合は警告を表示する
+				if (sw->Auto == false)
+				{
+					OnceMsgEx2(hWnd, sw->CurrentComponent->Title, _UU("SW_WARN_FAST_STARTUP"), false, ICO_DESKCLIENT, NULL, true);
+				}
+			}
+		}
 
 		if (Vars_ActivePatch_GetBool("ThinTelework_Installer_NetworkSelect") == false)
 		{
