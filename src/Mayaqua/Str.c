@@ -3523,6 +3523,22 @@ char *CopyFormat(char *fmt, ...)
 	return ret;
 }
 
+// Make format safe string
+void MakeFormatSafeString(char* str)
+{
+	if (str == NULL) return;
+	UINT i, len;
+
+	len = StrLen(str);
+	for (i = 0;i < len;i++)
+	{
+		if (str[i] == '%')
+		{
+			str[i] = '_';
+		}
+	}
+}
+
 // Format the string
 void Format(char *buf, UINT size, char *fmt, ...)
 {

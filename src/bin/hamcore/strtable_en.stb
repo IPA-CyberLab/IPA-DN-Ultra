@@ -8055,6 +8055,8 @@ SW_NIC_UNINSTALL							Virtual Network Adapters of SoftEther VPN Client have bee
 SW_RUN_TEXT_THINSVR							Start the $APPFULL_SERVER$ initial configuration program.
 SW_RUN_TEXT_THINCLIENT						Start the $APPFULL_CLIENT$ program.
 
+SW_WARN_FAST_STARTUP						The "Fast Startup" function of Windows is enabled.\r\n\r\nWhen the "Fast Startup" feature is enabled, there is a side effect that installed software may suddenly disappear after reboots Windows.\r\n\r\nThis is a Windows bug, but if this happens, you need to disable the "Fast Startup" feature of Windows in order to solve the problem.\r\n\r\nThe "Fast Startup" feature of Windows can be easily disabled from the Power Settings in the Control Panel.\r\n\r\nIf this software disappears when you reboot Windows after installing it, please try the above method.\r\n\r\n
+
 # --- Do not translate this section !!!  stay them in English !!! ---
 SW_TAG_USERNAME_ENGLISH						\ (User-Mode)
 SW_LINK_NAME_VPNSERVER_SVC					SoftEther VPN Server User-mode Service

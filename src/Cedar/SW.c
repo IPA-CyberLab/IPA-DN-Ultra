@@ -602,6 +602,7 @@ bool CALLBACK SfxModeLangDialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM l
 		{
 		case IDOK:
 		case IDCANCEL:
+		{
 			UINT ret = SW_SFX_LANGUAGE_ENGLISH;
 			if (IsChecked(hWnd, 1002))
 			{
@@ -609,6 +610,7 @@ bool CALLBACK SfxModeLangDialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM l
 			}
 			EndDialog(hWnd, ret);
 			break;
+		}
 		}
 		break;
 
@@ -795,18 +797,21 @@ bool SwSfxExtractProcess(HWND hWnd, bool* hide_error_msg)
 			UniTrim(params);
 
 			// Language selection
-			if (UniInStrEx(current_params, L"/auto:1", false) == false)
+			if (Vars_ActivePatch_GetBool("ThinSetupShowLanguageSelectionDialog"))
 			{
-				UINT selected_language = SwSfwLanguageSelection(hWnd);
-				if (selected_language != SW_SFX_LANGUAGE_NONE)
+				if (UniInStrEx(current_params, L"/auto:1", false) == false)
 				{
-					char* save_lang_id = "en";
-					if (selected_language == SW_SFX_LANGUAGE_JAPANESE)
+					UINT selected_language = SwSfwLanguageSelection(hWnd);
+					if (selected_language != SW_SFX_LANGUAGE_NONE)
 					{
-						save_lang_id = "ja";
-					}
+						char* save_lang_id = "en";
+						if (selected_language == SW_SFX_LANGUAGE_JAPANESE)
+						{
+							save_lang_id = "ja";
+						}
 
-					MsRegWriteStrEx2(REG_CURRENT_USER, SW_REG_KEY, "Last User Language", save_lang_id, false, true);
+						MsRegWriteStrEx2(REG_CURRENT_USER, SW_REG_KEY, "Last User Language", save_lang_id, false, true);
+					}
 				}
 			}
 
@@ -5751,6 +5756,18 @@ UINT SwDir(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam, WIZARD* wizard, WI
 		sw->InstallLimitedMode = is_limited_mode;
 
 		sw->OnlyAutoSettingMode = skip_ver_check;
+
+		if (sw->IsSystemMode == false)
+		{
+			if (MsIsFastStartupEnabled())
+			{
+				// ユーザーモードの場合で Windows の高速スタートアップが ON の場合は警告を表示する
+				if (sw->Auto == false)
+				{
+					OnceMsgEx2(hWnd, sw->CurrentComponent->Title, _UU("SW_WARN_FAST_STARTUP"), false, ICO_DESKCLIENT, NULL, true);
+				}
+			}
+		}
 
 		if (Vars_ActivePatch_GetBool("ThinTelework_Installer_NetworkSelect") == false)
 		{

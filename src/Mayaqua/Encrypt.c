@@ -5017,7 +5017,13 @@ void InitCryptLibrary()
 	CheckIfIntelAesNiSupportedInit();
 //	RAND_Init_For_SoftEther()
 	openssl_lock = NewLock();
+
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	OPENSSL_init_ssl(OPENSSL_INIT_ADD_ALL_CIPHERS | OPENSSL_INIT_ADD_ALL_DIGESTS | OPENSSL_INIT_NO_LOAD_CONFIG, NULL);
+#else
 	SSL_library_init();
+#endif
 	//OpenSSL_add_all_algorithms();
 	OpenSSL_add_all_ciphers();
 	OpenSSL_add_all_digests();

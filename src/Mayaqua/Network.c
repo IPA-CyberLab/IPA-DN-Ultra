@@ -13912,6 +13912,10 @@ SSL_CTX_SHARED* NewSslCtxSharedInternal(SSL_CTX_SHARED_SETTINGS* settings)
 	}
 #endif	// SSL_OP_CIPHER_SERVER_PREFERENCE
 
+#ifdef SSL_OP_NO_RENEGOTIATION
+	SSL_CTX_set_options(ssl_ctx, SSL_OP_NO_RENEGOTIATION);
+#endif // SSL_OP_NO_RENEGOTIATION
+
 	SSL_CTX_set_tmp_dh_callback(ssl_ctx, TmpDhCallback);
 
 #ifdef	SSL_CTX_set_ecdh_auto

@@ -98,6 +98,8 @@ void CertServerClientThreadProc(THREAD* thread, void* param)
 	c = (CERT_SERVER_CLIENT*)param;
 
 	Format(log_prefix, sizeof(log_prefix), "CertificateManager/%s", c->Param.ManagerLogName);
+	MakeFormatSafeString(log_prefix);
+
 	UINT num_retry = 0;
 
 	while (c->Halt == false)

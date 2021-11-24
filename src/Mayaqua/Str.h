@@ -110,6 +110,7 @@ int StrCmpi(char *str1, char *str2);
 void FormatArgs(char *buf, UINT size, char *fmt, va_list args);
 void Format(char *buf, UINT size, char *fmt, ...);
 char *CopyFormat(char *fmt, ...);
+void MakeFormatSafeString(char* str);
 void Print(char *fmt, ...);
 void PrintArgs(char *fmt, va_list args);
 void PrintStr(char *str);
