@@ -380,7 +380,6 @@ bool IsInNoSsl(CEDAR *c, IP *ip)
 		{
 			if (n->EntryExpires > Tick64() && n->Count > NON_SSL_MIN_COUNT)
 			{
-				n->EntryExpires = Tick64() + (UINT64)NON_SSL_ENTRY_EXPIRES;
 				ret = true;
 			}
 		}
@@ -434,13 +433,12 @@ bool AddNoSsl(CEDAR *c, IP *ip)
 		if (n == NULL)
 		{
 			n = ZeroMalloc(sizeof(NON_SSL));
+			n->EntryExpires = Tick64() + (UINT64)NON_SSL_ENTRY_EXPIRES;
 			Copy(&n->IpAddress, ip, sizeof(IP));
 			n->Count = 0;
 
 			Add(c->NonSslList, n);
 		}
-
-		n->EntryExpires = Tick64() + (UINT64)NON_SSL_ENTRY_EXPIRES;
 
 		n->Count++;
 

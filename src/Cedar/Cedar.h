@@ -537,7 +537,7 @@
 #define	ADMINIP_TXT					"@adminip.txt"
 
 #define NON_SSL_MIN_COUNT			60
-#define NON_SSL_ENTRY_EXPIRES		(10 * 60 * 1000)
+#define NON_SSL_ENTRY_EXPIRES		(60 * 1000)
 
 //////////////////////////////////////////////////////////////////////
 // 
