@@ -14,19 +14,7 @@ echo on
 cd /d %BATCH_DIR_NAME%
 
 
-msbuild /target:Clean /property:Configuration=Debug /property:Platform=x86 IPA-DN-Ultra-VS2022.sln
-IF ERRORLEVEL 1 GOTO LABEL_ERROR
 
-msbuild /verbosity:detailed /target:Rebuild /maxcpucount:8 /property:Configuration=Debug /property:Platform=x86 IPA-DN-Ultra-VS2022.sln
-IF ERRORLEVEL 1 GOTO LABEL_ERROR
-
-
-
-msbuild /target:Clean /property:Configuration=Debug /property:Platform=x64 IPA-DN-Ultra-VS2022.sln
-IF ERRORLEVEL 1 GOTO LABEL_ERROR
-
-msbuild /verbosity:detailed /target:Rebuild /maxcpucount:8 /property:Configuration=Debug /property:Platform=x64 IPA-DN-Ultra-VS2022.sln
-IF ERRORLEVEL 1 GOTO LABEL_ERROR
 
 
 
@@ -42,6 +30,25 @@ msbuild /target:Clean /property:Configuration=Release /property:Platform=x64 IPA
 IF ERRORLEVEL 1 GOTO LABEL_ERROR
 
 msbuild /verbosity:detailed /target:Rebuild /maxcpucount:8 /property:Configuration=Release /property:Platform=x64 IPA-DN-Ultra-VS2022.sln
+IF ERRORLEVEL 1 GOTO LABEL_ERROR
+
+
+
+
+
+
+msbuild /target:Clean /property:Configuration=Debug /property:Platform=x86 IPA-DN-Ultra-VS2022.sln
+IF ERRORLEVEL 1 GOTO LABEL_ERROR
+
+msbuild /verbosity:detailed /target:Rebuild /maxcpucount:8 /property:Configuration=Debug /property:Platform=x86 IPA-DN-Ultra-VS2022.sln
+IF ERRORLEVEL 1 GOTO LABEL_ERROR
+
+
+
+msbuild /target:Clean /property:Configuration=Debug /property:Platform=x64 IPA-DN-Ultra-VS2022.sln
+IF ERRORLEVEL 1 GOTO LABEL_ERROR
+
+msbuild /verbosity:detailed /target:Rebuild /maxcpucount:8 /property:Configuration=Debug /property:Platform=x64 IPA-DN-Ultra-VS2022.sln
 IF ERRORLEVEL 1 GOTO LABEL_ERROR
 
 

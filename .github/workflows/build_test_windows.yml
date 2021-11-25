@@ -26,7 +26,7 @@ jobs:
         with:
           submodules: true
 
-      - name: Build and Test - Win32
+      - name: Build - Win32
         run: |
           src\Build_Win32.cmd
 
