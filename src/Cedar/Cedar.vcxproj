@@ -19,7 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <VCProjectVersion>16.0</VCProjectVersion>
+    <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
     <ProjectGuid>{D11C227F-AE0E-4B8B-8D99-F9EA28FF3BE8}</ProjectGuid>
     <RootNamespace>Cedar</RootNamespace>

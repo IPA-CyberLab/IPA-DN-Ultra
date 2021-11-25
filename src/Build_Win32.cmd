@@ -2,7 +2,7 @@ SETLOCAL
 SET BATCH_FILE_NAME=%0
 SET BATCH_DIR_NAME=%0\..
 
-for /f "usebackq tokens=*" %%i in (`"%BATCH_DIR_NAME%\BuildFiles\Utility\vswhere.exe" -version [16.0^,17.0^) -sort -requires Microsoft.Component.MSBuild -find Common7\Tools\VsDevCmd.bat`) do (
+for /f "usebackq tokens=*" %%i in (`"%BATCH_DIR_NAME%\BuildFiles\Utility\vswhere.exe" -version [17.0^,18.0^) -sort -requires Microsoft.Component.MSBuild -find Common7\Tools\VsDevCmd.bat`) do (
     if exist "%%i" (
         call "%%i"
     )
