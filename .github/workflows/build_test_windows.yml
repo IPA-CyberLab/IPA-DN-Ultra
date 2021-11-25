@@ -11,8 +11,9 @@ jobs:
     timeout-minutes: 15
 
     strategy:
+      fail-fast: false
       matrix:
-        operating-system: [windows-latest, windows-2022]
+        operating-system: [windows-2022]
 
     steps:
       - name: Checkout
