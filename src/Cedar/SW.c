@@ -979,6 +979,9 @@ UINT SWExec()
 	{
 		// If DATAFILE resources are stored, extract it as SFX
 		MayaquaMinimalMode();
+
+		// in SFX mode enable disk space warning
+		InitProcessCallOnceEx(true);
 	}
 
 	InitMayaqua(false, false, 0, NULL);

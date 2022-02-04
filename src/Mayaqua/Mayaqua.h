@@ -607,7 +607,7 @@ void WriteProbe(char *filename, UINT line, char *str);
 void WriteProbeData(char *filename, UINT line, char *str, void *data, UINT size);
 USHORT CalcChecksum16(void *buf, UINT size);
 void MayaquaEnableExitCode1IfMemoryLeak();
-
+void MayaquaSetWin32ShowDiskSpaceWarningOnBoot(bool enabled);
 
 #ifdef	OS_WIN32
 // Import library (for Win32)

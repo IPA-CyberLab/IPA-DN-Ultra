@@ -10,7 +10,11 @@
 ** BETA VERSION UNDER DEVELOPMENT, INCOMPLETE AND BUGGY. USE AT YOUR OWN RISK. Ver 1.0 is scheduled to be released during November 2021. We strongly recommend that you wait until Ver 1.0 is released. ** - This Git repository contains the source code and documentation for the open source version of the Thin Telework System which is under development. 2021-10-31 by Daiyuu Nobori.
 
 
-## [Current Version] beta8preview6
+## [Current Version] beta8preview7
+
+## beta8preview7
+1. ユーザーモードの場合で、かつ Windows 高速スタートアップが有効な場合は、警告メッセージを表示するようにしました。
+1. システムディスクの空き容量が 500MB 未満となった場合、起動時に警告メッセージを表示するようにしました。
 
 ## beta8preview6
 1. HTML5 版 Web クライアントにおいて、日本語キーボードで日本語かな入力を行なう際に、ひながなキーの「を」文字が入力できない問題を解決しました。なお、ひらがなキーの「ろ」文字を入力する場合は、Shift + 「ろ」を押す必要があります。

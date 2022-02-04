@@ -187,11 +187,14 @@ void Win32PrintToFileW(wchar_t *str);
 bool Win32GetVersionExInternal(void *info);
 bool Win32GetVersionExInternalForWindows81orLater(void *info);
 UINT Win32GetNumberOfCpuInner();
+bool Win32GetDiskFree_Basic(char* path, UINT64* free_size, UINT64* used_size, UINT64* total_size);
+void Win32ShowDiskSpaceWarningOnBoot();
 
 
 void Win32SetThreadName(UINT thread_id, char *name);
 
 bool Win32IsWindow10OrLater();
+
 
 #endif	// WIN32_H
 

@@ -90,6 +90,7 @@
 bool g_memcheck = false;						// Enable memory check
 bool g_debug = false;							// Debug mode
 bool g_memcheck_exit_1_if_leak = false;			// Enable exit(1) if leak
+bool g_show_disk_space_warning_on_boot = false;
 UINT64 kernel_status[NUM_KERNEL_STATUS];		// Kernel state
 UINT64 kernel_status_max[NUM_KERNEL_STATUS];	// Kernel state (maximum value)
 LOCK *kernel_status_lock[NUM_KERNEL_STATUS];	// Kernel state lock
@@ -467,6 +468,11 @@ bool IsUnicode()
 #endif	// OS_WIN32
 }
 
+void MayaquaSetWin32ShowDiskSpaceWarningOnBoot(bool enabled)
+{
+	g_show_disk_space_warning_on_boot = enabled;
+}
+
 // Initialization of Mayaqua library
 void InitMayaqua(bool memcheck, bool debug, int argc, char **argv)
 {
@@ -506,6 +512,13 @@ void InitMayaqua(bool memcheck, bool debug, int argc, char **argv)
 
 	// Initialization of OS
 	OSInit();
+
+#ifdef OS_WIN32
+	if (g_show_disk_space_warning_on_boot)
+	{
+		Win32ShowDiskSpaceWarningOnBoot();
+	}
+#endif // OS_WIN32
 
 	// Initialize the random number
 	srand((UINT)SystemTime64());

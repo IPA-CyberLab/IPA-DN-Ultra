@@ -214,6 +214,49 @@ OS_DISPATCH_TABLE *Win32GetDispatchTable()
 	return &t;
 }
 
+// ディスク容量警告の表示
+void Win32ShowDiskSpaceWarningOnBoot()
+{
+	char win_dir[MAX_PATH] = CLEAN;
+
+	GetSystemDirectoryA(win_dir, sizeof(win_dir));
+
+	UINT64 free_size = 0x7FFFFFFFFFFFFFFFULL;
+	UINT64 used_size = 0;
+	UINT64 total_size = 0x7FFFFFFFFFFFFFFFULL;
+
+	if (Win32GetDiskFree_Basic(win_dir, &free_size, &used_size, &total_size))
+	{
+		if (total_size >= 10000000)
+		{
+			UINT64 free_mb_64 = (((used_size / 1000000ULL)  + 99ULL)/ 100ULL) * 100ULL;
+			if (free_mb_64 <= 500) // 500MB 以下になった場合に 100MB 単位で警告
+			{
+				char reg_value_name[MAX_PATH] = CLEAN;
+
+				sprintf(reg_value_name, "DiskSpace_%u", (UINT)free_mb_64);
+
+				if (MsRegReadIntEx2(REG_CURRENT_USER, DI_REGKEY "\\DiskSpaceWarningMsg", "NoMsg", false, true) == 0 &&
+					MsRegReadIntEx2(REG_LOCAL_MACHINE, DI_REGKEY "\\DiskSpaceWarningMsg", "NoMsg", false, true) == 0)
+				{
+					if (MsRegReadIntEx2(REG_CURRENT_USER, DI_REGKEY "\\DiskSpaceWarningMsg", reg_value_name, false, true) == 0)
+					{
+						char msg[MAX_SIZE] = CLEAN;
+						sprintf(msg,
+							"Warning: This computer has less than %u MB of free system disk space remaining.\r\n\r\nThis program may not work properly. Please consider increasing the free space on your system disk.\r\n\r\nDo you want to see this message again?",
+							(UINT)free_mb_64);
+
+						if (MessageBoxA(NULL, msg, DESK_PRODUCT_NAME_SUITE, MB_YESNO | MB_ICONWARNING | MB_TOPMOST) == IDNO)
+						{
+							MsRegWriteIntEx2(REG_CURRENT_USER, DI_REGKEY "\\DiskSpaceWarningMsg", reg_value_name, 1, false, true);
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
 // Set the thread name
 void Win32SetThreadName(UINT thread_id, char *name)
 {
@@ -465,6 +508,43 @@ bool Win32GetDiskFree(char *path, UINT64 *free_size, UINT64 *used_size, UINT64 *
 	}
 
 	if (GetDiskFreeSpaceEx(tmp, &v1, &v2, &v3))
+	{
+		ret = true;
+	}
+
+	if (free_size != NULL)
+	{
+		*free_size = v1.QuadPart;
+	}
+
+	if (total_size != NULL)
+	{
+		*total_size = v2.QuadPart;
+	}
+
+	if (used_size != NULL)
+	{
+		*used_size = v2.QuadPart - v1.QuadPart;
+	}
+
+	return ret;
+}
+
+bool Win32GetDiskFree_Basic(char* path, UINT64* free_size, UINT64* used_size, UINT64* total_size)
+{
+	ULARGE_INTEGER v1, v2, v3;
+	bool ret = false;
+	// Validate arguments
+	if (path == NULL)
+	{
+		return false;
+	}
+
+	Zero(&v1, sizeof(v1));
+	Zero(&v2, sizeof(v2));
+	Zero(&v3, sizeof(v3));
+
+	if (GetDiskFreeSpaceEx(path, &v1, &v2, &v3))
 	{
 		ret = true;
 	}
