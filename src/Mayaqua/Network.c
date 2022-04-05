@@ -14259,19 +14259,19 @@ bool StartSSLEx2(SOCK* sock, X* x, K* priv, bool client_tls, UINT ssl_timeout, c
 		}
 		if (sock->SslAcceptSettings.Tls_Disable1_0)
 		{
-			settings2.Server_NoTLSv1_0;
+			settings2.Server_NoTLSv1_0 = true;
 		}
 		if (sock->SslAcceptSettings.Tls_Disable1_1)
 		{
-			settings2.Server_NoTLSv1_1;
+			settings2.Server_NoTLSv1_1 = true;
 		}
 		if (sock->SslAcceptSettings.Tls_Disable1_2)
 		{
-			settings2.Server_NoTLSv1_2;
+			settings2.Server_NoTLSv1_2 = true;
 		}
 		if (sock->SslAcceptSettings.Tls_Disable1_3)
 		{
-			settings2.Server_NoTLSv1_3;
+			settings2.Server_NoTLSv1_3 = true;
 		}
 
 		settings2.AddChainSslCertOnDirectory = true;
