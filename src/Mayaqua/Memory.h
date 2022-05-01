@@ -347,6 +347,7 @@ BUF *ReadDumpWithMaxSize(char *filename, UINT max_size);
 BUF *ReadDumpW(wchar_t *filename);
 BUF *ReadDumpExW(wchar_t *filename, bool read_lock);
 BUF *CloneBuf(BUF *b);
+BUF* CloneBufWithSkipUtf8Com(BUF* src);
 BUF *MemToBuf(void *data, UINT size);
 BUF *RandBuf(UINT size);
 BUF *ReadRemainBuf(BUF *b);

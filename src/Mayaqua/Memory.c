@@ -3790,6 +3790,24 @@ void WriteBufBufWithOffset(BUF *b, BUF *bb)
 	WriteBuf(b, ((UCHAR *)bb->Buf) + bb->Current, bb->Size - bb->Current);
 }
 
+BUF* CloneBufWithSkipUtf8Com(BUF* src)
+{
+	if (src == NULL)
+	{
+		return NULL;
+	}
+
+	SeekBufToBegin(src);
+
+	BufSkipUtf8Bom(src);
+
+	BUF *ret = ReadBufFromBuf(src, ReadBufRemainSize(src));
+
+	SeekBufToBegin(src);
+
+	return ret;
+}
+
 // Skip UTF-8 BOM
 bool BufSkipUtf8Bom(BUF *b)
 {

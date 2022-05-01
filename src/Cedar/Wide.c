@@ -4485,18 +4485,20 @@ void WideLoadEntryPoint(X **cert, char *url, UINT url_size, LIST *secondary_str_
 
 	UINT64 secs = now / (UINT64)ENTRANCE_URL_TIME_UPDATE_MSECS;
 
-	BUF *buf = ReadDump(LOCAL_ENTRY_POINT_FILENAME);
+	BUF *buf_raw = ReadDump(LOCAL_ENTRY_POINT_FILENAME);
+
+	if (buf_raw == NULL)
+	{
+		Alert("Failed to find the local EntryPoint.dat file. Please re-install the software.", DESK_PRODUCT_NAME_SUITE);
+		_exit(1);
+	}
+
+	BUF* buf = CloneBufWithSkipUtf8Com(buf_raw);
 
 	StrCpy(mode, mode_size, "Normal");
 	StrCpy(system, system_size, Vars_ActivePatch_GetStrEx("WtDefaultGatewaySystemName", "Unknown System"));
 
 	Zero(url_tmp, sizeof(url_tmp));
-
-	if (buf == NULL)
-	{
-		Alert("Failed to find the local EntryPoint.dat file. Please re-install the software.", DESK_PRODUCT_NAME_SUITE);
-		_exit(1);
-	}
 
 	cert_tmp = BufToX(buf, true);
 
@@ -4571,6 +4573,7 @@ void WideLoadEntryPoint(X **cert, char *url, UINT url_size, LIST *secondary_str_
 	}
 
 	FreeBuf(buf);
+	FreeBuf(buf_raw);
 
 	if (additional_secondary)
 	{
