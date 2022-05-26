@@ -1,0 +1,33 @@
+﻿# DDNS クライアント設定ファイル (自動生成)
+# 
+# 以下の設定ファイルは、本システムの初回起動時に
+# 自動的に乱数で生成されたものです。
+# このファイルの設定を書き換えると、自動的に設定が適用・変更されます。
+# 
+# 以下の URL 文字列中の secretKey= の後に続く部分が DDNS の
+# シークレットキーです。
+# このシークレットキーに対応した DDNS ホスト名はいつでもお好きなもの
+# に変更できます。
+# 
+# このシークレットキーに対応した DDNS ホスト名を確認するには
+# 以下の URL にアクセスして、secretKey 値を指定した上でクエリを実行して
+# ください。
+# また、label 値を指定すると、DDNS ホスト名を好きなものに変更すること
+# ができます。
+# https://<DDNS_DOMAIN>/control/DDNS_Host/
+# 
+# 詳しくは、以下の DDNS サーバーのドキュメントをご参照ください。
+# https://<DDNS_DOMAIN>/control/
+# https://<DDNS_DOMAIN>/rpc/
+# 
+# 以下のサンプルファイルでは、デフォルトで https://<DDNS_DOMAIN>/ の
+# DDNS サーバーを使用するようになっていますが、
+# 独自に立ち上げられた他の DDNS サーバーを使用するように
+# 設定変更することも可能です。
+
+DDNS_UPDATE_URL     https://ddns-api-v4-static.<DDNS_DOMAIN>/rpc/DDNS_Host/?ip=myip&secretKey=<DDNS_SECRET_KEY>
+
+DDNS_GETMYIP_URL    http://ddns-api-v4-static.<DDNS_DOMAIN>/getmyip/
+
+DDNS_SSL_DIGEST_SHA1    <DDNS_SHA1>
+
