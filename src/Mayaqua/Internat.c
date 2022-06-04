@@ -1566,9 +1566,40 @@ wchar_t *CopyUtfToUni(char *utfstr)
 
 	utfstr_len = StrLen(utfstr);
 
-	size = CalcUtf8ToUni((BYTE *)utfstr, utfstr_len);
-	ret = ZeroMalloc(size + sizeof(wchar_t));
-	Utf8ToUni(ret, size, (BYTE *)utfstr, utfstr_len);
+	if (utfstr_len == 0)
+	{
+		ret = ZeroMalloc(sizeof(wchar_t));
+	}
+	else
+	{
+		size = CalcUtf8ToUni((BYTE*)utfstr, utfstr_len);
+		ret = ZeroMalloc(size + sizeof(wchar_t));
+		Utf8ToUni(ret, size, (BYTE*)utfstr, utfstr_len);
+	}
+
+	return ret;
+}
+
+wchar_t* CopyUtfToUniEx(UCHAR* utfstr, UINT utfstr_len)
+{
+	UINT size;
+	wchar_t* ret;
+	// Validate arguments
+	if (utfstr == NULL)
+	{
+		return NULL;
+	}
+
+	if (utfstr_len == 0)
+	{
+		ret = ZeroMalloc(sizeof(wchar_t));
+	}
+	else
+	{
+		size = CalcUtf8ToUni((BYTE*)utfstr, utfstr_len);
+		ret = ZeroMalloc(size + sizeof(wchar_t));
+		Utf8ToUni(ret, size, (BYTE*)utfstr, utfstr_len);
+	}
 
 	return ret;
 }

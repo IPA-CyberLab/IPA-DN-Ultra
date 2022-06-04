@@ -156,6 +156,7 @@ char *CopyUniToUtf(wchar_t *unistr);
 char *CopyStrToUtf(char *str);
 char *CopyUniToStr(wchar_t *unistr);
 wchar_t *CopyUtfToUni(char *utfstr);
+wchar_t* CopyUtfToUniEx(UCHAR* utfstr, UINT utfstr_len);
 char *CopyUtfToStr(char *utfstr);
 wchar_t *UniReplaceFormatStringFor64(wchar_t *fmt);
 void UniToStr64(wchar_t *str, UINT64 value);

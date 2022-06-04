@@ -234,21 +234,59 @@ static LIST *g_dyn_value_list = NULL;
 // SMTP メール送信
 bool SmtpSendMail(char* server_host, UINT server_port, char* from, char* to, char* body)
 {
+	return SmtpSendMailEx(server_host, server_port, from, to, body, NULL, NULL, NULL, 0, SMTP_SSL_TYPE_NONE, SMTP_AUTH_TYPE_LOGIN);
+}
+bool SmtpSendMailEx(char *server_host, UINT server_port, char *from, char *to, char *body, BUF *error, char *username, char *password, UINT timeout, UINT ssl_type, UINT auth_type)
+{
 	bool ret = false;
 	SOCK* s = NULL;
 	char* line = NULL;
 	char str[MAX_PATH] = CLEAN;
+	bool use_auth = false;
 
-	s = Connect(server_host, server_port);
+	if (timeout == 0)
+	{
+		timeout = TIMEOUT_SMTPCLIENT;
+	}
+
+	if (IsFilledStr(username) && IsFilledStr(password))
+	{
+		use_auth = true;
+	}
+
+	s = ConnectEx(server_host, server_port, timeout);
 	if (s == NULL)
 	{
+		BufLogMsg(error, "Phase 0: Connect to the TCP server %s port %u failed.",
+			server_host, server_port);
 		goto LABEL_CLEANUP;
+	}
+
+	SetTimeout(s, timeout);
+
+	if (ssl_type == SMTP_SSL_TYPE_SMTPS)
+	{
+		bool ssl_ok = StartSSLEx(s, NULL, NULL, true, timeout, server_host);
+
+		if (ssl_ok == false)
+		{
+			BufLogMsg(error, "Phase 0.1: Connect to the TCP server %s port %u OK, but SSL negotiation failed. Perhaps the destination server is not a SMTPS server. Check the configuration.",
+				server_host, server_port);
+			goto LABEL_CLEANUP;
+		}
 	}
 
 	line = RecvLine(s, 1024);
 
+	if (line == NULL)
+	{
+		BufLogMsg(error, "Phase 1: SMTP server did not response or TCP connection disconnected");
+		goto LABEL_CLEANUP;
+	}
+
 	if (StartWith(line, "2") == false)
 	{
+		BufLogMsg(error, "Phase 1: SMTP server returned the error: '%s'", line);
 		goto LABEL_CLEANUP;
 	}
 
@@ -256,38 +294,232 @@ bool SmtpSendMail(char* server_host, UINT server_port, char* from, char* to, cha
 	line = NULL;
 
 	Format(str, sizeof(str), "HELO %r\r\n", &s->LocalIP);
-	SendAll(s, str, StrLen(str), false);
+	SendAll(s, str, StrLen(str), s->SecureMode);
 
 	line = RecvLine(s, 1024);
 
+	if (line == NULL)
+	{
+		BufLogMsg(error, "Phase 2: SMTP server did not response or TCP connection disconnected");
+		goto LABEL_CLEANUP;
+	}
+
 	if (StartWith(line, "2") == false)
 	{
+		BufLogMsg(error, "Phase 2: SMTP server returned the error: '%s'", line);
 		goto LABEL_CLEANUP;
 	}
 
 	Free(line);
 	line = NULL;
 
-	Format(str, sizeof(str), "MAIL FROM:%s\r\n", from);
-	SendAll(s, str, StrLen(str), false);
+	if (ssl_type == SMTP_SSL_TYPE_STARTTLS)
+	{
+		Format(str, sizeof(str), "STARTTLS\r\n");
+		SendAll(s, str, StrLen(str), false);
+
+		line = RecvLine(s, 1024);
+
+		if (line == NULL)
+		{
+			BufLogMsg(error, "Phase 2.2: STARTTLS: SMTP server did not response or TCP connection disconnected");
+			goto LABEL_CLEANUP;
+		}
+
+		if (StartWith(line, "2") == false)
+		{
+			BufLogMsg(error, "Phase 2.2: STARTTLS: SMTP server returned the error: '%s'", line);
+			goto LABEL_CLEANUP;
+		}
+
+		Free(line);
+		line = NULL;
+
+		bool ssl_ok = StartSSLEx(s, NULL, NULL, true, timeout, server_host);
+
+		if (ssl_ok == false)
+		{
+			BufLogMsg(error, "Phase 2.2: STARTTLS: Connect to the TCP server %s port %u OK, STARTTLS command initiation OK, but SSL negotiation failed. Perhaps SSL protocol versions mismatch or other security error. Use tcpdump/wireshark for troubleshooting.",
+				server_host, server_port);
+			goto LABEL_CLEANUP;
+		}
+
+
+		// HELO again
+		Format(str, sizeof(str), "HELO %r\r\n", &s->LocalIP);
+		SendAll(s, str, StrLen(str), s->SecureMode);
+
+		line = RecvLine(s, 1024);
+
+		if (line == NULL)
+		{
+			BufLogMsg(error, "Phase 2: SMTP server did not response or TCP connection disconnected");
+			goto LABEL_CLEANUP;
+		}
+
+		if (StartWith(line, "2") == false)
+		{
+			BufLogMsg(error, "Phase 2: SMTP server returned the error: '%s'", line);
+			goto LABEL_CLEANUP;
+		}
+
+		Free(line);
+		line = NULL;
+	}
+
+	if (use_auth)
+	{
+		if (auth_type == SMTP_AUTH_TYPE_PLAIN)
+		{
+			// SMTP PLAIN auth
+			BUF *auth_buf = NewBuf();
+
+			// SMTP plain auth message
+			// username + <NULL> + username + <NULL> + password
+			WriteBuf(auth_buf, username, StrLen(username));
+			WriteBufChar(auth_buf, 0);
+			WriteBuf(auth_buf, username, StrLen(username));
+			WriteBufChar(auth_buf, 0);
+			WriteBuf(auth_buf, password, StrLen(password));
+
+			// Base64 encode
+			char *auth_b64 = B64_EncodeBufToStr(auth_buf);
+
+			Format(str, sizeof(str), "AUTH PLAIN %s\r\n", auth_b64);
+			SendAll(s, str, StrLen(str), s->SecureMode);
+
+			FreeBuf(auth_buf);
+			Free(auth_b64);
+
+			line = RecvLine(s, 1024);
+
+			if (line == NULL)
+			{
+				BufLogMsg(error, "Phase 2.1: SMTP server did not response or TCP connection disconnected");
+				goto LABEL_CLEANUP;
+			}
+
+			if (StartWith(line, "2") == false)
+			{
+				BufLogMsg(error, "Phase 2.1: SMTP server PLAIN authentication: returned the error: '%s'", line);
+				goto LABEL_CLEANUP;
+			}
+
+			Free(line);
+			line = NULL;
+		}
+		else
+		{
+			// SMTP LOGIN auth
+			char username_b64[MAX_PATH] = CLEAN;
+			char password_b64[MAX_PATH] = CLEAN;
+
+			char *username_b64_tmp = B64_EncodeToStr(username, StrLen(username));
+			char *password_b64_tmp = B64_EncodeToStr(password, StrLen(password));
+
+			StrCpy(username_b64, sizeof(username_b64), username_b64_tmp);
+			StrCpy(password_b64, sizeof(password_b64), password_b64_tmp);
+
+			Free(username_b64_tmp);
+			Free(password_b64_tmp);
+
+			Format(str, sizeof(str), "AUTH LOGIN\r\n");
+			SendAll(s, str, StrLen(str), s->SecureMode);
+			line = RecvLine(s, 1024);
+
+			if (line == NULL)
+			{
+				BufLogMsg(error, "Phase 2.4-1: SMTP server did not response or TCP connection disconnected");
+				goto LABEL_CLEANUP;
+			}
+
+			if (StartWith(line, "3") == false)
+			{
+				BufLogMsg(error, "Phase 2.4-1: SMTP server LOGIN authentication: returned the error: '%s'", line);
+				goto LABEL_CLEANUP;
+			}
+
+			Free(line);
+			line = NULL;
+
+
+
+			Format(str, sizeof(str), "%s\r\n", username_b64);
+			SendAll(s, str, StrLen(str), s->SecureMode);
+			line = RecvLine(s, 1024);
+
+			if (line == NULL)
+			{
+				BufLogMsg(error, "Phase 2.4-2: SMTP server did not response or TCP connection disconnected");
+				goto LABEL_CLEANUP;
+			}
+
+			if (StartWith(line, "3") == false)
+			{
+				BufLogMsg(error, "Phase 2.4-2: SMTP server LOGIN authentication: returned the error: '%s'", line);
+				goto LABEL_CLEANUP;
+			}
+
+			Free(line);
+			line = NULL;
+
+
+
+			Format(str, sizeof(str), "%s\r\n", password_b64);
+			SendAll(s, str, StrLen(str), s->SecureMode);
+			line = RecvLine(s, 1024);
+
+			if (line == NULL)
+			{
+				BufLogMsg(error, "Phase 2.4-3: SMTP server did not response or TCP connection disconnected");
+				goto LABEL_CLEANUP;
+			}
+
+			if (StartWith(line, "2") == false)
+			{
+				BufLogMsg(error, "Phase 2.4-3: SMTP server LOGIN authentication: returned the error: '%s'", line);
+				goto LABEL_CLEANUP;
+			}
+
+			Free(line);
+			line = NULL;
+		}
+	}
+
+	Format(str, sizeof(str), "MAIL FROM:<%s>\r\n", from);
+	SendAll(s, str, StrLen(str), s->SecureMode);
 
 	line = RecvLine(s, 1024);
 
+	if (line == NULL)
+	{
+		BufLogMsg(error, "Phase 3: SMTP server did not response or TCP connection disconnected");
+		goto LABEL_CLEANUP;
+	}
+
 	if (StartWith(line, "2") == false)
 	{
+		BufLogMsg(error, "Phase 3: SMTP server returned the error: '%s'", line);
 		goto LABEL_CLEANUP;
 	}
 
 	Free(line);
 	line = NULL;
 
-	Format(str, sizeof(str), "RCPT TO:%s\r\n", to);
-	SendAll(s, str, StrLen(str), false);
+	Format(str, sizeof(str), "RCPT TO:<%s>\r\n", to);
+	SendAll(s, str, StrLen(str), s->SecureMode);
 
 	line = RecvLine(s, 1024);
 
+	if (line == NULL)
+	{
+		BufLogMsg(error, "Phase 4: SMTP server did not response or TCP connection disconnected");
+		goto LABEL_CLEANUP;
+	}
+
 	if (StartWith(line, "2") == false)
 	{
+		BufLogMsg(error, "Phase 4: SMTP server returned the error: '%s'", line);
 		goto LABEL_CLEANUP;
 	}
 
@@ -295,28 +527,44 @@ bool SmtpSendMail(char* server_host, UINT server_port, char* from, char* to, cha
 	line = NULL;
 
 	StrCpy(str, sizeof(str), "DATA\r\n");
-	SendAll(s, str, StrLen(str), false);
+	SendAll(s, str, StrLen(str), s->SecureMode);
 
 	line = RecvLine(s, 1024);
 
+	if (line == NULL)
+	{
+		BufLogMsg(error, "Phase 5: SMTP server did not response or TCP connection disconnected");
+		goto LABEL_CLEANUP;
+	}
+
 	if (StartWith(line, "3") == false)
 	{
+		BufLogMsg(error, "Phase 5: SMTP server returned the error: '%s'", line);
 		goto LABEL_CLEANUP;
 	}
 
 	Free(line);
 	line = NULL;
 
-	SendAll(s, body, StrLen(body), false);
-	SendAll(s, "\r\n", 2, false);
-	SendAll(s, ".\r\n", 3, false);
+	SendAll(s, body, StrLen(body), s->SecureMode);
+	SendAll(s, "\r\n", 2, s->SecureMode);
+	SendAll(s, ".\r\n", 3, s->SecureMode);
 
 	line = RecvLine(s, 1024);
 
-	if (StartWith(line, "2") == false)
+	if (line == NULL)
 	{
+		BufLogMsg(error, "Phase 6: SMTP server did not response or TCP connection disconnected");
 		goto LABEL_CLEANUP;
 	}
+
+	if (StartWith(line, "2") == false)
+	{
+		BufLogMsg(error, "Phase 6: SMTP server returned the error: '%s'", line);
+		goto LABEL_CLEANUP;
+	}
+
+	BufLogMsg(error, "SMTP Server returned OK. Response string: '%s'", line);
 
 	Free(line);
 	line = NULL;
@@ -325,10 +573,9 @@ bool SmtpSendMail(char* server_host, UINT server_port, char* from, char* to, cha
 
 
 	StrCpy(str, sizeof(str), "QUIT\r\n");
-	SendAll(s, str, StrLen(str), false);
+	SendAll(s, str, StrLen(str), s->SecureMode);
 
 	line = RecvLine(s, 1024);
-
 
 LABEL_CLEANUP:
 	if (line != NULL)

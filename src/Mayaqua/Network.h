@@ -89,6 +89,15 @@ struct DYN_VALUE
 
 #define	MAX_HOST_NAME_LEN			255		// Maximum length of the host name
 
+#define TIMEOUT_SMTPCLIENT			10000
+
+#define SMTP_SSL_TYPE_NONE			0
+#define SMTP_SSL_TYPE_SMTPS			1
+#define SMTP_SSL_TYPE_STARTTLS		2
+
+#define SMTP_AUTH_TYPE_LOGIN		0
+#define SMTP_AUTH_TYPE_PLAIN		1
+
 #define	TIMEOUT_GETIP				2300
 
 #define	TIMEOUT_INFINITE			(0x7fffffff)
@@ -1778,6 +1787,7 @@ bool IsMacInvalid(UCHAR *mac);
 UINT ParseProxyProtocol(PROXY_PROTOCOL *dst, UCHAR* peek_buf, UINT peek_size);
 
 bool SmtpSendMail(char* server_host, UINT server_port, char* from, char* to, char* body);
+bool SmtpSendMailEx(char* server_host, UINT server_port, char* from, char* to, char* body, BUF *error, char *username, char *password, UINT timeout, UINT ssl_type, UINT auth_type);
 
 
 #endif	// NETWORK_H

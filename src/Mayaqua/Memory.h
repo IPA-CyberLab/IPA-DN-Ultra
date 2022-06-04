@@ -295,6 +295,9 @@ int B64_Decode(char *set, char *source, int len);
 UINT Encode64(char *dst, char *src);
 UINT Decode64(char *dst, char *src);
 
+char *B64_EncodeToStr(UCHAR *data, UINT size);
+char *B64_EncodeBufToStr(BUF *buf);
+
 void Swap(void *buf, UINT size);
 USHORT Swap16(USHORT value);
 UINT Swap32(UINT value);
@@ -336,6 +339,11 @@ bool WriteBufShort(BUF *b, USHORT value);
 bool ReadBufStr(BUF *b, char *str, UINT size);
 bool WriteBufStr(BUF *b, char *str);
 void WriteBufLine(BUF *b, char *str);
+void BufMsg(BUF* b, char* fmt, ...);
+void BufLogMsg(BUF* b, char* fmt, ...);
+void BufMsgArgs(BUF* b, char* fmt, va_list args);
+void BufDebug(BUF* b);
+void BufPrint(BUF* b);
 void AddBufStr(BUF *b, char *str);
 bool DumpBuf(BUF *b, char *filename);
 bool DumpBufW(BUF *b, wchar_t *filename);

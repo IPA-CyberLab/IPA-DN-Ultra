@@ -3562,6 +3562,92 @@ void AddBufStr(BUF *b, char *str)
 	WriteBuf(b, str, StrLen(str));
 }
 
+// Print a buffer contents
+void BufPrint(BUF* b)
+{
+	wchar_t* tmp = NULL;
+	if (b == NULL)
+	{
+		return;
+	}
+
+	tmp = CopyUtfToUniEx(b->Buf, b->Size);
+
+	UniPrintStr(tmp);
+
+	Free(tmp);
+}
+
+void BufDebug(BUF* b)
+{
+	if (b == NULL)
+	{
+		return;
+	}
+
+	if (g_debug)
+	{
+		BufPrint(b);
+	}
+}
+
+// Write a printf-like format message to the buffer
+void BufMsg(BUF* b, char* fmt, ...)
+{
+	va_list args = CLEAN;
+	if (b == NULL || fmt == NULL)
+	{
+		return;
+	}
+
+	va_start(args, fmt);
+
+	BufMsgArgs(b, fmt, args);
+
+	va_end(args);
+}
+void BufLogMsg(BUF* b, char* fmt, ...)
+{
+	va_list args = CLEAN;
+	if (b == NULL || fmt == NULL)
+	{
+		return;
+	}
+
+	va_start(args, fmt);
+
+	BufMsgArgs(b, fmt, args);
+
+	va_end(args);
+
+	WriteBuf(b, "\n", 1);
+}
+
+// Write a printf-like format message to the buffer with the va_list structure
+void BufMsgArgs(BUF* b, char* fmt, va_list args)
+{
+	wchar_t* ret = CLEAN;
+	wchar_t* fmt_wchar = CLEAN;
+	char* tmp = CLEAN;
+	// Validate arguments
+	if (b == NULL || fmt == NULL)
+	{
+		return;
+	}
+
+	fmt_wchar = CopyStrToUni(fmt);
+	ret = InternalFormatArgs(fmt_wchar, args, true);
+
+	tmp = CopyUniToStr(ret);
+
+	WriteBuf(b, tmp, StrLen(tmp));
+
+	Free(tmp);
+
+	Free(ret);
+	Free(fmt_wchar);
+}
+
 // Write a line to the buffer
 void WriteBufLine(BUF *b, char *str)
 {
@@ -4334,6 +4420,38 @@ UINT Decode64(char *dst, char *src)
 	}
 
 	return B64_Decode(dst, src, StrLen(src));
+}
+
+// Base64 encode from BUF to BUF
+char *B64_EncodeToStr(UCHAR *data, UINT size)
+{
+	char *ret = NULL;
+	int required_size = 0;
+	if (data == NULL)
+	{
+		return CopyStr("");
+	}
+
+	required_size = B64_Encode(NULL, data, size);
+	if (required_size == 0)
+	{
+		return CopyStr("");
+	}
+
+	ret = ZeroMalloc(required_size + 4);
+	B64_Encode(ret, data, size);
+
+	return ret;
+}
+
+char *B64_EncodeBufToStr(BUF *buf)
+{
+	if (buf == NULL)
+	{
+		return CopyStr("");
+	}
+
+	return B64_EncodeToStr(buf->Buf, buf->Size);
 }
 
 // Base64 encode
