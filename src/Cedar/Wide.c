@@ -3958,6 +3958,24 @@ WIDE *WideGateStart()
 			StrCpy(w->wt->SmtpOtpFrom, sizeof(w->wt->SmtpOtpFrom), tmp);
 		}
 
+		tmp = IniStrValue(o, "SmtpUsername");
+		if (IsEmptyStr(tmp) == false)
+		{
+			StrCpy(w->wt->SmtpUsername, sizeof(w->wt->SmtpUsername), tmp);
+		}
+
+		tmp = IniStrValue(o, "SmtpPassword");
+		if (IsEmptyStr(tmp) == false)
+		{
+			StrCpy(w->wt->SmtpPassword, sizeof(w->wt->SmtpPassword), tmp);
+		}
+
+		w->wt->SmtpSslType = IniIntValue(o, "SmtpSslType");
+
+		w->wt->SmtpAuthType = IniIntValue(o, "SmtpAuthType");
+
+		w->wt->SmtpTimeout = IniIntValue(o, "SmtpTimeout");
+
 		UINT i;
 		for (i = 0;i < LIST_NUM(o);i++)
 		{

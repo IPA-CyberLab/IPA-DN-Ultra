@@ -285,6 +285,11 @@ struct WT
 	char SmtpServerHostname[128];
 	UINT SmtpServerPort;
 	char SmtpOtpFrom[128];
+	char SmtpUsername[128];
+	char SmtpPassword[128];
+	UINT SmtpSslType;
+	UINT SmtpAuthType;
+	UINT SmtpTimeout;
 	STATMAN* StatMan;
 	LIST* ProxyTargetUrlList;
 	LIST* ErrorControllersList;

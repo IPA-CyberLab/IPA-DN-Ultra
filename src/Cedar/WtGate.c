@@ -1520,7 +1520,7 @@ PACK* WtgSamDoProcess(WT* wt, SOCK* s, WPC_PACKET* packet)
 			"From: %s\r\nTo: %s\r\nSubject: Thin Telework OTP - %s\r\n\r\n"
 			"Your new One Time Password (OTP) code is:\r\n"
 			"%s\r\n\r\n"
-			"A client is attempting to connect to the server: %s.\r\n\r\n"
+			"A client is attempting to connect to the server: %s\r\n\r\n"
 			"The source IP address of the client is: %s\r\n\r\n";
 
 		if (authed == NULL)
@@ -1545,19 +1545,40 @@ PACK* WtgSamDoProcess(WT* wt, SOCK* s, WPC_PACKET* packet)
 
 		Format(body, body_size, body_format, wt->SmtpOtpFrom, email, otp, otp, authed->Pcid, ip);
 
-		smtp_ok = SmtpSendMail(wt->SmtpServerHostname, wt->SmtpServerPort, wt->SmtpOtpFrom, email,
-			body);
+		BUF *smtp_error_buf = NewBuf();
+
+		smtp_ok = SmtpSendMailEx(wt->SmtpServerHostname, wt->SmtpServerPort, wt->SmtpOtpFrom, email,
+			body,
+			smtp_error_buf,
+			wt->SmtpUsername,
+			wt->SmtpPassword,
+			wt->SmtpTimeout,
+			wt->SmtpSslType,
+			wt->SmtpAuthType
+			);
+
+		WriteBufChar(smtp_error_buf, 0);
 
 		if (smtp_ok)
 		{
 			err = ERR_NO_ERROR;
+
+			WtLogEx(wt, log_prefix,
+				"OTP SMTP Client: SMTP Send OK. SMTP server: %s port: %u from: %s to: %s SMTP Client Log Details: %s",
+				wt->SmtpServerHostname, wt->SmtpServerPort, wt->SmtpOtpFrom, email, smtp_error_buf->Buf);
 		}
 		else
 		{
 			err = ERR_WG_SMTP_ERROR;
+
+			WtLogEx(wt, log_prefix,
+				"OTP SMTP Client: SMTP Send Error. SMTP server: %s port: %u from: %s to: %s SMTP Client Error Log Details: %s",
+				wt->SmtpServerHostname, wt->SmtpServerPort, wt->SmtpOtpFrom, email, smtp_error_buf->Buf);
 		}
 
 		Free(body);
+
+		FreeBuf(smtp_error_buf);
 	}
 
 LABEL_CLEANUP:
