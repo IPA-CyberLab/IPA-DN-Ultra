@@ -350,27 +350,31 @@ struct USED_TUNNELID
 #define	MIKAKA_DDNS_REGISTER_INTERVAL_OK_MIN		(1 * 60 * 60 * 1000)
 #define	MIKAKA_DDNS_REGISTER_INTERVAL_OK_MAX		(2 * 60 * 60 * 1000)
 
-// Period until the next registration in case of failure
-#define	MIKAKA_DDNS_REGISTER_INTERVAL_NG_MIN		(1 * 60 * 1000)
-#define	MIKAKA_DDNS_REGISTER_INTERVAL_NG_MAX		(5 * 60 * 1000)
-
 // The self IP address acquisition interval (If last trial succeeded)
 #define	MIKAKA_DDNS_GETMYIP_INTERVAL_OK_MIN		(10 * 60 * 1000)
 #define	MIKAKA_DDNS_GETMYIP_INTERVAL_OK_MAX		(20 * 60 * 1000)
 
-// The self IP address acquisition interval (If last trial failed)
-#define	MIKAKA_DDNS_GETMYIP_INTERVAL_NG_MIN		(1 * 60 * 1000)
-#define	MIKAKA_DDNS_GETMYIP_INTERVAL_NG_MAX		(5 * 60 * 1000)
+#define	MIKAKA_DDNS_POLL_INTERVAL_MIN			(30 * 1000)
+#define	MIKAKA_DDNS_POLL_INTERVAL_MAX			(60 * 1000)
 
-#ifndef MIKAKA_DDNS_BASE_DOMAIN
-#define MIKAKA_DDNS_BASE_DOMAIN					""
-#endif // !MIKAKA_DDNS_BASE_DOMAIN
+#ifndef MIKAKA_DDNS_DEFAULT_DOMAIN
+#define MIKAKA_DDNS_DEFAULT_DOMAIN					""
+#endif // !MIKAKA_DDNS_DEFAULT_DOMAIN
 
-#ifndef MIKAKA_DDNS_BASE_SSL_SHA1
-#define MIKAKA_DDNS_BASE_SSL_SHA1				""
-#endif // !MIKAKA_DDNS_BASE_SSL_SHA1
+#ifndef MIKAKA_DDNS_DEFAULT_SSL_SHA1
+#define MIKAKA_DDNS_DEFAULT_SSL_SHA1				""
+#endif // !MIKAKA_DDNS_DEFAULT_SSL_SHA1
 
 
+
+struct MIKAKA_DDNS_CONFIG
+{
+	UINT64 ConfigFileHash;
+	bool DDnsEnabled;
+	char DDnsUpdateUrl[MAX_PATH];
+	char DDnsSslDigestSha1[MAX_PATH];
+	char DDnsGetMyIpUrl[MAX_PATH];
+};
 
 struct MIKAKA_DDNS
 {
@@ -379,14 +383,6 @@ struct MIKAKA_DDNS
 	THREAD *Thread;
 	volatile bool Halt;
 	EVENT *Event;
-};
-
-struct MIKAKA_DDNS_CONFIG
-{
-	bool DDnsEnabled;
-	char DDnsUpdateUrl[MAX_PATH];
-	char DDnsSslDigestSha1[MAX_PATH];
-	char DDnsGetMyIpUrl[MAX_PATH];
 };
 
 

@@ -95,7 +95,11 @@ MIKAKA_DDNS *NewMikakaDDnsClient(WT *wt)
 	MIKAKA_DDNS *d = ZeroMalloc(sizeof(MIKAKA_DDNS));
 
 	d->Wt = wt;
-	AddRef(d->Wt->Ref);
+
+	if (d->Wt != NULL)
+	{
+		AddRef(d->Wt->Ref);
+	}
 
 	wchar_t exe_dir[MAX_PATH] = CLEAN;
 
@@ -124,6 +128,8 @@ void FreeMikakaDDnsClient(MIKAKA_DDNS *d)
 
 	WaitThread(d->Thread, INFINITE);
 
+	ReleaseThread(d->Thread);
+
 	ReleaseWt(d->Wt);
 
 	ReleaseEvent(d->Event);
@@ -143,7 +149,16 @@ void MikakaDDnsClientThread(THREAD *thread, void *param)
 
 	while (d->Halt == false)
 	{
-		Wait(d->Event, 1234); // 独法式インチキ待機
+		UINT next_wait_interval = GenRandInterval(MIKAKA_DDNS_POLL_INTERVAL_MIN, MIKAKA_DDNS_POLL_INTERVAL_MAX);
+
+		MIKAKA_DDNS_CONFIG c = CLEAN;
+
+		if (LoadMikakaDDnsConfig(d->ConfigFilePath, &c))
+		{
+			WHERE;
+		}
+
+		Wait(d->Event, next_wait_interval); // 独法式インチキ待機
 	}
 }
 
@@ -156,7 +171,7 @@ bool LoadMikakaDDnsConfig(wchar_t *filepath, MIKAKA_DDNS_CONFIG *c)
 		return false;
 	}
 
-	if (IsEmptyStr(MIKAKA_DDNS_BASE_DOMAIN) || IsEmptyStr(MIKAKA_DDNS_BASE_SSL_SHA1))
+	if (IsEmptyStr(MIKAKA_DDNS_DEFAULT_DOMAIN) || IsEmptyStr(MIKAKA_DDNS_DEFAULT_SSL_SHA1))
 	{
 		return false;
 	}
@@ -194,6 +209,12 @@ bool LoadMikakaDDnsConfig(wchar_t *filepath, MIKAKA_DDNS_CONFIG *c)
 
 				c->DDnsEnabled = ToBool(ddns_enabled);
 
+				UCHAR hash[SHA1_SIZE] = CLEAN;
+
+				HashSha1(hash, buf->Buf, buf->Size);
+
+				c->ConfigFileHash = READ_UINT64(hash);
+
 				ret = true;
 			}
 
@@ -228,8 +249,8 @@ bool LoadMikakaDDnsConfig(wchar_t *filepath, MIKAKA_DDNS_CONFIG *c)
 				char key_str[MAX_PATH] = CLEAN;
 				BinToStr(key_str, sizeof(key_str), key_data, sizeof(key_data));
 
-				ReplaceStrEx(tmp, tmp_size, tmp, "<DDNS_DOMAIN>", MIKAKA_DDNS_BASE_DOMAIN, false);
-				ReplaceStrEx(tmp, tmp_size, tmp, "<DDNS_SHA1>", MIKAKA_DDNS_BASE_SSL_SHA1, false);
+				ReplaceStrEx(tmp, tmp_size, tmp, "<DDNS_DOMAIN>", MIKAKA_DDNS_DEFAULT_DOMAIN, false);
+				ReplaceStrEx(tmp, tmp_size, tmp, "<DDNS_SHA1>", MIKAKA_DDNS_DEFAULT_SSL_SHA1, false);
 				ReplaceStrEx(tmp, tmp_size, tmp, "<DDNS_SECRET_KEY>", key_str, false);
 
 				BUF *write_buf = NewBuf();

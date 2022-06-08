@@ -25,13 +25,46 @@
 # 独自に立ち上げられた他の DDNS サーバーを使用するように
 # 設定変更することも可能です。
 
-DDNS_ENABLED        true
 
-DDNS_UPDATE_URL     https://ddns-api-v4-static.<DDNS_DOMAIN>/rpc/DDNS_Host/?ip=myip&secretKey=<DDNS_SECRET_KEY>
+# DDNS 機能を有効にするか否かを指定します。
+
+DDNS_ENABLED            true
+
+
+
+
+# DDNS エントリを更新するために呼び出す URL を指定します。
+# 「secretKey=」の後に続く文字列が、DDNS エントリの更新に必要なシークレットキーです。
+# 「secretKey=」の後に続く文字列は、このホスト固有の値です。
+# この文字列は、
+# 「secretKey=」の後に続く文字列は、必ずバックアップしてください。
+# 「email=abc」の後に続く文字列は、DDNS サーバーに登録するメールアドレスです。
+# DDNS サーバーの API のパラメータについて、詳しくは、
+# https://ddns-api-v4.<DDNS_DOMAIN>/
+# をご参照ください。
+
+DDNS_UPDATE_URL         https://ddns-api-v4-static.<DDNS_DOMAIN>/rpc/DDNS_Host/?ip=myip&secretKey=<DDNS_SECRET_KEY>&email=abc@example.org
+
+
+
+
+# ホストが自分自身の IPv4 アドレスが変化していないかどうか確認するために接続
+# する URL です。
+
+DDNS_GETMYIP_URL        http://getmyip-v4-static.<DDNS_DOMAIN>/getmyip/
+
+
+
+
+
+
+# 以下の SHA1 は DDNS サーバーの SSL 証明書のダイジェスト値です。
+# 通常はユーザーが変更する必要はありませんが、
+# 異なる DDNS サーバーを使用する場合は、変更する必要があります。
+# なお、以下の文字列は secretKey とは異なりますので、注意してください。
+# (secretKey の文字列は、上記の「DDNS_UPDATE_URL」に埋め込まれています。)
 
 DDNS_SSL_DIGEST_SHA1    <DDNS_SHA1>
-
-DDNS_GETMYIP_URL    http://getmyip-v4-static.<DDNS_DOMAIN>/getmyip/
 
 
 
