@@ -25,9 +25,13 @@
 # 独自に立ち上げられた他の DDNS サーバーを使用するように
 # 設定変更することも可能です。
 
+DDNS_ENABLED        true
+
 DDNS_UPDATE_URL     https://ddns-api-v4-static.<DDNS_DOMAIN>/rpc/DDNS_Host/?ip=myip&secretKey=<DDNS_SECRET_KEY>
 
-DDNS_GETMYIP_URL    http://ddns-api-v4-static.<DDNS_DOMAIN>/getmyip/
-
 DDNS_SSL_DIGEST_SHA1    <DDNS_SHA1>
+
+DDNS_GETMYIP_URL    http://getmyip-v4-static.<DDNS_DOMAIN>/getmyip/
+
+
 

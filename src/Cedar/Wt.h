@@ -341,6 +341,54 @@ struct USED_TUNNELID
 	UINT64 Expires;						// エントリの有効期限
 };
 
+#define MIKAKA_DDNS_CONFIG_FILENAME		L"DDnsClient.ini"
+
+
+
+// Mikaka DDNS Client
+// Period until the next registration in case of success
+#define	MIKAKA_DDNS_REGISTER_INTERVAL_OK_MIN		(1 * 60 * 60 * 1000)
+#define	MIKAKA_DDNS_REGISTER_INTERVAL_OK_MAX		(2 * 60 * 60 * 1000)
+
+// Period until the next registration in case of failure
+#define	MIKAKA_DDNS_REGISTER_INTERVAL_NG_MIN		(1 * 60 * 1000)
+#define	MIKAKA_DDNS_REGISTER_INTERVAL_NG_MAX		(5 * 60 * 1000)
+
+// The self IP address acquisition interval (If last trial succeeded)
+#define	MIKAKA_DDNS_GETMYIP_INTERVAL_OK_MIN		(10 * 60 * 1000)
+#define	MIKAKA_DDNS_GETMYIP_INTERVAL_OK_MAX		(20 * 60 * 1000)
+
+// The self IP address acquisition interval (If last trial failed)
+#define	MIKAKA_DDNS_GETMYIP_INTERVAL_NG_MIN		(1 * 60 * 1000)
+#define	MIKAKA_DDNS_GETMYIP_INTERVAL_NG_MAX		(5 * 60 * 1000)
+
+#ifndef MIKAKA_DDNS_BASE_DOMAIN
+#define MIKAKA_DDNS_BASE_DOMAIN					""
+#endif // !MIKAKA_DDNS_BASE_DOMAIN
+
+#ifndef MIKAKA_DDNS_BASE_SSL_SHA1
+#define MIKAKA_DDNS_BASE_SSL_SHA1				""
+#endif // !MIKAKA_DDNS_BASE_SSL_SHA1
+
+
+
+struct MIKAKA_DDNS
+{
+	WT *Wt;
+	wchar_t ConfigFilePath[MAX_PATH];
+	THREAD *Thread;
+	volatile bool Halt;
+	EVENT *Event;
+};
+
+struct MIKAKA_DDNS_CONFIG
+{
+	bool DDnsEnabled;
+	char DDnsUpdateUrl[MAX_PATH];
+	char DDnsSslDigestSha1[MAX_PATH];
+	char DDnsGetMyIpUrl[MAX_PATH];
+};
+
 
 //////////////////////////////////////////////////////////////////////
 // 
@@ -387,6 +435,11 @@ void WtFreeUsedTunnelIdList(LIST *o);
 void WtAddUsedTunnelId(LIST *o, UINT tunnel_id, UINT64 expire_span);
 void WtDeleteOldUsedTunnelId(LIST *o);
 bool WtIsTunnelIdExistsInUsedTunnelIdList(LIST *o, UINT tunnel_id);
+
+MIKAKA_DDNS *NewMikakaDDnsClient(WT *wt);
+void FreeMikakaDDnsClient(MIKAKA_DDNS *d);
+void MikakaDDnsClientThread(THREAD *thread, void *param);
+bool LoadMikakaDDnsConfig(wchar_t *filepath, MIKAKA_DDNS_CONFIG *c);
 
 
 #endif	// WT_H

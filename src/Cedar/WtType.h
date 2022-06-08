@@ -82,6 +82,8 @@ typedef struct WT WT;
 typedef struct SOCKTHREAD SOCKTHREAD;
 typedef struct SOCKIO SOCKIO;
 typedef struct USED_TUNNELID USED_TUNNELID;
+typedef struct MIKAKA_DDNS MIKAKA_DDNS;
+typedef struct MIKAKA_DDNS_CONFIG MIKAKA_DDNS_CONFIG;
 
 // WtGate.h
 typedef struct WT_GATE_CONNECT_PARAM WT_GATE_CONNECT_PARAM;

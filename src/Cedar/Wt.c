@@ -89,6 +89,169 @@
 #include <Mayaqua/Mayaqua.h>
 #include <Cedar/Cedar.h>
 
+// Mikaka DDNS クライアントの開始
+MIKAKA_DDNS *NewMikakaDDnsClient(WT *wt)
+{
+	MIKAKA_DDNS *d = ZeroMalloc(sizeof(MIKAKA_DDNS));
+
+	d->Wt = wt;
+	AddRef(d->Wt->Ref);
+
+	wchar_t exe_dir[MAX_PATH] = CLEAN;
+
+	GetExeDirW(exe_dir, sizeof(exe_dir));
+
+	CombinePathW(d->ConfigFilePath, sizeof(d->ConfigFilePath), exe_dir, MIKAKA_DDNS_CONFIG_FILENAME);
+
+	d->Event = NewEvent();
+
+	d->Thread = NewThread(MikakaDDnsClientThread, d);
+
+	return d;
+}
+
+// Mikaka DDNS クライアントの停止
+void FreeMikakaDDnsClient(MIKAKA_DDNS *d)
+{
+	if (d == NULL)
+	{
+		return;
+	}
+
+	d->Halt = true;
+
+	Set(d->Event);
+
+	WaitThread(d->Thread, INFINITE);
+
+	ReleaseWt(d->Wt);
+
+	ReleaseEvent(d->Event);
+
+	Free(d);
+}
+
+// Mikaka DDNS クライアントメインスレッド
+void MikakaDDnsClientThread(THREAD *thread, void *param)
+{
+	if (thread == NULL || param == NULL)
+	{
+		return;
+	}
+
+	MIKAKA_DDNS *d = (MIKAKA_DDNS *)param;
+
+	while (d->Halt == false)
+	{
+		Wait(d->Event, 1234); // 独法式インチキ待機
+	}
+}
+
+// Mikaka DDNS クライアントの設定ファイルの読み込み
+bool LoadMikakaDDnsConfig(wchar_t *filepath, MIKAKA_DDNS_CONFIG *c)
+{
+	UINT num_retry = 0;
+	if (filepath == NULL || c == NULL)
+	{
+		return false;
+	}
+
+	if (IsEmptyStr(MIKAKA_DDNS_BASE_DOMAIN) || IsEmptyStr(MIKAKA_DDNS_BASE_SSL_SHA1))
+	{
+		return false;
+	}
+
+	L_RETRY:
+
+	Zero(c, sizeof(MIKAKA_DDNS_CONFIG));
+
+	bool ret = false;
+
+	BUF *buf = ReadDumpW(filepath);
+
+	if (buf != NULL)
+	{
+		LIST *ini = ReadIni(buf);
+
+		if (ini != NULL)
+		{
+			char *ddns_update_url = IniStrValue(ini, "DDNS_UPDATE_URL");
+			char *ddns_ssl_digest_sha1 = IniStrValue(ini, "DDNS_SSL_DIGEST_SHA1");
+			char *ddns_getmyip_url = IniStrValue(ini, "DDNS_GETMYIP_URL");
+			char *ddns_enabled = IniStrValue(ini, "DDNS_ENABLED");
+
+			if (IsFilledStr(ddns_update_url) &&
+				IsFilledStr(ddns_ssl_digest_sha1) &&
+				IsFilledStr(ddns_getmyip_url))
+			{
+				Trim(ddns_update_url);
+				Trim(ddns_ssl_digest_sha1);
+				Trim(ddns_getmyip_url);
+
+				StrCpy(c->DDnsUpdateUrl, sizeof(c->DDnsUpdateUrl), ddns_update_url);
+				StrCpy(c->DDnsSslDigestSha1, sizeof(c->DDnsSslDigestSha1), ddns_ssl_digest_sha1);
+				StrCpy(c->DDnsGetMyIpUrl, sizeof(c->DDnsGetMyIpUrl), ddns_getmyip_url);
+
+				c->DDnsEnabled = ToBool(ddns_enabled);
+
+				ret = true;
+			}
+
+			FreeIni(ini);
+		}
+
+		FreeBuf(buf);
+	}
+
+	if (ret == false)
+	{
+		if (num_retry == 0)
+		{
+			num_retry++;
+
+			// 設定ファイルが存在しないか内容が不正なので、新たに作成する
+			BUF *template_buf = ReadDump("|mikaka_ddns_config_template.txt");
+
+			if (template_buf != NULL)
+			{
+				SeekBufToEnd(template_buf);
+				WriteBufChar(template_buf, 0);
+
+				UINT tmp_size = template_buf->Size * 4 + 10000; // 独法式インチキ計算式
+				char *tmp = ZeroMalloc(tmp_size);
+
+				StrCpy(tmp, tmp_size, template_buf->Buf);
+
+				UCHAR key_data[SHA1_SIZE] = CLEAN;
+				Rand(key_data, sizeof(key_data));
+
+				char key_str[MAX_PATH] = CLEAN;
+				BinToStr(key_str, sizeof(key_str), key_data, sizeof(key_data));
+
+				ReplaceStrEx(tmp, tmp_size, tmp, "<DDNS_DOMAIN>", MIKAKA_DDNS_BASE_DOMAIN, false);
+				ReplaceStrEx(tmp, tmp_size, tmp, "<DDNS_SHA1>", MIKAKA_DDNS_BASE_SSL_SHA1, false);
+				ReplaceStrEx(tmp, tmp_size, tmp, "<DDNS_SECRET_KEY>", key_str, false);
+
+				BUF *write_buf = NewBuf();
+
+				WriteBuf(write_buf, tmp, StrLen(tmp));
+
+				DumpBufW(write_buf, filepath);
+
+				FreeBuf(write_buf);
+
+				Free(tmp);
+
+				FreeBuf(template_buf);
+			}
+
+			goto L_RETRY;
+		}
+	}
+
+	return ret;
+}
+
 // Pack の送信
 bool SockIoSendPack(SOCKIO *io, PACK *p)
 {
