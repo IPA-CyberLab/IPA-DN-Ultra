@@ -914,7 +914,7 @@ BUF *HttpRequestEx5(URL_DATA *data, INTERNET_SETTING *setting,
 {
 	return HttpRequestEx6(data, setting, timeout_connect, timeout_comm, error_code, check_ssl_trust,
 		post_data, recv_callback, recv_callback_param, sha1_cert_hash, (sha1_cert_hash == NULL ? 0 : 1),
-		cancel, max_recv_size, header_name, header_value, wt, false, false, NULL, NULL);
+		cancel, max_recv_size, header_name, header_value, wt, false, false, NULL, NULL, HTTP_REQUEST_FLAG_NONE);
 
 }
 BUF *HttpRequestEx6(URL_DATA *data, INTERNET_SETTING *setting,
@@ -922,7 +922,7 @@ BUF *HttpRequestEx6(URL_DATA *data, INTERNET_SETTING *setting,
 	UINT *error_code, bool check_ssl_trust, char *post_data,
 	WPC_RECV_CALLBACK *recv_callback, void *recv_callback_param, void *sha1_cert_hash, UINT num_hashes,
 	bool *cancel, UINT max_recv_size, char *header_name, char *header_value, WT *wt, bool global_ip_only, bool dest_private_ip_only,
-	BUF *result_buf_if_error, bool *is_server_error) 
+	BUF *result_buf_if_error, bool *is_server_error, UINT flags) 
 {
 	WPC_CONNECT con;
 	SOCK *s;
@@ -1051,6 +1051,25 @@ BUF *HttpRequestEx6(URL_DATA *data, INTERNET_SETTING *setting,
 			Disconnect(s);
 			ReleaseSock(s);
 			WriteBufLine(result_buf_if_error, "IsIPPrivate(RemoteIP) is true.");
+			return NULL;
+		}
+	}
+
+	if (flags & HTTP_REQUEST_FLAG_IPV4_ONLY)
+	{
+		// IPv4 only
+		if (IsIP6(&s->RemoteIP))
+		{
+			char tmp[256] = CLEAN;
+
+			Format(tmp, sizeof(tmp), "The destination hostname %s was resolved as an IPv6 address %r. IPv6 address is not supported in this function.",
+				con.HostName, &s->RemoteIP);
+
+			WriteBufLine(result_buf_if_error, tmp);
+
+			*error_code = ERR_NOT_SUPPORTED;
+			Disconnect(s);
+			ReleaseSock(s);
 			return NULL;
 		}
 	}

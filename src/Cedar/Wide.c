@@ -4176,6 +4176,12 @@ WIDE *WideGateStart()
 
 	WideFreeIni(o);
 
+	if (w->IsStandaloneMode)
+	{
+		// Mikaka DDNS Client の開始
+		w->MikakaDDnsClient = NewMikakaDDnsClient(w->wt);
+	}
+
 	return w;
 }
 
@@ -4191,6 +4197,12 @@ void WideGateStopEx(WIDE* wide, bool daemon_force_exit)
 	if (wide == NULL)
 	{
 		return;
+	}
+
+	if (wide->MikakaDDnsClient != NULL)
+	{
+		FreeMikakaDDnsClient(wide->MikakaDDnsClient);
+		wide->MikakaDDnsClient = NULL;
 	}
 
 	if (wide->StatMan != NULL)

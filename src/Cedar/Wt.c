@@ -254,7 +254,7 @@ UINT MikakaDDnsUpdate(MIKAKA_DDNS *d, MIKAKA_DDNS_CONFIG *c, BUF *result_buf_if_
 
 	BUF *recv = HttpRequestEx6(&data, NULL, DDNS_CONNECT_TIMEOUT, DDNS_COMM_TIMEOUT, &ret, false, NULL, NULL,
 		NULL, sha1_hash_ptr,
-		sha1_hash_num, NULL, 0, NULL, NULL, NULL, false, false, result_buf_if_error, is_server_error);
+		sha1_hash_num, NULL, 0, NULL, NULL, NULL, false, false, result_buf_if_error, is_server_error, HTTP_REQUEST_FLAG_IPV4_ONLY);
 
 	FreeBuf(sha1_hash);
 
@@ -291,9 +291,9 @@ UINT MikakaDDnsGetMyIp(MIKAKA_DDNS *d, MIKAKA_DDNS_CONFIG *c, char *dst, UINT ds
 
 	UINT ret = ERR_INTERNAL_ERROR;
 
-	BUF *recv = HttpRequestEx3(&data, NULL, DDNS_CONNECT_TIMEOUT, DDNS_COMM_TIMEOUT, &ret, false, NULL, NULL,
+	BUF *recv = HttpRequestEx6(&data, NULL, DDNS_CONNECT_TIMEOUT, DDNS_COMM_TIMEOUT, &ret, false, NULL, NULL,
 		NULL, NULL,
-		0, NULL, 0, NULL, NULL);
+		0, NULL, 0, NULL, NULL, NULL, 0, 0, NULL, NULL, HTTP_REQUEST_FLAG_IPV4_ONLY);
 
 	if (recv == NULL)
 	{

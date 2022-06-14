@@ -340,6 +340,8 @@ struct WIDE
 
 	// 2020/10/18 追加
 	UINT64 ProxyErrorRebootStartTick;
+
+	MIKAKA_DDNS *MikakaDDnsClient;
 };
 
 // 関数プロトタイプ
