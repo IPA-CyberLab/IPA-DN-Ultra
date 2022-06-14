@@ -137,6 +137,192 @@ void FreeMikakaDDnsClient(MIKAKA_DDNS *d)
 	Free(d);
 }
 
+// Mikaka DDNS クライアントメインループ内での登録処理等
+void MikakaDDnsClientMain(MIKAKA_DDNS *d, MIKAKA_DDNS_CONFIG *c)
+{
+	UINT64 now = Tick64();
+	if (d == NULL || c == NULL)
+	{
+		return;
+	}
+
+	// GetMyIp IPv4
+	if (now >= d->NextTick_GetMyIp_IPv4)
+	{
+		char myip[MAX_PATH] = CLEAN;
+
+		UINT err = MikakaDDnsGetMyIp(d, c, myip, sizeof(myip));
+
+		if (err == ERR_NO_ERROR)
+		{
+			if (StrCmpi(myip, d->LastMyIp_IPv4) != 0)
+			{
+				StrCpy(d->LastMyIp_IPv4, sizeof(d->LastMyIp_IPv4), myip);
+
+				d->NextTick_Update_IPv4 = 0;
+
+				WtLogEx(d->Wt, MIKAKA_DDNS_LOG_PREFIX, "GetMyIp: This host's Global IPv4 address change detected. New IPv4 address is '%s'.", myip);
+			}
+
+			d->NextTick_GetMyIp_IPv4 = now + (UINT64)GenRandInterval(MIKAKA_DDNS_GETMYIP_INTERVAL_OK_MIN, MIKAKA_DDNS_GETMYIP_INTERVAL_OK_MAX);
+		}
+		else
+		{
+			d->NextTick_GetMyIp_IPv4 = 0;
+		}
+	}
+
+	// Update IPv4
+	if (now >= d->NextTick_Update_IPv4)
+	{
+		BUF *error_buf = NewBuf();
+		bool is_server_error = false;
+
+		UINT err = MikakaDDnsUpdate(d, c, error_buf, &is_server_error);
+
+		if (err != ERR_NO_ERROR)
+		{
+			if (is_server_error)
+			{
+				d->NextTick_Update_IPv4 = now + (UINT64)GenRandInterval(MIKAKA_DDNS_REGISTER_INTERVAL_SERVER_ERROR_MIN, MIKAKA_DDNS_REGISTER_INTERVAL_SERVER_ERROR_MAX);
+
+				char *retstr = GetOneLineStrFromBuf(error_buf, " ");
+				char dtstr[MAX_PATH] = CLEAN;
+
+				GetDateTimeStr64(dtstr, sizeof(dtstr), SystemToLocal64(TickToTime(d->NextTick_Update_IPv4)));
+
+				WtLogEx(d->Wt, MIKAKA_DDNS_LOG_PREFIX, "DDNS register server returned a server error: '%s'. Next retry time: %s. Error code: %u.", retstr, dtstr, err);
+
+				Free(retstr);
+			}
+			else
+			{
+				d->NextTick_Update_IPv4 = now + (UINT64)GenRandInterval(MIKAKA_DDNS_REGISTER_INTERVAL_NETWORK_ERROR_MIN, MIKAKA_DDNS_REGISTER_INTERVAL_NETWORK_ERROR_MAX);
+
+				char dtstr[MAX_PATH] = CLEAN;
+
+				GetDateTimeStr64(dtstr, sizeof(dtstr), SystemToLocal64(TickToTime(d->NextTick_Update_IPv4)));
+
+				WtLogEx(d->Wt, MIKAKA_DDNS_LOG_PREFIX, "Network error occured when connecting to the DDNS register server. Next retry time: %s. Error code: %u.", dtstr, err);
+			}
+		}
+		else
+		{
+			d->NextTick_Update_IPv4 = now + (UINT64)GenRandInterval(MIKAKA_DDNS_REGISTER_INTERVAL_OK_MIN, MIKAKA_DDNS_REGISTER_INTERVAL_OK_MAX);
+
+			char *retstr = GetOneLineStrFromBuf(error_buf, " ");
+			char dtstr[MAX_PATH] = CLEAN;
+
+			GetDateTimeStr64(dtstr, sizeof(dtstr), SystemToLocal64(TickToTime(d->NextTick_Update_IPv4)));
+
+			WtLogEx(d->Wt, MIKAKA_DDNS_LOG_PREFIX, "DDNS register OK. DDNS register server returned results: '%s'. Next register time: %s.", retstr, dtstr);
+
+			Free(retstr);
+		}
+
+		FreeBuf(error_buf);
+	}
+}
+
+// 更新処理メイン
+UINT MikakaDDnsUpdate(MIKAKA_DDNS *d, MIKAKA_DDNS_CONFIG *c, BUF *result_buf_if_error, bool *is_server_error)
+{
+	if (is_server_error != NULL) *is_server_error = false;
+	if (d == NULL || c == NULL)
+	{
+		return ERR_INTERNAL_ERROR;
+	}
+
+	URL_DATA data = CLEAN;
+
+	if (ParseUrl(&data, c->DDnsUpdateUrl, false, NULL) == false)
+	{
+		return ERR_INTERNAL_ERROR;
+	}
+
+	UINT ret = ERR_INTERNAL_ERROR;
+
+	BUF *sha1_hash = StrToBin(c->DDnsSslDigestSha1);
+
+	UCHAR *sha1_hash_ptr = NULL;
+	UINT sha1_hash_num = 0;
+	if (sha1_hash != NULL && sha1_hash->Size == SHA1_SIZE)
+	{
+		sha1_hash_ptr = sha1_hash->Buf;
+		sha1_hash_num = 1;
+	}
+
+	BUF *recv = HttpRequestEx6(&data, NULL, DDNS_CONNECT_TIMEOUT, DDNS_COMM_TIMEOUT, &ret, false, NULL, NULL,
+		NULL, sha1_hash_ptr,
+		sha1_hash_num, NULL, 0, NULL, NULL, NULL, false, false, result_buf_if_error, is_server_error);
+
+	FreeBuf(sha1_hash);
+
+	if (recv == NULL)
+	{
+		return ret;
+	}
+
+	char *str = ZeroMalloc(recv->Size + 1);
+	Copy(str, recv->Buf, recv->Size);
+
+	ret = ERR_NO_ERROR;
+
+	Free(str);
+	FreeBuf(recv);
+
+	return ERR_NO_ERROR;
+}
+
+// GetMyIp 処理メイン
+UINT MikakaDDnsGetMyIp(MIKAKA_DDNS *d, MIKAKA_DDNS_CONFIG *c, char *dst, UINT dst_size)
+{
+	if (d == NULL || c == NULL || dst == NULL)
+	{
+		return ERR_INTERNAL_ERROR;
+	}
+
+	URL_DATA data = CLEAN;
+
+	if (ParseUrl(&data, c->DDnsGetMyIpUrl, false, NULL) == false)
+	{
+		return ERR_INTERNAL_ERROR;
+	}
+
+	UINT ret = ERR_INTERNAL_ERROR;
+
+	BUF *recv = HttpRequestEx3(&data, NULL, DDNS_CONNECT_TIMEOUT, DDNS_COMM_TIMEOUT, &ret, false, NULL, NULL,
+		NULL, NULL,
+		0, NULL, 0, NULL, NULL);
+
+	if (recv == NULL)
+	{
+		return ret;
+	}
+
+	char *str = ZeroMalloc(recv->Size + 1);
+	Copy(str, recv->Buf, recv->Size);
+
+	char *str2 = GetFirstFilledStrFromStr(str);
+	Free(str);
+	str = str2;
+
+	if (StartWith(str, "IP=") == false)
+	{
+		ret = ERR_PROTOCOL_ERROR;
+	}
+	else
+	{
+		StrCpy(dst, dst_size, str + 3);
+		ret = ERR_NO_ERROR;
+	}
+
+	Free(str);
+	FreeBuf(recv);
+
+	return ERR_NO_ERROR;
+}
+
 // Mikaka DDNS クライアントメインスレッド
 void MikakaDDnsClientThread(THREAD *thread, void *param)
 {
@@ -147,18 +333,94 @@ void MikakaDDnsClientThread(THREAD *thread, void *param)
 
 	MIKAKA_DDNS *d = (MIKAKA_DDNS *)param;
 
+	UINT64 last_config_hash = 0;
+	UINT64 last_network_if_hash = 0;
+
 	while (d->Halt == false)
 	{
 		UINT next_wait_interval = GenRandInterval(MIKAKA_DDNS_POLL_INTERVAL_MIN, MIKAKA_DDNS_POLL_INTERVAL_MAX);
 
 		MIKAKA_DDNS_CONFIG c = CLEAN;
 
+		bool config_or_network_changed = false;
+		bool config_changed = false;
+
 		if (LoadMikakaDDnsConfig(d->ConfigFilePath, &c))
 		{
-			WHERE;
+			UINT64 current_config_hash = c.ConfigFileHash;
+
+			if (last_config_hash != current_config_hash)
+			{
+				last_config_hash = current_config_hash;
+				config_or_network_changed = true;
+				config_changed = true;
+			}
+
+			if (c.DDnsEnabled)
+			{
+				UINT64 current_network_if_hash = GetHostIPAddressHash32();
+
+				if (last_network_if_hash != current_network_if_hash)
+				{
+					last_network_if_hash = current_network_if_hash;
+					config_or_network_changed = true;
+				}
+			}
+			else
+			{
+				last_network_if_hash = 0;
+			}
 		}
 
-		Wait(d->Event, next_wait_interval); // 独法式インチキ待機
+		if (config_or_network_changed)
+		{
+			d->NextTick_GetMyIp_IPv4 = 0;
+		}
+
+		if (config_changed)
+		{
+			d->NextTick_Update_IPv4 = 0;
+		}
+
+		if (c.DDnsEnabled)
+		{
+			MikakaDDnsClientMain(d, &c);
+		}
+
+		UINT64 now = Tick64();
+
+		if (d->NextTick_GetMyIp_IPv4 != 0)
+		{
+			if (now >= d->NextTick_GetMyIp_IPv4)
+			{
+				next_wait_interval = 0;
+			}
+			else
+			{
+				next_wait_interval = MIN(next_wait_interval, (UINT)(d->NextTick_GetMyIp_IPv4 - now));
+			}
+		}
+
+		if (d->NextTick_Update_IPv4 != 0)
+		{
+			if (now >= d->NextTick_Update_IPv4)
+			{
+				next_wait_interval = 0;
+			}
+			else
+			{
+				next_wait_interval = MIN(next_wait_interval, (UINT)(d->NextTick_Update_IPv4 - now));
+			}
+		}
+
+		if (next_wait_interval != 0)
+		{
+			Wait(d->Event, MAX(next_wait_interval, 1000)); // 独法式インチキ待機
+		}
+		else
+		{
+			SleepThread(1000); // 独法式インチキ待機ナンバー２
+		}
 	}
 }
 

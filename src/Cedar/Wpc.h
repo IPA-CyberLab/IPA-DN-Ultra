@@ -214,6 +214,12 @@ BUF *HttpRequestEx5(URL_DATA *data, INTERNET_SETTING *setting,
 					UINT *error_code, bool check_ssl_trust, char *post_data,
 					WPC_RECV_CALLBACK *recv_callback, void *recv_callback_param, void *sha1_cert_hash, UINT num_hashes,
 					bool *cancel, UINT max_recv_size, char *header_name, char *header_value, WT *wt, bool global_ip_only, bool dest_private_ip_only);
+BUF *HttpRequestEx6(URL_DATA *data, INTERNET_SETTING *setting,
+	UINT timeout_connect, UINT timeout_comm,
+	UINT *error_code, bool check_ssl_trust, char *post_data,
+	WPC_RECV_CALLBACK *recv_callback, void *recv_callback_param, void *sha1_cert_hash, UINT num_hashes,
+	bool *cancel, UINT max_recv_size, char *header_name, char *header_value, WT *wt, bool global_ip_only, bool dest_private_ip_only,
+	BUF *result_buf_if_error, bool *is_server_error);
 SOCK *WpcSockConnect(WPC_CONNECT *param, UINT *error_code, UINT timeout);
 SOCK *WpcSockConnectEx(WPC_CONNECT *param, UINT *error_code, UINT timeout, bool *cancel);
 SOCK *WpcSockConnect2(char *hostname, UINT port, INTERNET_SETTING *t, UINT *error_code, UINT timeout);

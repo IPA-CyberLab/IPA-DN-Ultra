@@ -230,7 +230,10 @@ bool CheckPasswordComplexity(char *str);
 TOKEN_LIST* StrToLinesList(char* str);
 char* GetFirstFilledStrFromStr(char* str);
 char* GetFirstFilledStrFromBuf(BUF* buf);
+char *GetOneLineStrFromStr(char *str, char *tag);
+char *GetOneLineStrFromBuf(BUF *buf, char *tag);
 void RemoveBomFromStr(char* str);
+char *GetStrFromBuf(BUF *buf);
 
 
 // *** JSON strings support

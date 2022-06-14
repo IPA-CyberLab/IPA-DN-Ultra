@@ -350,6 +350,13 @@ struct USED_TUNNELID
 #define	MIKAKA_DDNS_REGISTER_INTERVAL_OK_MIN		(1 * 60 * 60 * 1000)
 #define	MIKAKA_DDNS_REGISTER_INTERVAL_OK_MAX		(2 * 60 * 60 * 1000)
 
+
+#define	MIKAKA_DDNS_REGISTER_INTERVAL_SERVER_ERROR_MIN		(1 * 5 * 60 * 1000)
+#define	MIKAKA_DDNS_REGISTER_INTERVAL_SERVER_ERROR_MAX		(2 * 5 * 60 * 1000)
+
+#define	MIKAKA_DDNS_REGISTER_INTERVAL_NETWORK_ERROR_MIN		(1 * 60 * 1000)
+#define	MIKAKA_DDNS_REGISTER_INTERVAL_NETWORK_ERROR_MAX		(5 * 60 * 1000)
+
 // The self IP address acquisition interval (If last trial succeeded)
 #define	MIKAKA_DDNS_GETMYIP_INTERVAL_OK_MIN		(10 * 60 * 1000)
 #define	MIKAKA_DDNS_GETMYIP_INTERVAL_OK_MAX		(20 * 60 * 1000)
@@ -364,6 +371,8 @@ struct USED_TUNNELID
 #ifndef MIKAKA_DDNS_DEFAULT_SSL_SHA1
 #define MIKAKA_DDNS_DEFAULT_SSL_SHA1				""
 #endif // !MIKAKA_DDNS_DEFAULT_SSL_SHA1
+
+#define MIKAKA_DDNS_LOG_PREFIX						"DDNS Client"
 
 
 
@@ -383,6 +392,11 @@ struct MIKAKA_DDNS
 	THREAD *Thread;
 	volatile bool Halt;
 	EVENT *Event;
+
+	UINT64 NextTick_GetMyIp_IPv4;
+	char LastMyIp_IPv4[MAX_PATH];
+
+	UINT64 NextTick_Update_IPv4;
 };
 
 
@@ -436,6 +450,9 @@ MIKAKA_DDNS *NewMikakaDDnsClient(WT *wt);
 void FreeMikakaDDnsClient(MIKAKA_DDNS *d);
 void MikakaDDnsClientThread(THREAD *thread, void *param);
 bool LoadMikakaDDnsConfig(wchar_t *filepath, MIKAKA_DDNS_CONFIG *c);
+void MikakaDDnsClientMain(MIKAKA_DDNS *d, MIKAKA_DDNS_CONFIG *c);
+UINT MikakaDDnsGetMyIp(MIKAKA_DDNS *d, MIKAKA_DDNS_CONFIG *c, char *dst, UINT dst_size);
+UINT MikakaDDnsUpdate(MIKAKA_DDNS *d, MIKAKA_DDNS_CONFIG *c, BUF *result_buf_if_error, bool *is_server_error);
 
 
 #endif	// WT_H

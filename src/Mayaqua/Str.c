@@ -123,6 +123,80 @@ void RemoveBomFromStr(char* str)
 	}
 }
 
+char *GetOneLineStrFromBuf(BUF *buf, char *tag)
+{
+	if (buf == NULL)
+	{
+		return CopyStr("");
+	}
+
+	UINT size = buf->Size + 8;
+	char *tmp = ZeroMalloc(size);
+	Copy(tmp, buf->Buf, buf->Size);
+
+	char *ret = GetOneLineStrFromStr(tmp, tag);
+
+	Free(tmp);
+
+	return ret;
+}
+
+char *GetOneLineStrFromStr(char *str, char *tag)
+{
+	TOKEN_LIST *t = StrToLinesList(str);
+	if (t == NULL)
+	{
+		return CopyStr("");
+	}
+	if (tag == NULL)
+	{
+		tag = " / ";
+	}
+
+	BUF *tmp = NewBuf();
+
+	UINT i;
+	for (i = 0;i < t->NumTokens;i++)
+	{
+		char *line = t->Token[i];
+
+		if (IsFilledStr(line))
+		{
+			if (tmp->Size >= 1)
+			{
+				WriteBuf(tmp, tag, StrLen(tag));
+			}
+
+			Trim(line);
+
+			WriteBuf(tmp, line, StrLen(line));
+		}
+	}
+
+	FreeToken(t);
+
+	char *ret = GetStrFromBuf(tmp);
+
+	FreeBuf(tmp);
+
+	return ret;
+}
+
+char *GetStrFromBuf(BUF *buf)
+{
+	if (buf == NULL)
+	{
+		return CopyStr("");
+	}
+
+	UINT size = buf->Size + 1;
+	char *ret = ZeroMalloc(size);
+
+	Copy(ret, buf->Buf, buf->Size);
+
+	return ret;
+}
+
 char* GetFirstFilledStrFromBuf(BUF* buf)
 {
 	if (buf == NULL)

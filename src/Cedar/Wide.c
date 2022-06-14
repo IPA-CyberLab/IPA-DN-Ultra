@@ -2111,20 +2111,31 @@ void WideLog(WIDE* w, char* format, ...)
 void WtLogEx(WT* wt, char* prefix, char* format, ...)
 {
 	va_list args;
-	char format2[MAX_SIZE * 2] = CLEAN;
 	// 引数チェック
-	if (format == NULL || wt == NULL || wt->Wide == NULL || wt->Wide->WideLog == NULL)
+	if (format == NULL)
 	{
 		return;
 	}
 
-	Format(format2, sizeof(format2), "[%s] %s", prefix, format);
+	UINT format2_size = 8000;
+	char *format2 = ZeroMalloc(format2_size);
+
+	Format(format2, format2_size, "[%s] %s", prefix, format);
 
 	va_start(args, format);
 
-	WideLogMain(wt->Wide, format2, args);
+	if (wt == NULL || wt->Wide == NULL || wt->Wide->WideLog == NULL)
+	{
+		WideLogMain(NULL, format2, args);
+	}
+	else
+	{
+		WideLogMain(wt->Wide, format2, args);
+	}
 
 	va_end(args);
+
+	Free(format2);
 }
 void WideLogEx(WIDE* w, char* prefix, char* format, ...)
 {
@@ -2147,19 +2158,28 @@ void WideLogEx(WIDE* w, char* prefix, char* format, ...)
 
 void WideLogMain(WIDE* w, char *format, va_list args)
 {
-	char buf3[MAX_SIZE * 2 + 64] = CLEAN;
-	wchar_t buf[MAX_SIZE * 2 + 64] = CLEAN;
-	if (w == NULL || format == NULL || w->WideLog == NULL)
+	UINT buf3_tmp_size = 4096;
+	UINT buf_tmp_size = 4096 * sizeof(wchar_t);
+	if (format == NULL)
 	{
 		return;
 	}
 
-	FormatArgs(buf3, sizeof(buf3), format, args);
-	StrToUni(buf, sizeof(buf), buf3);
+	char *buf3 = ZeroMalloc(buf3_tmp_size);
+	wchar_t *buf = ZeroMalloc(buf_tmp_size);
 
-	InsertUnicodeRecord(w->WideLog, buf);
+	FormatArgs(buf3, buf3_tmp_size, format, args);
+	StrToUni(buf, buf_tmp_size, buf3);
+
+	if (w != NULL && w->WideLog != NULL)
+	{
+		InsertUnicodeRecord(w->WideLog, buf);
+	}
 
 	Debug("WIDE_LOG: %S\n", buf);
+
+	Free(buf3);
+	Free(buf);
 }
 
 // Server の停止

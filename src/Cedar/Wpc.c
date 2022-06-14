@@ -907,10 +907,22 @@ BUF *HttpRequestEx4(URL_DATA *data, INTERNET_SETTING *setting,
 		cancel, max_recv_size, header_name, header_value, wt, false, false);
 }
 BUF *HttpRequestEx5(URL_DATA *data, INTERNET_SETTING *setting,
-					UINT timeout_connect, UINT timeout_comm,
-					UINT *error_code, bool check_ssl_trust, char *post_data,
-					WPC_RECV_CALLBACK *recv_callback, void *recv_callback_param, void *sha1_cert_hash, UINT num_hashes,
-					bool *cancel, UINT max_recv_size, char *header_name, char *header_value, WT *wt, bool global_ip_only, bool dest_private_ip_only)
+	UINT timeout_connect, UINT timeout_comm,
+	UINT *error_code, bool check_ssl_trust, char *post_data,
+	WPC_RECV_CALLBACK *recv_callback, void *recv_callback_param, void *sha1_cert_hash, UINT num_hashes,
+	bool *cancel, UINT max_recv_size, char *header_name, char *header_value, WT *wt, bool global_ip_only, bool dest_private_ip_only)
+{
+	return HttpRequestEx6(data, setting, timeout_connect, timeout_comm, error_code, check_ssl_trust,
+		post_data, recv_callback, recv_callback_param, sha1_cert_hash, (sha1_cert_hash == NULL ? 0 : 1),
+		cancel, max_recv_size, header_name, header_value, wt, false, false, NULL, NULL);
+
+}
+BUF *HttpRequestEx6(URL_DATA *data, INTERNET_SETTING *setting,
+	UINT timeout_connect, UINT timeout_comm,
+	UINT *error_code, bool check_ssl_trust, char *post_data,
+	WPC_RECV_CALLBACK *recv_callback, void *recv_callback_param, void *sha1_cert_hash, UINT num_hashes,
+	bool *cancel, UINT max_recv_size, char *header_name, char *header_value, WT *wt, bool global_ip_only, bool dest_private_ip_only,
+	BUF *result_buf_if_error, bool *is_server_error) 
 {
 	WPC_CONNECT con;
 	SOCK *s;
@@ -927,7 +939,17 @@ BUF *HttpRequestEx5(URL_DATA *data, INTERNET_SETTING *setting,
 	UINT socket_buffer_size = WPC_RECV_BUF_SIZE;
 	UINT num_continue = 0;
 	INTERNET_SETTING wt_setting;
+	static bool dummy_value = false;
+	if (is_server_error == NULL)
+	{
+		is_server_error = &dummy_value;
+	}
+	*is_server_error = false;
 	// Validate arguments
+	if (result_buf_if_error != NULL)
+	{
+		ClearBuf(result_buf_if_error);
+	}
 	if (data == NULL)
 	{
 		return NULL;
@@ -1001,8 +1023,11 @@ BUF *HttpRequestEx5(URL_DATA *data, INTERNET_SETTING *setting,
 
 	if (s == NULL)
 	{
+		WriteBufLine(result_buf_if_error, "TCP connect error.");
 		return NULL;
 	}
+
+	*is_server_error = true;
 
 	if (global_ip_only)
 	{
@@ -1012,6 +1037,7 @@ BUF *HttpRequestEx5(URL_DATA *data, INTERNET_SETTING *setting,
 			*error_code = ERR_NOT_SUPPORTED;
 			Disconnect(s);
 			ReleaseSock(s);
+			WriteBufLine(result_buf_if_error, "IsIPPrivate(LocalIP) is true.");
 			return NULL;
 		}
 	}
@@ -1024,6 +1050,7 @@ BUF *HttpRequestEx5(URL_DATA *data, INTERNET_SETTING *setting,
 			*error_code = ERR_NOT_SUPPORTED;
 			Disconnect(s);
 			ReleaseSock(s);
+			WriteBufLine(result_buf_if_error, "IsIPPrivate(RemoteIP) is true.");
 			return NULL;
 		}
 	}
@@ -1038,6 +1065,7 @@ BUF *HttpRequestEx5(URL_DATA *data, INTERNET_SETTING *setting,
 			*error_code = ERR_PROTOCOL_ERROR;
 			Disconnect(s);
 			ReleaseSock(s);
+			WriteBufLine(result_buf_if_error, "StartSSLEx error.");
 			return NULL;
 		}
 
@@ -1051,6 +1079,7 @@ BUF *HttpRequestEx5(URL_DATA *data, INTERNET_SETTING *setting,
 					*error_code = ERR_SSL_X509_UNTRUSTED;
 					Disconnect(s);
 					ReleaseSock(s);
+					WriteBufLine(result_buf_if_error, "WtIsTrustedCert() == false.");
 					return NULL;
 				}
 				else
@@ -1087,6 +1116,7 @@ BUF *HttpRequestEx5(URL_DATA *data, INTERNET_SETTING *setting,
 				*error_code = ERR_CERT_NOT_TRUSTED;
 				Disconnect(s);
 				ReleaseSock(s);
+				WriteBufLine(result_buf_if_error, "Checking the destination SSL server certificate failed. Server's SSL digest SHA1 hash was different.");
 				return NULL;
 			}
 		}
@@ -1171,6 +1201,8 @@ BUF *HttpRequestEx5(URL_DATA *data, INTERNET_SETTING *setting,
 
 		*error_code = ERR_DISCONNECTED;
 
+		WriteBufLine(result_buf_if_error, "Send HTTP request failed.");
+
 		return NULL;
 	}
 
@@ -1185,6 +1217,8 @@ CONT:
 		ReleaseSock(s);
 
 		*error_code = ERR_DISCONNECTED;
+
+		WriteBufLine(result_buf_if_error, "Receive HTTP response failed.");
 
 		return NULL;
 	}
@@ -1236,7 +1270,46 @@ DEF:
 
 	if (*error_code != ERR_NO_ERROR)
 	{
+		char errstr[128] = CLEAN;
+
+		Format(errstr, sizeof(errstr), "HTTP error code: %u (%s)", http_error_code, h->Method);
+
+		WriteBufLine(result_buf_if_error, errstr);
+
 		// An error has occured
+		if (result_buf_if_error != NULL)
+		{
+			content_len = GetContentLength(h);
+			if (max_recv_size != 0)
+			{
+				content_len = MIN(content_len, max_recv_size);
+			}
+
+			socket_buffer = Malloc(socket_buffer_size);
+
+			while (true)
+			{
+				UINT recvsize = MIN(socket_buffer_size, content_len - result_buf_if_error->Size);
+				UINT size;
+
+				if (recvsize == 0)
+				{
+					break;
+				}
+
+				size = Recv(s, socket_buffer, recvsize, s->SecureMode);
+				if (size == 0)
+				{
+					break;
+				}
+
+				WriteBuf(result_buf_if_error, socket_buffer, size);
+			}
+
+			SeekBuf(result_buf_if_error, 0, 0);
+			Free(socket_buffer);
+		}
+
 		Disconnect(s);
 		ReleaseSock(s);
 		FreeHttpHeader(h);
@@ -1294,6 +1367,11 @@ RECV_CANCEL:
 		}
 
 		WriteBuf(recv_buf, socket_buffer, size);
+
+		if (result_buf_if_error != NULL)
+		{
+			WriteBuf(result_buf_if_error, socket_buffer, size);
+		}
 	}
 
 	SeekBuf(recv_buf, 0, 0);
