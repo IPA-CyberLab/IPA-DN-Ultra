@@ -582,7 +582,8 @@ bool WtIsCommunicationError(UINT error, bool include_ssl_errors)
 	}
 	
 	if (error == ERR_PROTOCOL_ERROR || error == ERR_CONNECT_FAILED ||
-		error == ERR_TIMEOUTED || error == ERR_DISCONNECTED)
+		error == ERR_TIMEOUTED || error == ERR_DISCONNECTED ||
+		error == ERR_PROXY_ERROR)
 	{
 		return true;
 	}
@@ -922,7 +923,11 @@ PACK* WtWpcCallInner(WT* wt, char* function_name, PACK* pack, UCHAR* host_key, U
 					// コレを返す
 					url_list_ret_pack = p_ret;
 
-					StrCpy(ok_url, sizeof(ok_url), url2);
+					if (p_err == ERR_NO_ERROR)
+					{
+						// ok_url は成功した場合のみ
+						StrCpy(ok_url, sizeof(ok_url), url2);
+					}
 				}
 				else
 				{

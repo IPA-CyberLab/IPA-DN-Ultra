@@ -10,7 +10,11 @@
 ** BETA VERSION UNDER DEVELOPMENT, INCOMPLETE AND BUGGY. USE AT YOUR OWN RISK. Ver 1.0 is scheduled to be released during November 2021. We strongly recommend that you wait until Ver 1.0 is released. ** - This Git repository contains the source code and documentation for the open source version of the Thin Telework System which is under development. 2021-10-31 by Daiyuu Nobori.
 
 
-## [Current Version] beta8preview7
+## [Current Version] beta8preview8
+
+## beta8preview8
+1. コントローラが 2 台以上の冗長構成となっている場合で、かつ、アプリケーション側がプロキシサーバーを使用している場合に、最初の接続試行先コントローラの 1 台のコントローラに TCP レイヤでの接続不具合が生じると、他の接続試行先コントローラへの接続への試行をせずに、当該接続不具合が存在している側のコントローラへの接続をし続ける問題を解決しました。
+
 
 ## beta8preview7
 1. ユーザーモードの場合で、かつ Windows 高速スタートアップが有効な場合は、警告メッセージを表示するようにしました。
