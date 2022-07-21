@@ -49,7 +49,7 @@ DDNS_UPDATE_URL         https://ddns-api-v4-static.<DDNS_DOMAIN>/rpc/DDNS_Host/?
 
 
 # ホストが自分自身の IPv4 アドレスが変化していないかどうか確認するために接続
-# する URL です。
+# する URL です。これは、SSL/TLS は不要で、HTTP のアクセスのみで十分です。
 
 DDNS_GETMYIP_URL        http://getmyip-v4-static.<DDNS_DOMAIN>/getmyip/
 
