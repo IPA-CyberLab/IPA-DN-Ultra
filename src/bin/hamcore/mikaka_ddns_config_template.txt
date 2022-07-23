@@ -24,6 +24,17 @@
 # DDNS サーバーを使用するようになっていますが、
 # 独自に立ち上げられた他の DDNS サーバーを使用するように
 # 設定変更することも可能です。
+# 
+# [開発者向け情報]
+# この設定ファイルは、初回起動時に自動生成されるものですが、
+# 自動生成時における DDNS サーバーのドメイン名などの初期値は、
+# ソースコード中の IPA-DN-ThinApps-Private/src/Vars/Vars.h
+# に記載されている
+# MIKAKA_DDNS_DEFAULT_DOMAIN および MIKAKA_DDNS_DEFAULT_SSL_SHA1 定数が
+# そのまま利用されます。
+# したがって、上記 Vars.h ファイルの設定値を変更して本ソフトウェアを
+# ビルドし直すことにより、本ソフトウェアの初回起動時における本設定ファイル
+# 内のDDNS サーバーのドメイン名などの初期値を変更することが可能です。
 
 
 # DDNS 機能を有効にするか否かを指定します。
@@ -40,7 +51,7 @@ DDNS_ENABLED            true
 # 「secretKey=」の後に続く文字列は、必ずバックアップしてください。
 # 「email=abc」の後に続く文字列は、DDNS サーバーに登録するメールアドレスです。
 # DDNS サーバーの API のパラメータについて、詳しくは、
-# https://ddns-api-v4.<DDNS_DOMAIN>/
+# https://<DDNS_DOMAIN>/
 # をご参照ください。
 
 DDNS_UPDATE_URL         https://ddns-api-v4-static.<DDNS_DOMAIN>/rpc/DDNS_Host/?ip=myip&secretKey=<DDNS_SECRET_KEY>&email=abc@example.org
@@ -66,5 +77,32 @@ DDNS_GETMYIP_URL        http://getmyip-v4-static.<DDNS_DOMAIN>/getmyip/
 
 DDNS_SSL_DIGEST_SHA1    <DDNS_SHA1>
 
+
+# [DDNS に関する開発者向け情報]
+# 本ソフトウェアのソースコードのデフォルト設定 (上記の Vars.h の設定値) では、
+# https://mikaka.ne.jp/ の DDNS サービスを利用するように構成されています。
+# 本ソフトウェアが https://mikaka.ne.jp/ の DDNS サービスのサーバーを内部的
+# に HTTPS で呼び出す際は、https://ddns-api-v4-static.mikaka.ne.jp/rpc/ という
+# URL の HTTPS サーバーに SSL/TLS によって接続が行なわれます。
+# この際のサーバー側証明書のダイジェスト値を検証することは、中間者攻撃を
+# 防ぐために有益です。https://ddns-api-v4-static.mikaka.ne.jp/rpc/ はサンプル
+# サーバーで、この証明書ファイルは
+# https://github.com/IPA-CyberLab/IPA-DN-Cores/blob/295a459ecd0512d1ce05d1f76c1a97be9d46bc49/Cores.NET/Misc/220614_MikakaDDnsServerSampleStaticCerts/01_SampleCert1.cer
+# https://github.com/IPA-CyberLab/IPA-DN-Cores/blob/295a459ecd0512d1ce05d1f76c1a97be9d46bc49/Cores.NET/Misc/220614_MikakaDDnsServerSampleStaticCerts/01_SampleCert1.key
+# で公開鍵および秘密鍵の両方が一般公開されているものが
+# そのまま使用されています。
+# したがって、https://mikaka.ne.jp/ の DDNS サービスをそのまま利用し続ける場合
+# は、SSL/TLS の通信内容を一度解読して再度暗号化する方法の中間者攻撃に対して
+# ぜい弱な状態となります。また、そもそも、https://mikaka.ne.jp/ の
+# DDNS サービスは実験用に無償・無保証で公開しているものであり、安定性
+# や継続性が保証されていません。
+# そこで、業務で DDNS を利用される場合は、
+# https://mikaka.ne.jp/ の DDNS サービスと同様の DDNS サービスを独自に
+# 構築・運用され、その際に独自に生成したサーバー証明書ファイルを使用される
+# ことを推奨します。詳しくは Mikaka DDNS サーバーのオープンソース版の
+# ドキュメントをご参照ください。
+# 
+# TODO: ここに Mikaka DDNS サーバーのオープンソース版の案内 URL を後で
+#       追記する予定である。
 
 
