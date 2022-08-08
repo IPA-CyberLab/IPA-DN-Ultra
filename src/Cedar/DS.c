@@ -1001,7 +1001,7 @@ DS_POLICY_CLIENT *DsNewPolicyClient(DS *ds, char* server_hash)
 
 	StrCpy(c->ServerHash, sizeof(c->ServerHash), server_hash);
 
-	Format(args, sizeof(args), "?server_build=%u&server_hostname=%S&appid=%S",
+	Format(args, sizeof(args), "?server_build=%u&server_hostname=%S&appid=%s",
 		CEDAR_BUILD, hostname, APP_ID_PREFIX);
 
 	if (true)
