@@ -843,13 +843,20 @@ void DsPolicyClientThread(THREAD *thread, void *param)
 	DS_POLICY_CLIENT *c;
 	DS_POLICY_THREAD_CTX *ctx = (DS_POLICY_THREAD_CTX *)param;
 	UINT num_try = 0;
+	char prefix[128] = CLEAN;
 
 	if (thread == NULL || param == NULL)
 	{
 		return;
 	}
 
+	Format(prefix, sizeof(prefix), "PolicyServer AutoDetect Thread %u", ctx->ClientId);
+
 	c = ctx->Client;
+
+	DS *ds = c->Ds;
+
+	DsDebugLog(ds, prefix, "Thread is started.");
 
 	while (c->Halt == false)
 	{
@@ -892,33 +899,62 @@ void DsPolicyClientThread(THREAD *thread, void *param)
 			// この URL からのファイルの受信試行
 			if (ParseUrl(&data, url, false, NULL))
 			{
+				DsDebugLog(ds, prefix, "Trying to detect the policy server for candidate URL %u '%s' ...", i, url);
+
 				UINT err = 0;
-				BUF *buf = HttpRequestEx5(&data, NULL, 0, 0, &err, false, NULL, NULL, NULL, NULL, 0, &c->Halt,
-					DS_POLICY_CLIENT_MAX_FILESIZE, NULL, NULL, NULL, false, true);
+				BUF *http_error_buf = NewBuf();
+				bool is_server_error = false;
+				BUF *buf = HttpRequestEx6(&data, NULL, 0, 0, &err, false, NULL, NULL, NULL, NULL, 0, &c->Halt,
+					DS_POLICY_CLIENT_MAX_FILESIZE, NULL, NULL, NULL, false, true, http_error_buf,
+					&is_server_error, HTTP_REQUEST_FLAG_NONE);
 
 				if (buf != NULL)
 				{
 					DS_POLICY_BODY pol = {0};
 
+					DsDebugLog(ds, prefix, "Policy server URL %u '%s' returned %u bytes data to the client.",
+						i, url, buf->Size);
+
 					if (DsParsePolicyFile(&pol, buf))
 					{
+						DsDebugLog(ds, prefix, "Policy server URL %u '%s' data parse OK.",
+							i, url);
+
 						StrCpy(pol.SrcUrl, sizeof(pol.SrcUrl), url);
 
 						if (Cmp(&c->Policy, &pol, sizeof(DS_POLICY_BODY)) != 0)
 						{
+							DsDebugLog(ds, prefix, "Policy data is applied from URL %u '%s'.",
+								i, url);
 							//Debug("Policy received and updated from '%s'.\n", url);
 							Copy(&c->Policy, &pol, sizeof(DS_POLICY_BODY));
 						}
+						else
+						{
+							DsDebugLog(ds, prefix, "The policy data on the client memory is exactly same to the downloaded data from URL %u '%s'. Do nothing.",
+								i, url);
+						}
 
 						c->PolicyExpires = Tick64() + (UINT64)DS_POLICY_EXPIRES;
+					}
+					else
+					{
+						DsDebugLog(ds, prefix, "Policy server URL %u '%s' data error OK.",
+							i, url);
 					}
 
 					FreeBuf(buf);
 				}
 				else
 				{
+					char *err_str = GetOneLineStrFromBuf(http_error_buf, NULL);
+					DsDebugLog(ds, prefix, "Policy server candidate URL %u '%s' access error. Error code: %u, Error details: %s",
+						i, url, err, err_str);
+					Free(err_str);
 					//UniDebug(L"%s\n", _E(err));
 				}
+
+				FreeBuf(http_error_buf);
 			}
 		}
 
@@ -935,8 +971,11 @@ void DsPolicyClientThread(THREAD *thread, void *param)
 		}
 
 		// 次の受信まで待機
+		DsDebugLog(ds, prefix, "Waiting for %u seconds for next retry to detect the policy server.", DS_POLICY_CLIENT_UPDATE_INTERVAL / 1000);
 		Wait(ctx->HaltEvent, DS_POLICY_CLIENT_UPDATE_INTERVAL);
 	}
+
+	DsDebugLog(ds, prefix, "Thread is stopped. Bye.");
 
 	ReleaseEvent(ctx->HaltEvent);
 
@@ -944,11 +983,13 @@ void DsPolicyClientThread(THREAD *thread, void *param)
 }
 
 // ポリシークライアントの開始
-DS_POLICY_CLIENT *DsNewPolicyClient(char* server_hash)
+DS_POLICY_CLIENT *DsNewPolicyClient(DS *ds, char* server_hash)
 {
 	char args[MAX_SIZE];
 	wchar_t hostname[MAX_PATH] = {0};
 	DS_POLICY_CLIENT *c = ZeroMalloc(sizeof(DS_POLICY_CLIENT));
+
+	c->Ds = ds;
 
 #ifdef	OS_WIN32
 	MsGetComputerNameFull(hostname, sizeof(hostname));
@@ -960,8 +1001,8 @@ DS_POLICY_CLIENT *DsNewPolicyClient(char* server_hash)
 
 	StrCpy(c->ServerHash, sizeof(c->ServerHash), server_hash);
 
-	Format(args, sizeof(args), "?server_build=%u&server_hostname=%S",
-		CEDAR_BUILD, hostname);
+	Format(args, sizeof(args), "?server_build=%u&server_hostname=%S&appid=%S",
+		CEDAR_BUILD, hostname, APP_ID_PREFIX);
 
 	if (true)
 	{
@@ -971,6 +1012,8 @@ DS_POLICY_CLIENT *DsNewPolicyClient(char* server_hash)
 		c->NumThreads++;
 
 		ctx->Client = c;
+
+		ctx->ClientId = 1;
 
 		ctx->HaltEvent = NewEvent();
 		AddRef(ctx->HaltEvent->ref);
@@ -995,6 +1038,8 @@ DS_POLICY_CLIENT *DsNewPolicyClient(char* server_hash)
 		c->NumThreads++;
 
 		ctx->Client = c;
+
+		ctx->ClientId = 2;
 
 		ctx->HaltEvent = NewEvent();
 		AddRef(ctx->HaltEvent->ref);
@@ -5572,7 +5617,7 @@ DS *NewDs(bool is_user_mode, bool force_share_disable)
 	WideServerGetHash(ds->Wide, server_hash, sizeof(server_hash));
 
 	// ポリシー規制クライアント開始
-	ds->PolicyClient = DsNewPolicyClient(server_hash);
+	ds->PolicyClient = DsNewPolicyClient(ds, server_hash);
 
 	DsLog(ds, "DSL_START1", DESK_VERSION / 100, DESK_VERSION % 100, DESK_BUILD);
 	DsLog(ds, "DSL_START2", ds->Cedar->BuildInfo);
@@ -5769,6 +5814,8 @@ void FreeDs(DS *ds)
 
 	MsFreeProcessWatcher(ds->ProcessWatcher);
 
+	DsFreePolicyClient(ds->PolicyClient);
+
 	MsFreeEventLog(ds->EventLog);
 
 	FreeLog(ds->Log);
@@ -5788,8 +5835,6 @@ void FreeDs(DS *ds)
 	{
 		MsFreeIsLocked(ds->IsLocked);
 	}
-
-	DsFreePolicyClient(ds->PolicyClient);
 
 	DeleteCounter(ds->CurrentNumSessions);
 	DeleteCounter(ds->CurrentNumRDPSessions);
