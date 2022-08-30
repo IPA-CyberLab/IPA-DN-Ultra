@@ -208,7 +208,7 @@ bool WtgHttpProxyForWebApp(WT* wt, SOCK* s, HTTP_HEADER* first_header)
 					}
 					else
 					{
-						AddHttpValue(h2, NewHttpValue(v->Name, v->Data));
+							AddHttpValue(h2, NewHttpValue(v->Name, v->Data));
 					}
 				}
 			}
@@ -296,8 +296,22 @@ bool WtgHttpProxyForWebApp(WT* wt, SOCK* s, HTTP_HEADER* first_header)
 				{
 					WtLogEx(wt, log_prefix, "HTTP Response: %s %s %s (headers: %u)", r2->Method, r2->Target, r2->Version, LIST_NUM(r2->ValueList));
 
+					bool is_chunked = false;
+					UINT i;
+					for (i = 0;i < LIST_NUM(r2->ValueList);i++)
+					{
+						HTTP_VALUE *v = LIST_DATA(r2->ValueList, i);
+						if (StrCmpi(v->Name, "Transfer-Encoding") == 0)
+						{
+							if (InStr(v->Data, "chunked"))
+							{
+								is_chunked = true;
+							}
+						}
+					}
+
 					//DebugHttpHeader(r2);
-					if (PostHttp(s, r2, NULL, 0) == false)
+					if (PostHttpEx(s, r2, NULL, 0, is_chunked, 0) == false)
 					{
 						WtLogEx(wt, log_prefix, "PostHttp() to the client error.");
 						err = true;
@@ -306,20 +320,6 @@ bool WtgHttpProxyForWebApp(WT* wt, SOCK* s, HTTP_HEADER* first_header)
 					{
 						if (StrCmpi(h->Method, "HEAD") != 0)
 						{
-							bool is_chunked = false;
-							UINT i;
-							for (i = 0;i < LIST_NUM(r2->ValueList);i++)
-							{
-								HTTP_VALUE* v = LIST_DATA(r2->ValueList, i);
-								if (StrCmpi(v->Name, "Transfer-Encoding") == 0)
-								{
-									if (InStr(v->Data, "chunked"))
-									{
-										is_chunked = true;
-									}
-								}
-							}
-
 							if (is_chunked == false)
 							{
 								// 非 Chunk

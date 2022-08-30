@@ -24094,7 +24094,7 @@ bool PostHttpEx(SOCK* s, HTTP_HEADER* header, void* post_data, UINT post_size, b
 	}
 
 	// Check whether the Content-Lentgh exists?
-	if (exist_content_length_header == false)
+	if (exist_content_length_header == false && no_contents_length == false)
 	{
 		char tmp[MAX_SIZE];
 		// Add because it does not exist
