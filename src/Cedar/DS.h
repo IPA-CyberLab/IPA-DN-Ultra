@@ -292,6 +292,7 @@ struct DS_POLICY_THREAD_CTX
 	DS_POLICY_CLIENT *Client;
 	char Url[MAX_PATH];
 	bool ReplaceSuffix;
+	UINT ClientId;
 	EVENT *HaltEvent;
 };
 
@@ -350,6 +351,7 @@ struct DS_POLICY_CLIENT
 	LIST *HaltEventList;
 	UINT NumThreads;
 	UINT NumTryCompleted;
+	DS *Ds;
 };
 
 struct DS_GUACD
@@ -427,7 +429,7 @@ void DsWin32ProcessWatcherCallback(bool start, MS_PROCESS* process, void* param)
 #endif //OS_WIN32
 
 
-DS_POLICY_CLIENT *DsNewPolicyClient(char *server_hash);
+DS_POLICY_CLIENT *DsNewPolicyClient(DS *ds, char *server_hash);
 void DsFreePolicyClient(DS_POLICY_CLIENT *c);
 bool DsParsePolicyFile(DS_POLICY_BODY *b, BUF *buf);
 void DsPolicyClientThread(THREAD *thread, void *param);
