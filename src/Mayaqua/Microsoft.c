@@ -307,6 +307,31 @@ void MsTestFunc1(HWND hWnd)
 	}
 }
 
+// GetAddrInfoEx のスタブ (Vista 以降)
+int MsGetAddrInfoExA(char *pName, char *pServiceName, DWORD dwNameSpace, void *lpNspId,
+	NT_ADDRINFOEXA *hints, NT_PADDRINFOEXA *ppResult, struct timeval *timeout,
+	void *lpOverlapped, void *lpCompletionRoutine, void **lpNameHandle)
+{
+	if (IsNt() == false || ms->nt->GetAddrInfoExA == NULL || ms->nt->FreeAddrInfoEx == NULL)
+	{
+		return WSAEINVAL;
+	}
+
+	return ms->nt->GetAddrInfoExA(pName, pServiceName, dwNameSpace, lpNspId, hints,
+		ppResult, timeout, lpOverlapped, lpCompletionRoutine, lpNameHandle);
+}
+
+// FreeAddrInfoEx のスタブ (Vista 以降)
+void MsFreeAddrInfoEx(NT_PADDRINFOEXA pAddrInfoEx)
+{
+	if (IsNt() == false || ms->nt->GetAddrInfoExA == NULL || ms->nt->FreeAddrInfoEx == NULL)
+	{
+		return;
+	}
+
+	ms->nt->FreeAddrInfoEx(pAddrInfoEx);
+}
+
 // 「高速スタートアップ」が有効になっているかどうか検査
 bool MsIsFastStartupEnabled()
 {
@@ -14262,6 +14287,8 @@ NT_API *MsLoadNtApiFunctions()
 
 	nt->hNtdll = LoadLibrary("Ntdll.dll");
 
+	nt->hWS2_32 = LoadLibrary("Ws2_32.dll");
+
 	// Read the function
 	nt->GetComputerNameExW =
 		(BOOL (__stdcall *)(COMPUTER_NAME_FORMAT,LPWSTR,LPDWORD))
@@ -14382,6 +14409,14 @@ NT_API *MsLoadNtApiFunctions()
 	nt->FreeSid =
 		(PVOID(__stdcall*)(PSID))
 		GetProcAddress(nt->hAdvapi32, "FreeSid");
+
+	nt->GetAddrInfoExA =
+		(int(__stdcall *)(PCSTR, PCSTR, DWORD, LPGUID, NT_ADDRINFOEXA *, NT_PADDRINFOEXA *, struct timeval *, LPOVERLAPPED, void *, LPHANDLE))
+		GetProcAddress(nt->hWS2_32, "GetAddrInfoExA");
+
+	nt->FreeAddrInfoEx =
+		(void(__stdcall *)(NT_PADDRINFOEXA))
+		GetProcAddress(nt->hWS2_32, "FreeAddrInfoEx");
 
 	// Determine WoW64
 	if (Is32())
@@ -14729,6 +14764,11 @@ void MsFreeNtApiFunctions(NT_API *nt)
 	if (nt->hUserenv != NULL)
 	{
 		FreeLibrary(nt->hUserenv);
+	}
+
+	if (nt->hWS2_32 != NULL)
+	{
+		FreeLibrary(nt->hWS2_32);
 	}
 
 	if (nt->hNtdll != NULL)

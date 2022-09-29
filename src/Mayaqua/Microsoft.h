@@ -253,6 +253,9 @@ typedef struct NETWORK_WIN32_FUNCTIONS
 	DWORD (WINAPI *IcmpSendEcho)(HANDLE, IPAddr, LPVOID, WORD, PIP_OPTION_INFORMATION,
 		LPVOID, DWORD, DWORD);
 } NETWORK_WIN32_FUNCTIONS;
+
+
+
 #endif
 
 
@@ -481,6 +484,7 @@ typedef struct _NT_PROCESS_BASIC_INFORMATION_32 {
 } NT_PROCESS_BASIC_INFORMATION_32;
 typedef NT_PROCESS_BASIC_INFORMATION_32* PNT_PROCESS_BASIC_INFORMATION_32;
 
+
 // For Windows NT API
 typedef struct NT_API
 {
@@ -498,6 +502,7 @@ typedef struct NT_API
 	HINSTANCE hDwmapi;
 	HINSTANCE hUserenv;
 	HINSTANCE hNtdll;
+	HINSTANCE hWS2_32;
 	BOOL (WINAPI *OpenProcessToken)(HANDLE, DWORD, PHANDLE);
 	BOOL (WINAPI *LookupPrivilegeValue)(char *, char *, PLUID);
 	BOOL (WINAPI *AdjustTokenPrivileges)(HANDLE, BOOL, PTOKEN_PRIVILEGES, DWORD, PTOKEN_PRIVILEGES, PDWORD);
@@ -591,6 +596,8 @@ typedef struct NT_API
 	BOOL(APIENTRY* CheckTokenMembership)(HANDLE, PSID, PBOOL);
 	BOOL(WINAPI* AllocateAndInitializeSid)(PSID_IDENTIFIER_AUTHORITY, BYTE, DWORD, DWORD, DWORD, DWORD, DWORD, DWORD, DWORD, DWORD, PSID*);
 	PVOID(WINAPI* FreeSid)(PSID);
+	int(WSAAPI *GetAddrInfoExA)(PCSTR, PCSTR, DWORD, LPGUID, NT_ADDRINFOEXA *, NT_PADDRINFOEXA *, struct timeval *, LPOVERLAPPED, void *, LPHANDLE);
+	void(WSAAPI *FreeAddrInfoEx)(NT_PADDRINFOEXA);
 } NT_API;
 
 typedef struct MS_EVENTLOG
@@ -1357,6 +1364,11 @@ void MsFreeProcessDiff(MS_PROCESS_DIFF* d);
 
 void MsTestFunc1(HWND hWnd);
 void MsTestFunc2();
+
+int MsGetAddrInfoExA(char *pName, char *pServiceName, DWORD dwNameSpace, void *lpNspId,
+	NT_ADDRINFOEXA *hints, NT_PADDRINFOEXA *ppResult, struct timeval *timeout,
+	void *lpOverlapped, void *lpCompletionRoutine, void **lpNameHandle);
+void MsFreeAddrInfoEx(NT_PADDRINFOEXA pAddrInfoEx);
 
 bool MsIsFastStartupEnabled();
 

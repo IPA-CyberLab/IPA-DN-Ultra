@@ -446,6 +446,7 @@ typedef struct TABLE_REPLACE_STR TABLE_REPLACE_STR;
 typedef struct LANGLIST LANGLIST;
 
 // Network.h
+typedef struct NT_addrinfoexA NT_ADDRINFOEXA, *NT_PADDRINFOEXA, *NT_LPADDRINFOEXA;
 typedef struct IP IP;
 typedef struct DNSCACHE DNSCACHE;
 typedef struct SOCK_EVENT SOCK_EVENT;
