@@ -312,7 +312,7 @@ int MsGetAddrInfoExA(char *pName, char *pServiceName, DWORD dwNameSpace, void *l
 	NT_ADDRINFOEXA *hints, NT_PADDRINFOEXA *ppResult, struct timeval *timeout,
 	void *lpOverlapped, void *lpCompletionRoutine, void **lpNameHandle)
 {
-	if (IsNt() == false || ms->nt->GetAddrInfoExA == NULL || ms->nt->FreeAddrInfoEx == NULL)
+	if (MsIsGetAddrInfoExASupported() == false)
 	{
 		return WSAEINVAL;
 	}
@@ -324,12 +324,22 @@ int MsGetAddrInfoExA(char *pName, char *pServiceName, DWORD dwNameSpace, void *l
 // FreeAddrInfoEx のスタブ (Vista 以降)
 void MsFreeAddrInfoEx(NT_PADDRINFOEXA pAddrInfoEx)
 {
-	if (IsNt() == false || ms->nt->GetAddrInfoExA == NULL || ms->nt->FreeAddrInfoEx == NULL)
+	if (MsIsGetAddrInfoExASupported() == false)
 	{
 		return;
 	}
 
 	ms->nt->FreeAddrInfoEx(pAddrInfoEx);
+}
+
+bool MsIsGetAddrInfoExASupported()
+{
+	if (IsNt() == false || ms->nt->GetAddrInfoExA == NULL || ms->nt->FreeAddrInfoEx == NULL)
+	{
+		return false;
+	}
+
+	return true;
 }
 
 // 「高速スタートアップ」が有効になっているかどうか検査

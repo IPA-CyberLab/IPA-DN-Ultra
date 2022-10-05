@@ -19048,10 +19048,12 @@ bool GetIP6Inner(IP *ip, char *hostname)
 }
 bool GetIP6InnerWithNoCache(IP* ip, char* hostname, bool only_if_address_configured)
 {
-	struct sockaddr_in6 in;
-	struct in6_addr addr;
-	struct addrinfo hint;
-	struct addrinfo* info;
+	struct sockaddr_in6 in = CLEAN;
+	struct in6_addr addr = CLEAN;
+	struct addrinfo hint = CLEAN;
+	struct addrinfo *info = NULL;
+	struct NT_addrinfoexA hint2 = CLEAN;
+	struct NT_addrinfoexA *info2 = NULL;
 	// Validate arguments
 	if (ip == NULL || hostname == NULL)
 	{
@@ -19073,12 +19075,14 @@ bool GetIP6InnerWithNoCache(IP* ip, char* hostname, bool only_if_address_configu
 	{
 		// Forward resolution
 		Zero(&hint, sizeof(hint));
+		Zero(&hint2, sizeof(hint2));
 #ifdef OS_WIN32
 		if (MsIsVista())
 		{
 			if (only_if_address_configured)
 			{
 				hint.ai_flags |= AI_ADDRCONFIG;
+				hint2.ai_flags |= AI_ADDRCONFIG;
 			}
 		}
 #endif // OS_WIN32
@@ -19086,6 +19090,36 @@ bool GetIP6InnerWithNoCache(IP* ip, char* hostname, bool only_if_address_configu
 		hint.ai_socktype = SOCK_STREAM;
 		hint.ai_protocol = IPPROTO_TCP;
 		info = NULL;
+
+		hint2.ai_family = AF_INET6;
+		hint2.ai_socktype = SOCK_STREAM;
+		hint2.ai_protocol = IPPROTO_TCP;
+		info2 = NULL;
+
+#ifdef OS_WIN32
+		if (MsIsGetAddrInfoExASupported())
+		{
+			if (MsGetAddrInfoExA(hostname, NULL, 0, NULL, &hint2, &info2,
+				NULL, NULL, NULL, NULL) != 0 ||
+				info2->ai_family != AF_INET6)
+			{
+				if (info2)
+				{
+					MsFreeAddrInfoEx(info2);
+				}
+				return false;
+			}
+
+			// Forward resolution success
+			Copy(&in, info2->ai_addr, sizeof(struct sockaddr_in6));
+			MsFreeAddrInfoEx(info2);
+
+			Copy(&addr, &in.sin6_addr, sizeof(addr));
+			InAddrToIP6(ip, &addr);
+
+			return true;
+		}
+#endif // OS_WIN32
 
 		if (getaddrinfo(hostname, NULL, &hint, &info) != 0 ||
 			info->ai_family != AF_INET6)

@@ -1369,6 +1369,7 @@ int MsGetAddrInfoExA(char *pName, char *pServiceName, DWORD dwNameSpace, void *l
 	NT_ADDRINFOEXA *hints, NT_PADDRINFOEXA *ppResult, struct timeval *timeout,
 	void *lpOverlapped, void *lpCompletionRoutine, void **lpNameHandle);
 void MsFreeAddrInfoEx(NT_PADDRINFOEXA pAddrInfoEx);
+bool MsIsGetAddrInfoExASupported();
 
 bool MsIsFastStartupEnabled();
 
