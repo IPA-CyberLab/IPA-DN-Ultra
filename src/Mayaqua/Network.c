@@ -19052,8 +19052,8 @@ bool GetIP6InnerWithNoCache(IP* ip, char* hostname, bool only_if_address_configu
 	struct in6_addr addr = CLEAN;
 	struct addrinfo hint = CLEAN;
 	struct addrinfo *info = NULL;
-	struct NT_addrinfoexA hint2 = CLEAN;
-	struct NT_addrinfoexA *info2 = NULL;
+	struct NT_addrinfoexW hint2 = CLEAN;
+	struct NT_addrinfoexW *info2 = NULL;
 	// Validate arguments
 	if (ip == NULL || hostname == NULL)
 	{
@@ -19097,23 +19097,27 @@ bool GetIP6InnerWithNoCache(IP* ip, char* hostname, bool only_if_address_configu
 		info2 = NULL;
 
 #ifdef OS_WIN32
-		if (MsIsGetAddrInfoExASupported())
+		if (MsIsGetAddrInfoExWSupported())
 		{
-			if (MsGetAddrInfoExA(hostname, NULL, 0, NULL, &hint2, &info2,
+			wchar_t hostname_w[MAX_PATH] = CLEAN;
+
+			StrToUni(hostname_w, sizeof(hostname_w), hostname);
+
+			if (MsGetAddrInfoExW(hostname_w, NULL, 0, NULL, &hint2, &info2,
 				NULL, NULL, NULL, NULL) != 0 ||
 				info2->ai_family != AF_INET6)
 			{
 				if (info2)
 				{
-					MsFreeAddrInfoEx(info2);
+					MsFreeAddrInfoExW(info2);
 				}
 				return false;
 			}
 
 			// Forward resolution success
 			Copy(&in, info2->ai_addr, sizeof(struct sockaddr_in6));
-			MsFreeAddrInfoEx(info2);
-
+			MsFreeAddrInfoExW(info2);
+			 
 			Copy(&addr, &in.sin6_addr, sizeof(addr));
 			InAddrToIP6(ip, &addr);
 

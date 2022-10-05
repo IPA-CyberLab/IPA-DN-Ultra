@@ -1010,20 +1010,20 @@ struct HTTP_HEADER
 
 
 
-typedef struct NT_addrinfoexA
+typedef struct NT_addrinfoexW
 {
 	int                 ai_flags;       // AI_PASSIVE, AI_CANONNAME, AI_NUMERICHOST
 	int                 ai_family;      // PF_xxx
 	int                 ai_socktype;    // SOCK_xxx
 	int                 ai_protocol;    // 0 or IPPROTO_xxx for IPv4 and IPv6
 	size_t              ai_addrlen;     // Length of ai_addr
-	char *ai_canonname;   // Canonical name for nodename
+	wchar_t *ai_canonname;   // Canonical name for nodename
 	struct sockaddr *ai_addr;        // Binary address
 	void *ai_blob;
 	size_t              ai_bloblen;
 	void *ai_provider;
-	struct NT_addrinfoexA *ai_next;        // Next structure in linked list
-} NT_ADDRINFOEXA, *NT_PADDRINFOEXA, *NT_LPADDRINFOEXA;
+	struct NT_addrinfoexW *ai_next;        // Next structure in linked list
+} NT_ADDRINFOEXW, *NT_PADDRINFOEXW, *NT_LPADDRINFOEXW;
 
 
 
