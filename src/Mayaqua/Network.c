@@ -231,6 +231,18 @@ static LIST *g_dyn_value_list = NULL;
 //#define	RUDP_DETAIL_LOG
 
 
+// ミリ秒を timeval に変換
+void MSecsToTimeval(struct timeval *tv, UINT msecs)
+{
+	if (tv == NULL)
+	{
+		return;
+	}
+
+	tv->tv_sec = msecs / 1000;
+	tv->tv_usec = (msecs % 1000) * 1000;
+}
+
 // SMTP メール送信
 bool SmtpSendMail(char* server_host, UINT server_port, char* from, char* to, char* body)
 {

@@ -1809,6 +1809,8 @@ UINT ParseProxyProtocol(PROXY_PROTOCOL *dst, UCHAR* peek_buf, UINT peek_size);
 bool SmtpSendMail(char* server_host, UINT server_port, char* from, char* to, char* body);
 bool SmtpSendMailEx(char* server_host, UINT server_port, char* from, char* to, char* body, BUF *error, char *username, char *password, UINT timeout, UINT ssl_type, UINT auth_type);
 
+void MSecsToTimeval(struct timeval *tv, UINT msecs);
+
 
 #endif	// NETWORK_H
 
