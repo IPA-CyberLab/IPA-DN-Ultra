@@ -308,28 +308,38 @@ void MsTestFunc1(HWND hWnd)
 }
 
 // GetAddrInfoEx のスタブ (Vista 以降)
-int MsGetAddrInfoExA(char *pName, char *pServiceName, DWORD dwNameSpace, void *lpNspId,
-	NT_ADDRINFOEXA *hints, NT_PADDRINFOEXA *ppResult, struct timeval *timeout,
+int MsGetAddrInfoExW(wchar_t *pName, wchar_t *pServiceName, DWORD dwNameSpace, void *lpNspId,
+	NT_ADDRINFOEXW *hints, NT_PADDRINFOEXW *ppResult, struct timeval *timeout,
 	void *lpOverlapped, void *lpCompletionRoutine, void **lpNameHandle)
 {
-	if (IsNt() == false || ms->nt->GetAddrInfoExA == NULL || ms->nt->FreeAddrInfoEx == NULL)
+	if (MsIsGetAddrInfoExWSupported() == false)
 	{
 		return WSAEINVAL;
 	}
 
-	return ms->nt->GetAddrInfoExA(pName, pServiceName, dwNameSpace, lpNspId, hints,
+	return ms->nt->GetAddrInfoExW(pName, pServiceName, dwNameSpace, lpNspId, hints,
 		ppResult, timeout, lpOverlapped, lpCompletionRoutine, lpNameHandle);
 }
 
-// FreeAddrInfoEx のスタブ (Vista 以降)
-void MsFreeAddrInfoEx(NT_PADDRINFOEXA pAddrInfoEx)
+// FreeAddrInfoExW のスタブ (Vista 以降)
+void MsFreeAddrInfoExW(NT_PADDRINFOEXW pAddrInfoEx)
 {
-	if (IsNt() == false || ms->nt->GetAddrInfoExA == NULL || ms->nt->FreeAddrInfoEx == NULL)
+	if (MsIsGetAddrInfoExWSupported() == false)
 	{
 		return;
 	}
 
-	ms->nt->FreeAddrInfoEx(pAddrInfoEx);
+	ms->nt->FreeAddrInfoExW(pAddrInfoEx);
+}
+
+bool MsIsGetAddrInfoExWSupported()
+{
+	if (IsNt() == false || ms->nt->GetAddrInfoExW == NULL || ms->nt->FreeAddrInfoExW == NULL)
+	{
+		return false;
+	}
+
+	return true;
 }
 
 // 「高速スタートアップ」が有効になっているかどうか検査
@@ -14410,13 +14420,13 @@ NT_API *MsLoadNtApiFunctions()
 		(PVOID(__stdcall*)(PSID))
 		GetProcAddress(nt->hAdvapi32, "FreeSid");
 
-	nt->GetAddrInfoExA =
-		(int(__stdcall *)(PCSTR, PCSTR, DWORD, LPGUID, NT_ADDRINFOEXA *, NT_PADDRINFOEXA *, struct timeval *, LPOVERLAPPED, void *, LPHANDLE))
-		GetProcAddress(nt->hWS2_32, "GetAddrInfoExA");
+	nt->GetAddrInfoExW =
+		(int(__stdcall *)(PCWSTR, PCWSTR, DWORD, LPGUID, NT_ADDRINFOEXW *, NT_PADDRINFOEXW *, struct timeval *, LPOVERLAPPED, void *, LPHANDLE))
+		GetProcAddress(nt->hWS2_32, "GetAddrInfoExW");
 
-	nt->FreeAddrInfoEx =
-		(void(__stdcall *)(NT_PADDRINFOEXA))
-		GetProcAddress(nt->hWS2_32, "FreeAddrInfoEx");
+	nt->FreeAddrInfoExW =
+		(void(__stdcall *)(NT_PADDRINFOEXW))
+		GetProcAddress(nt->hWS2_32, "FreeAddrInfoExW");
 
 	// Determine WoW64
 	if (Is32())

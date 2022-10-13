@@ -596,8 +596,8 @@ typedef struct NT_API
 	BOOL(APIENTRY* CheckTokenMembership)(HANDLE, PSID, PBOOL);
 	BOOL(WINAPI* AllocateAndInitializeSid)(PSID_IDENTIFIER_AUTHORITY, BYTE, DWORD, DWORD, DWORD, DWORD, DWORD, DWORD, DWORD, DWORD, PSID*);
 	PVOID(WINAPI* FreeSid)(PSID);
-	int(WSAAPI *GetAddrInfoExA)(PCSTR, PCSTR, DWORD, LPGUID, NT_ADDRINFOEXA *, NT_PADDRINFOEXA *, struct timeval *, LPOVERLAPPED, void *, LPHANDLE);
-	void(WSAAPI *FreeAddrInfoEx)(NT_PADDRINFOEXA);
+	int(WSAAPI *GetAddrInfoExW)(PCWSTR, PCWSTR, DWORD, LPGUID, NT_ADDRINFOEXW *, NT_PADDRINFOEXW *, struct timeval *, LPOVERLAPPED, void *, LPHANDLE);
+	void(WSAAPI *FreeAddrInfoExW)(NT_PADDRINFOEXW);
 } NT_API;
 
 typedef struct MS_EVENTLOG
@@ -1365,10 +1365,11 @@ void MsFreeProcessDiff(MS_PROCESS_DIFF* d);
 void MsTestFunc1(HWND hWnd);
 void MsTestFunc2();
 
-int MsGetAddrInfoExA(char *pName, char *pServiceName, DWORD dwNameSpace, void *lpNspId,
-	NT_ADDRINFOEXA *hints, NT_PADDRINFOEXA *ppResult, struct timeval *timeout,
+int MsGetAddrInfoExW(wchar_t *pName, wchar_t *pServiceName, DWORD dwNameSpace, void *lpNspId,
+	NT_ADDRINFOEXW *hints, NT_PADDRINFOEXW *ppResult, struct timeval *timeout,
 	void *lpOverlapped, void *lpCompletionRoutine, void **lpNameHandle);
-void MsFreeAddrInfoEx(NT_PADDRINFOEXA pAddrInfoEx);
+void MsFreeAddrInfoExW(NT_PADDRINFOEXW pAddrInfoEx);
+bool MsIsGetAddrInfoExWSupported();
 
 bool MsIsFastStartupEnabled();
 
