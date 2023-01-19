@@ -10,7 +10,21 @@
 ** BETA VERSION UNDER DEVELOPMENT, INCOMPLETE AND BUGGY. USE AT YOUR OWN RISK. Ver 1.0 is scheduled to be released during November 2021. We strongly recommend that you wait until Ver 1.0 is released. ** - This Git repository contains the source code and documentation for the open source version of the Thin Telework System which is under development. 2021-10-31 by Daiyuu Nobori.
 
 
+## ご案内 - GitHub リポジトリの変更について (2023/01/20)
+
+- 2023/01/20 に rc1 (Release Candidate 1) をリリースしました。
+- これに合わせて、**『IPA-DN-Ultra』** という名前の従来の本リポジトリは、[**『IPA-DN-ThinLib』**](https://github.com/IPA-CyberLab/IPA-DN-ThinLib/) という名前の新リポジトリに移行しました。
+- 新リポジトリの URL は、[**https://github.com/IPA-CyberLab/IPA-DN-ThinLib/**](https://github.com/IPA-CyberLab/IPA-DN-ThinLib/) です。
+- 新しい README (変更履歴) の URL は、[**https://github.com/IPA-CyberLab/IPA-DN-ThinLib/blob/master/README.md**](https://github.com/IPA-CyberLab/IPA-DN-ThinLib/blob/master/README.md) です。
+- お手数をおかけしますが、rc1 (2023/01/20) 以降の変更履歴については、上記の新しい GitHub リポジトリをご参照ください。
+
 ## [Current Version] beta8preview9
+
+## rc1 以降 (2023/01/20 以降)
+- rc1 以降の変更履歴は、[**『IPA-DN-ThinLib』**](https://github.com/IPA-CyberLab/IPA-DN-ThinLib/) という名前の新リポジトリに移行しました。
+- 新リポジトリの URL は、[**https://github.com/IPA-CyberLab/IPA-DN-ThinLib/**](https://github.com/IPA-CyberLab/IPA-DN-ThinLib/) です。
+- 新しい README (変更履歴) の URL は、[**https://github.com/IPA-CyberLab/IPA-DN-ThinLib/blob/master/README.md**](https://github.com/IPA-CyberLab/IPA-DN-ThinLib/blob/master/README.md) です。
+- お手数をおかけしますが、rc1 (2023/01/20) 以降の変更履歴については、上記の新しい GitHub リポジトリをご参照ください。
 
 ## beta8preview9 - 2022/08/08
 1. 一部の環境でポリシー規制サーバーの自動検出に失敗する問題があるという報告がありました。そこで、サーバー側設定で「詳細デバッグログ」を有効にしている場合は、「server_log」ディレクトリに保存されるログにポリシー規制サーバーの自動検出の状況 (デバッグメッセージ) を記録するようにしました。
