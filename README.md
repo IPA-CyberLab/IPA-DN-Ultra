@@ -4,7 +4,8 @@
 [![Coverity](https://scan.coverity.com/projects/23476/badge.svg?flat=1)](https://scan.coverity.com/projects/IPA-DN-Ultra-210730)
 
 
-この更新履歴ファイルの最新版は、[https://github.com/IPA-CyberLab/IPA-DN-Ultra/](https://github.com/IPA-CyberLab/IPA-DN-Ultra/) を参照してください。
+この更新履歴ファイルの更新は、2022/08/08 で停止しました。  
+最新版は、[**https://github.com/IPA-CyberLab/IPA-DN-ThinLib/**](https://github.com/IPA-CyberLab/IPA-DN-ThinLib/) に移動しました。
 
 
 ** BETA VERSION UNDER DEVELOPMENT, INCOMPLETE AND BUGGY. USE AT YOUR OWN RISK. Ver 1.0 is scheduled to be released during November 2021. We strongly recommend that you wait until Ver 1.0 is released. ** - This Git repository contains the source code and documentation for the open source version of the Thin Telework System which is under development. 2021-10-31 by Daiyuu Nobori.
